@@ -2,7 +2,8 @@
 
 A credit-risk project using LendingClub loan data. EDA is complete, with SQL
 audits, three marimo notebooks, saved figures, a feature-availability review, and
-a documented retrospective benchmark. Model training has not started.
+a documented retrospective benchmark. Model datasets are prepared; model training
+has not started.
 
 Start with the [final EDA report](docs/eda_summary.md) and
 [complete statistics reference](assets/statistics.md). The
@@ -157,5 +158,39 @@ marimo export html scripts/03_complete_eda.py -o docs/eda_completion.html --no-i
 Read [the final summary](docs/eda_summary.md),
 [the final HTML report](docs/eda_completion.html), and
 [the dictionary](docs/data_dictionary.md) without rerunning the notebooks.
-Raw and clean data are preserved. No model-ready split files or fitted
-preprocessing have been created yet.
+Raw and clean data are preserved. The EDA stage fits no preprocessing; model-data
+preparation is a separate step below.
+
+## Prepare model datasets
+
+```bash
+python scripts/04_prepare_model_data.py
+```
+
+This reads the existing clean Parquet and executes SQL files `26`–`31`. It writes
+three feature/target datasets and three matching metadata files to
+`data/clean/modeling/`, with counts and fingerprints in
+`assets/results/model_data_manifest.json`. No raw-data download or EDA rerun is
+needed. All six dataset files are excluded from Git.
+
+| Split | Issue years | Rows |
+| --- | --- | --- |
+| Training | 2011–2013 | 157,993 |
+| Validation | 2014 | 162,570 |
+| Exploratory evaluation | 2015 | 283,026 |
+
+The training-only feature profile removes constant `application_type`, leaving
+13 predictors. IDs, dates, application type, and target status are excluded from
+predictors; application type remains in audit metadata. Dataset files contain
+the exact predictor list plus the binary `charged_off` target. Read the feature
+lists from the manifest rather than selecting every available column.
+
+Missing values and extreme values are preserved. Imputation, scaling, category
+encoding, and model fitting have not started. Validation/evaluation include some
+categories not seen in training; future encoders must handle them explicitly.
+
+See [the dataset contract](docs/model_data.md) and
+[statistics section 17](assets/statistics.md#17-model-data-preparation) for the
+full checks, category/missingness tables, and limitations. The evaluation remains
+exploratory and does not establish fixed-horizon default risk or historical
+deployment performance.

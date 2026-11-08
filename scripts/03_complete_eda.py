@@ -561,8 +561,14 @@ def _(benchmark_splits, category_profile, clean_dictionary, cohort_audit, comple
     ]
     _marker = "<!-- final-eda-statistics -->"
     _path = root / "assets/statistics.md"
-    _original = _path.read_text().split(_marker)[0].rstrip()
-    _original = re.sub(r"\| Completed stage \| [^\n]+ \|", "| Completed stage | EDA complete: audits, exploration, feature decisions, and benchmark definition |", _original)
+    _existing = _path.read_text()
+    _model_marker = "<!-- model-data-statistics -->"
+    _model_section = ""
+    if _model_marker in _existing:
+        _model_section = _model_marker + _existing.split(_model_marker, 1)[1]
+    _original = _existing.split(_marker)[0].rstrip()
+    if not _model_section:
+        _original = re.sub(r"\| Completed stage \| [^\n]+ \|", "| Completed stage | EDA complete: audits, exploration, feature decisions, and benchmark definition |", _original)
     _original = re.sub(r"\| Saved figure sets \| [\d,]+ \|", f"| Saved figure sets | {len(list(figures_dir.glob('*.png')))} |", _original)
     _original = re.sub(r"\| Saved image files \| [\d,]+ \|", f"| Saved image files | {len(list(figures_dir.glob('*.png'))) + len(list(figures_dir.glob('*.svg')))} |", _original)
     _original = re.sub(r"\| Saved result CSVs \| [\d,]+ \|", f"| Saved result CSVs | {len(list(results_dir.glob('*.csv')))} |", _original)
@@ -587,7 +593,7 @@ def _(benchmark_splits, category_profile, clean_dictionary, cohort_audit, comple
     _parts.append("### Final-stage figures")
     for _name in ["18_outcome_boxplots", "19_category_support", "20_benchmark_coverage", "21_source_column_disposition"]:
         _parts.append(f"- [{_name}.png](figures/{_name}.png) · [{_name}.svg](figures/{_name}.svg)")
-    _path.write_text(_original + "\n\n" + "\n\n".join(_parts) + "\n")
+    _path.write_text(_original + "\n\n" + "\n\n".join(_parts) + "\n\n" + _model_section)
     mo.md("EDA complete. Saved the final report, dictionaries, benchmark counts, four figures, ten result CSVs, and full statistics in section 16.")
     return
 

@@ -1,0 +1,227 @@
+{
+  "stage": "model_data_preparation",
+  "status": "complete",
+  "completed_at_utc": "2026-11-08T15:27:11+00:00",
+  "source_path": "data/clean/loans.parquet",
+  "source_sha256": "51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20",
+  "eda_manifest_sha256": "44721c561c377b6077161e0bd19298016eb7e74819a354f5e3aa37d355af823e",
+  "eda_decision_snapshot": {
+    "stage": "eda",
+    "status": "complete",
+    "completed_at_utc": "2026-11-08T15:19:48+00:00",
+    "source_columns": 151,
+    "clean_columns": 26,
+    "candidate_feature_count": 14,
+    "candidate_features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose",
+      "application_type"
+    ],
+    "target": "charged_off_among_selected_resolved_loans",
+    "fixed_horizon": false,
+    "benchmark_term_months": 36,
+    "train_years": [
+      2011,
+      2012,
+      2013
+    ],
+    "validation_years": [
+      2014
+    ],
+    "exploratory_test_years": [
+      2015
+    ],
+    "test_previously_explored": true,
+    "deployment_backtest": false,
+    "checks_passed": true,
+    "model_training_started": false,
+    "splits": [
+      {
+        "proposed_split": "train",
+        "all_loans": 157993,
+        "eligible_resolved_loans": 157993,
+        "excluded_other_status": 0,
+        "fully_paid": 138213,
+        "charged_off": 19780,
+        "resolved_pct": 100.0,
+        "charged_off_pct": 12.519542005025539
+      },
+      {
+        "proposed_split": "validation",
+        "all_loans": 162570,
+        "eligible_resolved_loans": 162570,
+        "excluded_other_status": 0,
+        "fully_paid": 140255,
+        "charged_off": 22315,
+        "resolved_pct": 100.0,
+        "charged_off_pct": 13.726394783785446
+      },
+      {
+        "proposed_split": "exploratory_test",
+        "all_loans": 283173,
+        "eligible_resolved_loans": 283026,
+        "excluded_other_status": 147,
+        "fully_paid": 240894,
+        "charged_off": 42132,
+        "resolved_pct": 99.94808827112755,
+        "charged_off_pct": 14.886264866125373
+      }
+    ]
+  },
+  "candidate_features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose",
+    "application_type"
+  ],
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "numeric_features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years"
+  ],
+  "categorical_features": [
+    "home_ownership",
+    "purpose"
+  ],
+  "training_only_dropped_features": [
+    "application_type"
+  ],
+  "target": "charged_off",
+  "positive_class": 1,
+  "positive_class_meaning": "Charged Off",
+  "negative_class_meaning": "Fully Paid",
+  "benchmark_term_months": 36,
+  "train_years": [
+    2011,
+    2012,
+    2013
+  ],
+  "validation_years": [
+    2014
+  ],
+  "exploratory_test_years": [
+    2015
+  ],
+  "fixed_horizon": false,
+  "deployment_backtest": false,
+  "test_previously_explored": true,
+  "preprocessing_fitted": false,
+  "model_training_started": false,
+  "row_order": [
+    "issue_date",
+    "loan_id"
+  ],
+  "artifacts": [
+    {
+      "path": "data/clean/modeling/train.parquet",
+      "split": "train",
+      "kind": "features_and_target",
+      "rows": 157993,
+      "columns": 14,
+      "bytes": 2051149,
+      "sha256": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4"
+    },
+    {
+      "path": "data/clean/modeling/train_metadata.parquet",
+      "split": "train",
+      "kind": "metadata",
+      "rows": 157993,
+      "columns": 4,
+      "bytes": 239324,
+      "sha256": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738"
+    },
+    {
+      "path": "data/clean/modeling/validation.parquet",
+      "split": "validation",
+      "kind": "features_and_target",
+      "rows": 162570,
+      "columns": 14,
+      "bytes": 2119125,
+      "sha256": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc"
+    },
+    {
+      "path": "data/clean/modeling/validation_metadata.parquet",
+      "split": "validation",
+      "kind": "metadata",
+      "rows": 162570,
+      "columns": 4,
+      "bytes": 239708,
+      "sha256": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
+    },
+    {
+      "path": "data/clean/modeling/exploratory_test.parquet",
+      "split": "exploratory_test",
+      "kind": "features_and_target",
+      "rows": 283026,
+      "columns": 14,
+      "bytes": 3662090,
+      "sha256": "7d98e6c095b38287a1599aa241a061d8ca786a5894370e2ab6a4aeb16a553564"
+    },
+    {
+      "path": "data/clean/modeling/exploratory_test_metadata.parquet",
+      "split": "exploratory_test",
+      "kind": "metadata",
+      "rows": 283026,
+      "columns": 4,
+      "bytes": 394587,
+      "sha256": "b94fdee9a5ae2d64badf43666f53d8f4f3c0c2c5f5100934a3f6aaeb15952c60"
+    }
+  ],
+  "sql_sha256": {
+    "26_model_population.sql": "c53b3bedc6975bc3a86bff179ab155180933d8190408fb74f314d22fe1701d47",
+    "27_training_feature_profile.sql": "882c57698c7e65494d49da534c158df7e65988d5d6d1b932d88a15e2bad5d66b",
+    "28_model_split_summary.sql": "95f148c2b14b3d189572e9ba371b9f1cc370685b83f77481df0d94c938ff6478",
+    "29_model_missingness.sql": "5f799b2d8cefdfef23568b9a5ac0880933145e8346200a1b05573150f61f66d8",
+    "30_model_category_coverage.sql": "fb314763a1acf2cd331d3cbb7edd6259b60b60c0370bd78fd85ac4f87891634b",
+    "31_model_unknown_categories.sql": "9ec0b4459498808ab48ac7f3453db667d4e1712f0bc786f61f57fa4a7b46f35f"
+  },
+  "script_sha256": "2cc18e929041378744bc5d4ab3cd0ee0e942ec1232e430d78708a47831665138",
+  "versions": {
+    "duckdb": "2.0.0",
+    "pandas": "3.1.0"
+  }
+}

@@ -1,0 +1,15 @@
+feature,train_rows,nonmissing,missing,distinct_nonmissing,retained
+annual_inc,157993,157993,0,13325,True
+application_type,157993,157993,0,1,False
+credit_history_years,157993,157993,0,603,True
+delinq_2yrs,157993,157993,0,19,True
+dti,157993,157993,0,3499,True
+emp_length_years,157993,150714,7279,11,True
+fico_mid,157993,157993,0,38,True
+home_ownership,157993,157993,0,5,True
+loan_amnt,157993,157993,0,1175,True
+open_acc,157993,157993,0,53,True
+pub_rec_bankruptcies,157993,157993,0,9,True
+purpose,157993,157993,0,13,True
+revol_bal,157993,157993,0,39758,True
+revol_util,157993,157889,104,1101,True

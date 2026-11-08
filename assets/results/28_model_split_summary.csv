@@ -1,0 +1,4 @@
+split,rows,unique_loan_ids,first_issue_month,last_issue_month,fully_paid,charged_off,charged_off_pct,label_mismatches,duplicate_ids_in_population
+train,157993,157993,2011-01-01,2013-12-01,138213,19780,12.519542005025539,0,0
+validation,162570,162570,2014-01-01,2014-12-01,140255,22315,13.726394783785445,0,0
+exploratory_test,283026,283026,2015-01-01,2015-12-01,240894,42132,14.886264866125373,0,0

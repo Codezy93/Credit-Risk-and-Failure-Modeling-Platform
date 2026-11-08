@@ -24,12 +24,13 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 14. [Source fingerprints and update rules](#14-source-fingerprints-and-update-rules)
 15. [Follow-up EDA](#15-follow-up-eda)
 16. [EDA completion](#16-eda-completion)
+17. [Model-data preparation](#17-model-data-preparation)
 
 ## 1. Quick answers
 
 | Statistic | Value |
 | --- | --- |
-| Completed stage | EDA complete: audits, exploration, feature decisions, and benchmark definition |
+| Completed stage | EDA and model-data preparation complete; training not started |
 | Dataset | LendingClub accepted loans, June 2007–December 2018 |
 | Raw rows | 2,260,701 |
 | Raw columns | 151 |
@@ -53,7 +54,7 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Entirely missing source columns | 1 |
 | Saved figure sets | 21 |
 | Saved image files | 42 |
-| Saved result CSVs | 31 |
+| Saved result CSVs | 36 |
 | Deterministic scatterplot sample | 20,000 |
 | Models trained / MLflow evaluation metrics | Not measured; training stage not implemented |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
@@ -2234,3 +2235,192 @@ Source: [eda_source_column_audit.csv](results/eda_source_column_audit.csv). Reco
 - [20_benchmark_coverage.png](figures/20_benchmark_coverage.png) · [20_benchmark_coverage.svg](figures/20_benchmark_coverage.svg)
 
 - [21_source_column_disposition.png](figures/21_source_column_disposition.png) · [21_source_column_disposition.svg](figures/21_source_column_disposition.svg)
+
+<!-- model-data-statistics -->
+
+## 17. Model-data preparation
+
+Completed: 2026-11-08T15:27:11+00:00.
+
+Full contract and limitations: [prepared dataset report](../docs/model_data.md). Source and output fingerprints: [manifest](results/model_data_manifest.json).
+
+Prepared 603,589 loans and 13 predictors from 14 candidates. Training-only dropped columns: application_type. No preprocessing was fitted and no models were trained. Clean source SHA-256: `51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20`.
+
+The target is the resolved-loan charged-off label, not fixed-horizon default. 2015 remains exploratory; this is not a historical deployment backtest.
+
+### 27_training_feature_profile
+
+Source: [27_training_feature_profile.csv](results/27_training_feature_profile.csv). SHA-256: `684e0dc6c5324e1973b1ab00e78a7b261db028f1b479ebaffc9e47fe4c859e99`.
+
+| feature | train_rows | nonmissing | missing | distinct_nonmissing | retained |
+| --- | --- | --- | --- | --- | --- |
+| annual_inc | 157,993 | 157,993 | 0 | 13,325 | 1 |
+| application_type | 157,993 | 157,993 | 0 | 1 | 0 |
+| credit_history_years | 157,993 | 157,993 | 0 | 603 | 1 |
+| delinq_2yrs | 157,993 | 157,993 | 0 | 19 | 1 |
+| dti | 157,993 | 157,993 | 0 | 3,499 | 1 |
+| emp_length_years | 157,993 | 150,714 | 7,279 | 11 | 1 |
+| fico_mid | 157,993 | 157,993 | 0 | 38 | 1 |
+| home_ownership | 157,993 | 157,993 | 0 | 5 | 1 |
+| loan_amnt | 157,993 | 157,993 | 0 | 1,175 | 1 |
+| open_acc | 157,993 | 157,993 | 0 | 53 | 1 |
+| pub_rec_bankruptcies | 157,993 | 157,993 | 0 | 9 | 1 |
+| purpose | 157,993 | 157,993 | 0 | 13 | 1 |
+| revol_bal | 157,993 | 157,993 | 0 | 39,758 | 1 |
+| revol_util | 157,993 | 157,889 | 104 | 1,101 | 1 |
+
+### 28_model_split_summary
+
+Source: [28_model_split_summary.csv](results/28_model_split_summary.csv). SHA-256: `15353a5a6f5d37dd0e32c6794687307c2d750ffde5ee1b47eb7f1856311a5c1e`.
+
+| split | rows | unique_loan_ids | first_issue_month | last_issue_month | fully_paid | charged_off | charged_off_pct | label_mismatches | duplicate_ids_in_population |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| train | 157,993 | 157,993 | 2011-01-01 00:00:00 | 2013-12-01 00:00:00 | 138,213 | 19,780 | 12.519542 | 0 | 0 |
+| validation | 162,570 | 162,570 | 2014-01-01 00:00:00 | 2014-12-01 00:00:00 | 140,255 | 22,315 | 13.726395 | 0 | 0 |
+| exploratory_test | 283,026 | 283,026 | 2015-01-01 00:00:00 | 2015-12-01 00:00:00 | 240,894 | 42,132 | 14.886265 | 0 | 0 |
+
+### 29_model_missingness
+
+Source: [29_model_missingness.csv](results/29_model_missingness.csv). SHA-256: `2d60462c1dc0fdfbb68facbdb94c719f9c3d6d7ac0e64df934f48dc8ef425cfb`.
+
+| split | feature | rows | missing | missing_pct |
+| --- | --- | --- | --- | --- |
+| exploratory_test | annual_inc | 283,026 | 2 | 0.000707 |
+| exploratory_test | application_type | 283,026 | 0 | 0 |
+| exploratory_test | credit_history_years | 283,026 | 0 | 0 |
+| exploratory_test | delinq_2yrs | 283,026 | 0 | 0 |
+| exploratory_test | dti | 283,026 | 2 | 0.000707 |
+| exploratory_test | emp_length_years | 283,026 | 18,960 | 6.699031 |
+| exploratory_test | fico_mid | 283,026 | 0 | 0 |
+| exploratory_test | home_ownership | 283,026 | 0 | 0 |
+| exploratory_test | loan_amnt | 283,026 | 0 | 0 |
+| exploratory_test | open_acc | 283,026 | 0 | 0 |
+| exploratory_test | pub_rec_bankruptcies | 283,026 | 0 | 0 |
+| exploratory_test | purpose | 283,026 | 0 | 0 |
+| exploratory_test | revol_bal | 283,026 | 0 | 0 |
+| exploratory_test | revol_util | 283,026 | 126 | 0.044519 |
+| train | annual_inc | 157,993 | 0 | 0 |
+| train | application_type | 157,993 | 0 | 0 |
+| train | credit_history_years | 157,993 | 0 | 0 |
+| train | delinq_2yrs | 157,993 | 0 | 0 |
+| train | dti | 157,993 | 0 | 0 |
+| train | emp_length_years | 157,993 | 7,279 | 4.607166 |
+| train | fico_mid | 157,993 | 0 | 0 |
+| train | home_ownership | 157,993 | 0 | 0 |
+| train | loan_amnt | 157,993 | 0 | 0 |
+| train | open_acc | 157,993 | 0 | 0 |
+| train | pub_rec_bankruptcies | 157,993 | 0 | 0 |
+| train | purpose | 157,993 | 0 | 0 |
+| train | revol_bal | 157,993 | 0 | 0 |
+| train | revol_util | 157,993 | 104 | 0.065826 |
+| validation | annual_inc | 162,570 | 0 | 0 |
+| validation | application_type | 162,570 | 0 | 0 |
+| validation | credit_history_years | 162,570 | 0 | 0 |
+| validation | delinq_2yrs | 162,570 | 0 | 0 |
+| validation | dti | 162,570 | 0 | 0 |
+| validation | emp_length_years | 162,570 | 9,646 | 5.933444 |
+| validation | fico_mid | 162,570 | 0 | 0 |
+| validation | home_ownership | 162,570 | 0 | 0 |
+| validation | loan_amnt | 162,570 | 0 | 0 |
+| validation | open_acc | 162,570 | 0 | 0 |
+| validation | pub_rec_bankruptcies | 162,570 | 0 | 0 |
+| validation | purpose | 162,570 | 0 | 0 |
+| validation | revol_bal | 162,570 | 0 | 0 |
+| validation | revol_util | 162,570 | 77 | 0.047364 |
+
+### 30_model_category_coverage
+
+Source: [30_model_category_coverage.csv](results/30_model_category_coverage.csv). SHA-256: `3474dbddb35ff800d9c433fa645bb29b5a2a45943f53ae7c6fabb042c4a3e1c3`.
+
+| split | feature | category | loans | seen_in_training |
+| --- | --- | --- | --- | --- |
+| exploratory_test | application_type | Individual | 282,787 | 1 |
+| exploratory_test | application_type | Joint App | 239 | 0 |
+| exploratory_test | home_ownership | ANY | 1 | 0 |
+| exploratory_test | home_ownership | MORTGAGE | 129,762 | 1 |
+| exploratory_test | home_ownership | OWN | 31,800 | 1 |
+| exploratory_test | home_ownership | RENT | 121,463 | 1 |
+| exploratory_test | purpose | car | 2,768 | 1 |
+| exploratory_test | purpose | credit_card | 70,650 | 1 |
+| exploratory_test | purpose | debt_consolidation | 160,983 | 1 |
+| exploratory_test | purpose | educational | 1 | 0 |
+| exploratory_test | purpose | home_improvement | 17,160 | 1 |
+| exploratory_test | purpose | house | 1,004 | 1 |
+| exploratory_test | purpose | major_purchase | 5,342 | 1 |
+| exploratory_test | purpose | medical | 3,146 | 1 |
+| exploratory_test | purpose | moving | 2,061 | 1 |
+| exploratory_test | purpose | other | 15,227 | 1 |
+| exploratory_test | purpose | renewable_energy | 185 | 1 |
+| exploratory_test | purpose | small_business | 2,425 | 1 |
+| exploratory_test | purpose | vacation | 2,071 | 1 |
+| exploratory_test | purpose | wedding | 3 | 1 |
+| train | application_type | Individual | 157,993 | 1 |
+| train | home_ownership | MORTGAGE | 75,212 | 1 |
+| train | home_ownership | NONE | 35 | 1 |
+| train | home_ownership | OTHER | 40 | 1 |
+| train | home_ownership | OWN | 13,339 | 1 |
+| train | home_ownership | RENT | 69,367 | 1 |
+| train | purpose | car | 2,187 | 1 |
+| train | purpose | credit_card | 37,337 | 1 |
+| train | purpose | debt_consolidation | 88,484 | 1 |
+| train | purpose | home_improvement | 8,792 | 1 |
+| train | purpose | house | 927 | 1 |
+| train | purpose | major_purchase | 3,756 | 1 |
+| train | purpose | medical | 1,621 | 1 |
+| train | purpose | moving | 1,201 | 1 |
+| train | purpose | other | 8,359 | 1 |
+| train | purpose | renewable_energy | 152 | 1 |
+| train | purpose | small_business | 2,613 | 1 |
+| train | purpose | vacation | 1,045 | 1 |
+| train | purpose | wedding | 1,519 | 1 |
+| validation | application_type | Individual | 162,570 | 1 |
+| validation | home_ownership | ANY | 1 | 0 |
+| validation | home_ownership | MORTGAGE | 76,326 | 1 |
+| validation | home_ownership | OWN | 16,493 | 1 |
+| validation | home_ownership | RENT | 69,750 | 1 |
+| validation | purpose | car | 1,516 | 1 |
+| validation | purpose | credit_card | 40,100 | 1 |
+| validation | purpose | debt_consolidation | 94,822 | 1 |
+| validation | purpose | home_improvement | 8,654 | 1 |
+| validation | purpose | house | 511 | 1 |
+| validation | purpose | major_purchase | 2,888 | 1 |
+| validation | purpose | medical | 1,885 | 1 |
+| validation | purpose | moving | 1,133 | 1 |
+| validation | purpose | other | 8,252 | 1 |
+| validation | purpose | renewable_energy | 102 | 1 |
+| validation | purpose | small_business | 1,634 | 1 |
+| validation | purpose | vacation | 1,065 | 1 |
+| validation | purpose | wedding | 8 | 1 |
+
+### 31_model_unknown_categories
+
+Source: [31_model_unknown_categories.csv](results/31_model_unknown_categories.csv). SHA-256: `b0e6db0632922d68584cca46917009067e3540ed5e98ff038cda711d40f19bfa`.
+
+| split | feature | nonmissing_loans | unseen_category_loans | unseen_pct | unseen_categories |
+| --- | --- | --- | --- | --- | --- |
+| exploratory_test | application_type | 283,026 | 239 | 0.084445 | Joint App |
+| exploratory_test | home_ownership | 283,026 | 1 | 0.000353 | ANY |
+| exploratory_test | purpose | 283,026 | 1 | 0.000353 | educational |
+| train | application_type | 157,993 | 0 | 0 | — |
+| train | home_ownership | 157,993 | 0 | 0 | — |
+| train | purpose | 157,993 | 0 | 0 | — |
+| validation | application_type | 162,570 | 0 | 0 | — |
+| validation | home_ownership | 162,570 | 1 | 0.000615 | ANY |
+| validation | purpose | 162,570 | 0 | 0 | — |
+
+### Prepared file inventory
+
+| path | split | kind | rows | columns | bytes | sha256 |
+| --- | --- | --- | --- | --- | --- | --- |
+| data/clean/modeling/train.parquet | train | features_and_target | 157,993 | 14 | 2,051,149 | eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4 |
+| data/clean/modeling/train_metadata.parquet | train | metadata | 157,993 | 4 | 239,324 | f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738 |
+| data/clean/modeling/validation.parquet | validation | features_and_target | 162,570 | 14 | 2,119,125 | c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc |
+| data/clean/modeling/validation_metadata.parquet | validation | metadata | 162,570 | 4 | 239,708 | 8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2 |
+| data/clean/modeling/exploratory_test.parquet | exploratory_test | features_and_target | 283,026 | 14 | 3,662,090 | 7d98e6c095b38287a1599aa241a061d8ca786a5894370e2ab6a4aeb16a553564 |
+| data/clean/modeling/exploratory_test_metadata.parquet | exploratory_test | metadata | 283,026 | 4 | 394,587 | b94fdee9a5ae2d64badf43666f53d8f4f3c0c2c5f5100934a3f6aaeb15952c60 |
+
+All six files are local and Git-ignored. Feature/target and metadata pairs share the same explicit issue-month/ID ordering. Nulls and tails are preserved. The manifest records 11 numeric and 2 categorical features; its exact lists are authoritative.
+
+### Verification
+
+EDA count/label reconciliation, unique IDs across splits, separated date ranges, exact output columns/row counts, and unchanged clean-source fingerprint passed. No MLflow, InterpretML, Kafka, or ELK measurements have been produced.

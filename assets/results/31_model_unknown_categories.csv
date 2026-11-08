@@ -1,0 +1,10 @@
+split,feature,nonmissing_loans,unseen_category_loans,unseen_pct,unseen_categories
+exploratory_test,application_type,283026.0,239.0,0.08444453866429233,Joint App
+exploratory_test,home_ownership,283026.0,1.0,0.0003533244295577085,ANY
+exploratory_test,purpose,283026.0,1.0,0.0003533244295577085,educational
+train,application_type,157993.0,0.0,0.0,
+train,home_ownership,157993.0,0.0,0.0,
+train,purpose,157993.0,0.0,0.0,
+validation,application_type,162570.0,0.0,0.0,
+validation,home_ownership,162570.0,1.0,0.0006151196407701298,ANY
+validation,purpose,162570.0,0.0,0.0,
