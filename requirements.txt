@@ -4,3 +4,7 @@ duckdb
 pandas
 matplotlib
 seaborn
+scikit-learn>=1.6,<2
+mlflow>=3,<4
+joblib>=1.4,<2
+threadpoolctl>=3.5,<4

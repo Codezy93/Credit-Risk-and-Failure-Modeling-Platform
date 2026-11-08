@@ -1,6 +1,6 @@
 # Project statistics reference
 
-> EDA is complete. The final cohort, feature, and preprocessing decisions are in section 16 and docs/eda_summary.md. Earlier split proposals remain historical snapshot records. No models or stress tests have been run.
+> Latest measured model results are in section 18 and docs/model_experiments.md. Earlier sections retain their stage-specific snapshots. Kafka stress tests, InterpretML, and bias evaluations have not run.
 
 Snapshot assembled: **2026-11-08T14:17:16+00:00**. This is a static record of the completed data-analysis stage, assembled from existing result CSVs, local file metadata, and the clean Parquet schema. The download, cleaning, and EDA pipeline was **not rerun** to create this document.
 
@@ -25,12 +25,14 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 15. [Follow-up EDA](#15-follow-up-eda)
 16. [EDA completion](#16-eda-completion)
 17. [Model-data preparation](#17-model-data-preparation)
+18. [Model experiments](#18-model-experiments)
+19. [MLflow datasets and evaluations](#19-mlflow-datasets-and-evaluations)
 
 ## 1. Quick answers
 
 | Statistic | Value |
 | --- | --- |
-| Completed stage | EDA and model-data preparation complete; training not started |
+| Completed stage | First MLflow model comparison complete |
 | Dataset | LendingClub accepted loans, June 2007–December 2018 |
 | Raw rows | 2,260,701 |
 | Raw columns | 151 |
@@ -52,11 +54,11 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Other / unresolved loans, all years | 915,358 |
 | Charged off among resolved loans, all years (%) | 19.962611 |
 | Entirely missing source columns | 1 |
-| Saved figure sets | 21 |
-| Saved image files | 42 |
-| Saved result CSVs | 36 |
+| Saved figure sets | 24 |
+| Saved image files | 48 |
+| Saved result CSVs | 42 |
 | Deterministic scatterplot sample | 20,000 |
-| Models trained / MLflow evaluation metrics | Not measured; training stage not implemented |
+| Models trained / MLflow evaluation metrics | Four fitted pipelines; current measured results in section 18 |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
 
 The headline charged-off rate is a **resolved-loan share**, not a validated fixed-horizon probability of default or a model metric. The provisional split counts above include unresolved loans; they are not final model-training sample sizes.
@@ -925,7 +927,7 @@ Histogram widths: loan amount $1,000; annual income $10,000; FICO midpoint 10 po
 
 ## 9. Model experiments and evaluation
 
-**Current state: not implemented or measured.** No trained model, MLflow experiment result, fitted preprocessing pipeline, or selected champion exists in this stage. An empty model folder is not evidence of measured zero-valued metrics.
+**Historical EDA-stage snapshot.** The original metric register below predates training. Current measured model results, fitted pipelines, and selection decisions are recorded in section 18. An empty model folder is not evidence of measured zero-valued metrics.
 
 The following is a record of missing measurements to fill after actual runs, not a claim that all listed evaluations have been configured.
 
@@ -2424,3 +2426,177 @@ All six files are local and Git-ignored. Feature/target and metadata pairs share
 ### Verification
 
 EDA count/label reconciliation, unique IDs across splits, separated date ranges, exact output columns/row counts, and unchanged clean-source fingerprint passed. No MLflow, InterpretML, Kafka, or ELK measurements have been produced.
+
+<!-- model-experiment-statistics -->
+
+## 18. Model experiments
+
+Completed: 2026-11-08T15:45:23+00:00.
+
+Batch `72061e0a7a1e4d68addcc79a2aae631d`; selected `hist_gradient_boosting`. Selection uses validation average precision; threshold maximizes validation F1 before exploratory scoring. No refitting on validation and no fixed-horizon/deployment claim.
+
+[Report](../docs/model_experiments.md), [latest manifest](results/model_experiments_latest.json). All rates below are fractions, not percentages. Fit/prediction times are single wall-clock observations, not stress-test metrics.
+
+### Run and artifact identifiers
+
+| model | run_id | model_uri | train_average_precision | validation_average_precision | validation_roc_auc | validation_brier_score | validation_log_loss | fit_seconds | validation_batch_predict_seconds | model_bytes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hist_gradient_boosting | 2bb4ea9b1159440bb0b51b66925247f3 | models:/m-c0cd1df22fa24744b5d207306fd84ac1 | 0.239525 | 0.216483 | 0.653889 | 0.114375 | 0.382348 | 2.025974 | 0.765676 | 412,754 |
+| random_forest | 9b8a327a8a694086819d1818c141ba76 | models:/m-d5af0b19e25b4b169c0f5b3414373ad9 | 0.266368 | 0.213944 | 0.649133 | 0.114923 | 0.384513 | 13.763563 | 0.92611 | 11,497,147 |
+| logistic_regression | b6cd84c99ba24a8f854b2b7941ee3b88 | models:/m-9b48e925f4a54600a0eeeacf7eb183c1 | 0.199628 | 0.21028 | 0.646231 | 0.114869 | 0.384341 | 0.958238 | 0.273507 | 7,242 |
+| dummy_prior | e017e1e02bb743669f6f3f8e804a1c36 | models:/m-c6c8b6403be04d378ecd4ee0149b6fdd | 0.125195 | 0.137264 | 0.5 | 0.118568 | 0.400613 | 0.555652 | 0.235392 | 4,882 |
+
+### All training and validation metrics at threshold 0.5
+
+| model | split | rows | observed_positive_rate | threshold | roc_auc | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dummy_prior | train | 157,993 | 0.125195 | 0.5 | 0.5 | 0.125195 | 0.109522 | 0.37715 | 0 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
+| dummy_prior | validation | 162,570 | 0.137264 | 0.5 | 0.5 | 0.137264 | 0.118568 | 0.400613 | 0.012069 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
+| logistic_regression | train | 157,993 | 0.125195 | 0.5 | 0.650936 | 0.199628 | 0.106127 | 0.36132 | 0.002319 | 0.874792 | 0.500101 | 0.416667 | 0.000253 | 0.999949 | 0.000505 | 0.000076 | 138,206 | 7 | 19,775 | 5 |
+| logistic_regression | validation | 162,570 | 0.137264 | 0.5 | 0.646231 | 0.21028 | 0.114869 | 0.384341 | 0.006675 | 0.862705 | 0.500152 | 0.391304 | 0.000403 | 0.9999 | 0.000806 | 0.000141 | 140,241 | 14 | 22,306 | 9 |
+| random_forest | train | 157,993 | 0.125195 | 0.5 | 0.711889 | 0.266368 | 0.103944 | 0.352131 | 0.019663 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
+| random_forest | validation | 162,570 | 0.137264 | 0.5 | 0.649133 | 0.213944 | 0.114923 | 0.384513 | 0.013567 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
+| hist_gradient_boosting | train | 157,993 | 0.125195 | 0.5 | 0.684525 | 0.239525 | 0.104177 | 0.353495 | 0.008189 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
+| hist_gradient_boosting | validation | 162,570 | 0.137264 | 0.5 | 0.653889 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
+
+### Frozen-threshold and default-threshold evaluations
+
+| model | split | policy | rows | observed_positive_rate | threshold | roc_auc | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hist_gradient_boosting | validation | validation_f1 | 162,570 | 0.137264 | 0.147853 | 0.653889 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93,740 | 46,515 | 10,110 | 12,205 |
+| hist_gradient_boosting | exploratory_test | default_0.5 | 283,026 | 0.148863 | 0.5 | 0.65435 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240,894 | 0 | 42,132 | 0 |
+| hist_gradient_boosting | exploratory_test | validation_f1 | 283,026 | 0.148863 | 0.147853 | 0.65435 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161,141 | 79,753 | 19,174 | 22,958 |
+
+### Complete calibration bins
+
+| bin | rows | mean_probability | observed_positive_rate | bin_lower | bin_upper | model | split |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 162,570 | 0.125195 | 0.137264 | 0.1 | 0.2 | dummy_prior | validation |
+| 0 | 53,522 | 0.069943 | 0.072363 | 0 | 0.1 | logistic_regression | validation |
+| 1 | 87,824 | 0.142997 | 0.15153 | 0.1 | 0.2 | logistic_regression | validation |
+| 2 | 19,082 | 0.233308 | 0.237187 | 0.2 | 0.3 | logistic_regression | validation |
+| 3 | 1,898 | 0.333182 | 0.285037 | 0.3 | 0.4 | logistic_regression | validation |
+| 4 | 221 | 0.429823 | 0.262443 | 0.4 | 0.5 | logistic_regression | validation |
+| 5 | 19 | 0.525766 | 0.368421 | 0.5 | 0.6 | logistic_regression | validation |
+| 6 | 3 | 0.635431 | 0.666667 | 0.6 | 0.7 | logistic_regression | validation |
+| 7 | 1 | 0.712114 | 0 | 0.7 | 0.8 | logistic_regression | validation |
+| 0 | 44,870 | 0.075431 | 0.065099 | 0 | 0.1 | random_forest | validation |
+| 1 | 106,839 | 0.143105 | 0.154625 | 0.1 | 0.2 | random_forest | validation |
+| 2 | 10,859 | 0.217648 | 0.264665 | 0.2 | 0.3 | random_forest | validation |
+| 3 | 2 | 0.302169 | 0 | 0.3 | 0.4 | random_forest | validation |
+| 0 | 56,022 | 0.069814 | 0.070008 | 0 | 0.1 | hist_gradient_boosting | validation |
+| 1 | 83,144 | 0.143583 | 0.151917 | 0.1 | 0.2 | hist_gradient_boosting | validation |
+| 2 | 22,039 | 0.232513 | 0.242434 | 0.2 | 0.3 | hist_gradient_boosting | validation |
+| 3 | 1,333 | 0.325751 | 0.304576 | 0.3 | 0.4 | hist_gradient_boosting | validation |
+| 4 | 32 | 0.423127 | 0.40625 | 0.4 | 0.5 | hist_gradient_boosting | validation |
+| 0 | 97,697 | 0.069638 | 0.076686 | 0 | 0.1 | hist_gradient_boosting | exploratory_test |
+| 1 | 143,382 | 0.143601 | 0.164916 | 0.1 | 0.2 | hist_gradient_boosting | exploratory_test |
+| 2 | 39,387 | 0.233228 | 0.255694 | 0.2 | 0.3 | hist_gradient_boosting | exploratory_test |
+| 3 | 2,491 | 0.326595 | 0.358491 | 0.3 | 0.4 | hist_gradient_boosting | exploratory_test |
+| 4 | 69 | 0.428431 | 0.434783 | 0.4 | 0.5 | hist_gradient_boosting | exploratory_test |
+
+### Configuration and reproducibility
+
+```json
+{
+  "seed": 42,
+  "thread_limit": 4,
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "selected_threshold": 0.147852896338396,
+  "threshold_rule": "maximum validation F1; ties choose lowest threshold",
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "mlflow": "3.18.0",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "cloudpickle": "3.1.2",
+    "threadpoolctl": "3.8.0"
+  },
+  "selected_model_uri": "models:/m-c0cd1df22fa24744b5d207306fd84ac1",
+  "selected_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "selected_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "data_manifest_sha256": "30c0f906e863958036341518c8ed53fccf3f558e1a371887c18880430bbdb2f9",
+  "training_script_sha256": "b5b42c0665874508f73fff0040e6e80d56fa2658a7e0bc1ed987de4041952c4a"
+}
+```
+
+Full estimator and preprocessing parameters for every model are preserved under `configurations` in the linked experiment manifest and in each MLflow run. Numeric indicators cover all numeric features; all learned preprocessing was fitted only on training data. No oversampling or class weighting was used.
+
+### Earlier failed attempts
+
+| run_id | status | tags.mlflow.runName |
+| --- | --- | --- |
+| 6af601cdfa0e4a64b4782434a2365f14 | FAILED | logistic_regression |
+| 18a7762e46144ccf86a18277cf2013f7 | FAILED | first_model_comparison |
+
+Earlier failed run records are retained for transparency; the completed-batch comparisons above do not combine their results. The first logging attempt stopped on a duplicated class-weight parameter with inconsistent string values before logistic regression fitting.
+
+### Saved result fingerprints
+
+- [model_comparison.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/model_comparison.csv): `f244f43833288f427cb13abcb642781007870738197c484a3203d3e671159466`
+
+- [train_validation_metrics.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/train_validation_metrics.csv): `f07a3991f29c1b4afb336740a615867a38e2da8a4360b587ff1329cba4622525`
+
+- [selected_model_metrics.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_metrics.csv): `8112374b3b17a95cc5f9fc7ab0078820a4184c7cda6e62b89c4d6d4b17bba351`
+
+- [calibration_bins.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/calibration_bins.csv): `314ef5ebdbce94be0df605279462a834f0a99ce4e4e0126d1e727ba9830a0904`
+
+- [curve_points.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/curve_points.csv): `e5336e06d2c95b302d3dbe92b19ba4ee8941cd9baadbcc81f1a8624683493392`
+
+Curve-point files retain at most 256 points per model/curve. They are plotting data; scalar metrics and threshold choice use all predictions. Full bin counts, confusion matrices, batch timings, model sizes, versions, identifiers, and aggregate metrics are recorded above or in the manifest. Uncertainty, bias, interpretability, and stress-test metrics remain Not measured.
+
+### Verification
+
+Prepared dataset hashes matched; all four local pipelines reloaded with equivalent scores. Selected native and MLflow sklearn/pyfunc probability outputs matched. Model selection and threshold fitting used validation only; only the selected model scored the exploratory dataset.
+
+<!-- mlflow-evaluation-visibility-statistics -->
+
+## 19. MLflow datasets and evaluations
+
+Completed: 2026-11-08T16:15:06+00:00. Parent run: `72061e0a7a1e4d68addcc79a2aae631d`. Models, selection, and frozen threshold are unchanged.
+
+### Dataset inputs on the comparison run
+
+| dataset | digest | rows |
+| --- | --- | --- |
+| train | 3fc22603 | 157993 |
+| validation | 722bf1f9 | 162570 |
+| exploratory_test | 38c881ae | 283026 |
+
+The full three Parquet datasets and their manifest are stored under the parent run's datasets/ artifacts. Parent previews are 200 rows each. Model metrics have explicit dataset name/digest associations, verified through MlflowClient.get_logged_model.
+
+### All native evaluation metrics and identifiers
+
+| model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dummy_prior | validation | 76124a42a3c84a639a451e8c0bf94edd | e017e1e02bb743669f6f3f8e804a1c36 | m-c6c8b6403be04d378ecd4ee0149b6fdd | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.400613 | 0.5 | 0.137264 |
+| logistic_regression | validation | 737b3f235d1949e5a15552a9ce68d142 | b6cd84c99ba24a8f854b2b7941ee3b88 | m-9b48e925f4a54600a0eeeacf7eb183c1 | validation | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
+| random_forest | validation | 8dcf18dc8f7744c7950bb7c0e29fba88 | 9b8a327a8a694086819d1818c141ba76 | m-d5af0b19e25b4b169c0f5b3414373ad9 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.384513 | 0.649133 | 0.213944 |
+| hist_gradient_boosting | validation | 19d602239b3a43a595bcd17d8a39fc4a | 2bb4ea9b1159440bb0b51b66925247f3 | m-c0cd1df22fa24744b5d207306fd84ac1 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.382348 | 0.653889 | 0.216483 |
+| hist_gradient_boosting | exploratory_test | 0ba9fd0f56b8480f842795151fbfabb2 | 2bb4ea9b1159440bb0b51b66925247f3 | m-c0cd1df22fa24744b5d207306fd84ac1 | exploratory_test | 38c881ae | 0.5 | 0.851137 | 240894 | 0 | 42132 | 0 | 283026 | 0.851137 | 0 | 0 | 0 | 0.402502 | 0.65435 | 0.235027 |
+
+Source: [mlflow_native_evaluations.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/mlflow_native_evaluations.csv). SHA-256: `92d09f5f1082f8c1fe19e71856556c3cef476edc4b14f3958fb56b1259c02eb8`.
+
+Native metrics evaluate the full 162,570 validation rows for each model and 283,026 exploratory rows for the selected model. The classifier's default rule is 0.5; custom frozen-threshold metrics remain separate on the selected training run. Native binary precision_recall_auc matches this MLflow version's average precision; no selection was changed.
+
+Each evaluation run has ROC, PR, lift, calibration, and confusion-matrix artifacts, a dataset input, model linkage, and a 1,000-row uniformly sampled evaluation table (seed 42). Sample rows are not the population used to compute metrics. No explanation/SHAP evaluation was enabled.
+
+### Verification
+
+All five evaluation runs finished successfully. Each has its full dataset input and a logged table artifact. All four logged models have dataset-linked train/validation metrics, and the selected model also has exploratory metrics. All three comparison dataset inputs are persisted. Original validation ROC-AUC values and cohort counts match; no retraining or policy change occurred. These checks concern classic ML evaluations, not the separate GenAI dataset/scorer system.

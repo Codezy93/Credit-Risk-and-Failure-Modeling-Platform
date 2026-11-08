@@ -221,9 +221,15 @@ the existing clean Parquet. This does not rerun EDA or read the raw CSV.
 
     stats_path = ROOT / "assets/statistics.md"
     marker = "<!-- model-data-statistics -->"
-    original = stats_path.read_text().split(marker)[0].rstrip()
-    original = re.sub(r"\| Completed stage \| [^\n]+ \|", "| Completed stage | EDA and model-data preparation complete; training not started |", original)
-    original = re.sub(r"\| Saved result CSVs \| [\d,]+ \|", f"| Saved result CSVs | {len(list(RESULTS.glob('*.csv')))} |", original)
+    existing = stats_path.read_text()
+    experiment_marker = "<!-- model-experiment-statistics -->"
+    experiment_section = ""
+    if experiment_marker in existing:
+        experiment_section = experiment_marker + existing.split(experiment_marker, 1)[1]
+    original = existing.split(marker)[0].rstrip()
+    if not experiment_section:
+        original = re.sub(r"\| Completed stage \| [^\n]+ \|", "| Completed stage | EDA and model-data preparation complete; training not started |", original)
+    original = re.sub(r"\| Saved result CSVs \| [\d,]+ \|", f"| Saved result CSVs | {len(list(RESULTS.rglob('*.csv')))} |", original)
     original = original.replace("17. [Model-data preparation](#17-model-data-preparation)\n", "")
     original = original.replace("16. [EDA completion](#16-eda-completion)", "16. [EDA completion](#16-eda-completion)\n17. [Model-data preparation](#17-model-data-preparation)")
     parts = [marker, "## 17. Model-data preparation",
@@ -238,7 +244,7 @@ the existing clean Parquet. This does not rerun EDA or read the raw CSV.
     parts.extend(["### Prepared file inventory", markdown_table(pd.DataFrame(artifacts)),
                   f"All six files are local and Git-ignored. Feature/target and metadata pairs share the same explicit issue-month/ID ordering. Nulls and tails are preserved. The manifest records {len(numeric)} numeric and {len(categorical)} categorical features; its exact lists are authoritative.",
                   "### Verification", "EDA count/label reconciliation, unique IDs across splits, separated date ranges, exact output columns/row counts, and unchanged clean-source fingerprint passed. No MLflow, InterpretML, Kafka, or ELK measurements have been produced."])
-    stats_path.write_text(original + "\n\n" + "\n\n".join(parts) + "\n")
+    stats_path.write_text(original + "\n\n" + "\n\n".join(parts) + "\n\n" + experiment_section)
     con.close()
     print(f"Prepared {int(summary.rows.sum()):,} loans. Updated docs/model_data.md and assets/statistics.md.")
 

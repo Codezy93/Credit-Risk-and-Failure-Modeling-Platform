@@ -2,12 +2,13 @@
 
 A credit-risk project using LendingClub loan data. EDA is complete, with SQL
 audits, three marimo notebooks, saved figures, a feature-availability review, and
-a documented retrospective benchmark. Model datasets are prepared; model training
-has not started.
+a documented retrospective benchmark. The first MLflow comparison has trained a
+dummy baseline, logistic regression, random forest, and histogram gradient boosting.
 
 Start with the [final EDA report](docs/eda_summary.md) and
 [complete statistics reference](assets/statistics.md). The
 [clean-table dictionary](docs/data_dictionary.md) records the feature decisions.
+The [model experiment report](docs/model_experiments.md) contains measured results.
 
 ## Folder structure
 
@@ -185,12 +186,93 @@ predictors; application type remains in audit metadata. Dataset files contain
 the exact predictor list plus the binary `charged_off` target. Read the feature
 lists from the manifest rather than selecting every available column.
 
-Missing values and extreme values are preserved. Imputation, scaling, category
-encoding, and model fitting have not started. Validation/evaluation include some
-categories not seen in training; future encoders must handle them explicitly.
+Missing values and extreme values are preserved in these prepared files. This
+preparation step fits no preprocessing. The training pipelines described below
+fit imputation/scaling/encoding using training rows and handle unseen categories.
 
 See [the dataset contract](docs/model_data.md) and
 [statistics section 17](assets/statistics.md#17-model-data-preparation) for the
 full checks, category/missingness tables, and limitations. The evaluation remains
 exploratory and does not establish fixed-horizon default risk or historical
 deployment performance.
+
+## First MLflow experiments
+
+```bash
+python -m pip install -r requirements.txt
+python scripts/05_train_models.py
+```
+
+Four fixed pipelines use the same 13 predictors and temporal split. Selection is
+by validation average precision, with Brier score as a tie-breaker. Preprocessing
+is fitted on training rows only. The selected model's threshold maximizes
+validation F1 before it scores the exploratory 2015 data; the model is not refitted
+on validation. No hyperparameter search or independent calibration fit has run.
+
+| Model | Validation average precision | Validation ROC-AUC |
+| --- | --- | --- |
+| Dummy prior | 0.1373 | 0.5000 |
+| Logistic regression | 0.2103 | 0.6462 |
+| Random forest | 0.2139 | 0.6491 |
+| Histogram gradient boosting | 0.2165 | 0.6539 |
+
+Selected histogram boosting scored **0.6544 ROC-AUC**, **0.2350 average precision**,
+and **0.1223 Brier score** on 283,026 exploratory evaluation loans. At the
+validation-selected threshold **0.147853**, precision was **0.2235**, recall
+**0.5449**, and F1 **0.3170**. At threshold 0.5 it predicted no charged-off loans,
+so the apparent 85.11% accuracy came with zero recall. These results illustrate
+the threshold trade-off; they do not establish a lending policy or financial gain.
+
+MLflow uses `models/mlflow.db` and local artifact storage. Start the local UI from
+the project root:
+
+```bash
+mlflow ui --backend-store-uri sqlite:///models/mlflow.db --host 127.0.0.1 --port 5000
+```
+
+Each execution creates a new batch and archives results under
+`assets/results/experiments/<batch-run-id>/`, figures under
+`assets/figures/experiments/<batch-run-id>/`, and models under
+`models/experiments/<batch-run-id>/`. The latest completed batch is described by
+`assets/results/model_experiments_latest.json`. The first incomplete logging
+attempt remains visible as failed MLflow runs, separate from the completed batch.
+
+`models/selected_model.joblib` contains the full fitted pipeline. Use the manifest's
+feature order and `predict_proba(... )[:, 1]`, then apply its threshold explicitly;
+the pipeline's native `predict()` does not use the validation-selected threshold.
+Model/data fingerprints, complete metrics, confusion matrices, calibration-bin
+counts, versions, parameters, timings, and run IDs are recorded in
+[the experiment report](docs/model_experiments.md) and
+[statistics section 18](assets/statistics.md#18-model-experiments).
+
+### Datasets and evaluations in MLflow
+
+Open **Experiments → lendingclub_resolved_36m → first_model_comparison**.
+The comparison run now contains train, validation, and exploratory dataset inputs.
+Its `datasets/` artifacts include all three prepared Parquet files, their manifest,
+and 200-row previews. Logged models have metrics linked to dataset names/digests.
+
+Five `evaluate_*` child runs contain native classifier evaluations: validation
+for every model and exploratory evaluation for the selected model. Open a run's
+metrics and artifacts for ROC, precision–recall, lift, calibration, confusion
+matrices, and a 1,000-row sampled evaluation table. All aggregate metrics use the
+full datasets. Native evaluations use the classifier's default rule (0.5); the
+frozen F1-policy metrics remain separately labeled on the selected training run.
+
+Future training logs these entries automatically. To repair/verify an already
+completed comparison without retraining:
+
+```bash
+python scripts/06_log_mlflow_evaluations.py
+```
+
+The repair is repeatable without duplicate evaluation runs. Full native metrics
+and evaluation IDs are in
+[statistics section 19](assets/statistics.md#19-mlflow-datasets-and-evaluations).
+This project uses MLflow's classic classifier evaluation API; its GenAI
+dataset/scorer pages are a separate workflow.
+
+2015 remains exploratory because EDA inspected it. This accepted-only,
+resolved-loan benchmark does not estimate fixed-horizon default risk or reproduce
+historical deployment. InterpretML, bias evaluation, Kafka stress testing, and
+ELK monitoring have not been implemented yet.

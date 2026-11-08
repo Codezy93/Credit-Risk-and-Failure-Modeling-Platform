@@ -376,8 +376,8 @@ def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_d
     if _final_marker in _existing:
         _final_section = _final_marker + _existing.split(_final_marker, 1)[1]
     _original = _existing.split(_marker)[0].rstrip()
-    _image_count = len(list(figures_dir.glob("*.png"))) + len(list(figures_dir.glob("*.svg")))
-    _csv_count = len(list(results_dir.glob("*.csv")))
+    _image_count = len(list(figures_dir.rglob("*.png"))) + len(list(figures_dir.rglob("*.svg")))
+    _csv_count = len(list(results_dir.rglob("*.csv")))
     _original = re.sub(r"\| Saved figure sets \| [\d,]+ \|", f"| Saved figure sets | {_image_count // 2} |", _original)
     _original = re.sub(r"\| Saved image files \| [\d,]+ \|", f"| Saved image files | {_image_count} |", _original)
     _original = re.sub(r"\| Saved result CSVs \| [\d,]+ \|", f"| Saved result CSVs | {_csv_count} |", _original)
