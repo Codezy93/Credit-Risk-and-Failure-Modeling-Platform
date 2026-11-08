@@ -48,3 +48,54 @@ See the [KaggleHub documentation](https://github.com/Kaggle/kagglehub) for detai
 
 Raw data, cleaned data, and saved models are excluded from Git. Figures and
 selected results can be committed for the project showcase.
+
+## Explore and clean the data with marimo
+
+After downloading the CSV, install the updated dependencies and open the notebook:
+
+```bash
+python -m pip install -r requirements.txt
+marimo edit scripts/01_data_analysis.py
+```
+
+Run all cells in order. The notebook executes the numbered files in `sql/` using
+DuckDB, so the large raw CSV is not loaded into a pandas DataFrame. It audits
+source rows and missingness, creates a typed analysis table, and explores:
+
+- Numeric distributions, percentiles, extreme values, and category counts.
+- Outcome balance and bivariate relationships with grades, purposes, income,
+  credit scores, and debt burden.
+- Grade/term and grade/cohort interactions, feature correlations, and sampled
+  relationships.
+- Outcome coverage across years and the limitations of resolved-only comparisons.
+
+Detailed feature and outcome exploration uses loans issued through 2015. Later
+cohorts are checked only for status coverage, with 2016 provisionally reserved for
+validation and 2017–2018 for testing. A prediction horizon and maturity rule still
+need to be chosen before training; these are not fixed-horizon default labels.
+
+The notebook writes:
+
+| Location | Output |
+| --- | --- |
+| `data/clean/lending_club.duckdb` | Local SQL database with `loans` and development-only `eda_loans` |
+| `data/clean/loans.parquet` | Clean analysis table, including unresolved loans |
+| `assets/figures/` | PNG and SVG charts |
+| `assets/results/` | Query result CSVs and `analysis_findings.md` |
+
+`loans.parquet` is not a model feature matrix: it includes `loan_status` and
+`charged_off` for analysis. Those must never be used as input features. Cleaning
+preserves missing values; preprocessing will be fitted on training data later.
+
+To run every cell and export a standalone report without opening the editor:
+
+```bash
+marimo export html scripts/01_data_analysis.py -o docs/data_analysis.html --no-include-code
+```
+
+This command executes the notebook before exporting, as described in the
+[marimo export documentation](https://docs.marimo.io/guides/exporting/static_html/).
+SQL uses [DuckDB's CSV reader](https://duckdb.org/docs/stable/data/csv/overview).
+The first run scans the full CSV several times and needs a few minutes and extra
+local disk space. Keep the notebook open for exploration, and close its kernel
+before running a separate export against the same local database.

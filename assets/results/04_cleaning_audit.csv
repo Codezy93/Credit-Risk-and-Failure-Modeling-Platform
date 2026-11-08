@@ -1,0 +1,7 @@
+check_name,affected_rows
+nonpositive_income,1667
+negative_dti,2
+negative_revol_util,0
+credit_date_after_issue,0
+income_parse_failures,0
+dti_parse_failures,0

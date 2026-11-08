@@ -1,1 +1,6 @@
 kagglehub>=0.3.13,<1.0
+marimo
+duckdb
+pandas
+matplotlib
+seaborn

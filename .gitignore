@@ -228,3 +228,4 @@ mlruns/
 mlartifacts/
 kaggle.json
 access_token
+__marimo__/
