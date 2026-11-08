@@ -99,3 +99,28 @@ SQL uses [DuckDB's CSV reader](https://duckdb.org/docs/stable/data/csv/overview)
 The first run scans the full CSV several times and needs a few minutes and extra
 local disk space. Keep the notebook open for exploration, and close its kernel
 before running a separate export against the same local database.
+
+## Follow-up EDA
+
+The second notebook investigates questions raised by the first pass:
+
+```bash
+marimo edit scripts/02_deeper_eda.py
+```
+
+It reads `data/clean/loans.parquet` and runs SQL files `14`–`19` to inspect extreme
+values, missingness over time and by outcome, loan/income ratios, FICO/DTI
+interactions, and changes in development-cohort composition. It uses originations
+through 2015; the FICO/DTI comparison uses 36-month loans from 2011–2014 and reports
+its outcome coverage. It preserves the clean data and performs no model training.
+
+The notebook saves six additional PNG/SVG figures, six CSV tables, and
+`assets/results/deeper_eda_findings.md`. It refreshes section 15 of
+[the statistics reference](assets/statistics.md) with all follow-up tables.
+Sections 2–14 retain their original EDA snapshot and provenance.
+
+Export the follow-up report with:
+
+```bash
+marimo export html scripts/02_deeper_eda.py -o docs/deeper_eda.html --no-include-code
+```

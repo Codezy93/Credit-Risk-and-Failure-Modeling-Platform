@@ -20,6 +20,7 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 12. [Artifacts, environment, and verification](#12-artifacts-environment-and-verification)
 13. [Complete SQL histogram bins](#13-complete-sql-histogram-bins)
 14. [Source fingerprints and update rules](#14-source-fingerprints-and-update-rules)
+15. [Follow-up EDA](#15-follow-up-eda)
 
 ## 1. Quick answers
 
@@ -47,9 +48,9 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Other / unresolved loans, all years | 915,358 |
 | Charged off among resolved loans, all years (%) | 19.962611 |
 | Entirely missing source columns | 1 |
-| Saved figure sets | 11 |
-| Saved image files | 22 |
-| Saved result CSVs | 15 |
+| Saved figure sets | 17 |
+| Saved image files | 34 |
+| Saved result CSVs | 21 |
 | Deterministic scatterplot sample | 20,000 |
 | Models trained / MLflow evaluation metrics | Not measured; training stage not implemented |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
@@ -1465,7 +1466,7 @@ Source: [`07_distributions.csv`](results/07_distributions.csv).
 
 ### Result CSV fingerprints
 
-SHA-256 values below fingerprint the exported summaries used to assemble this file. They do not fingerprint the raw loan records. All **15 existing result CSVs** are transcribed into the tables above, either directly or as an equivalent complete matrix. The separate findings Markdown is summarized by the interpretations and limitations in this reference.
+SHA-256 values below fingerprint the exported summaries used to assemble this file. They do not fingerprint the raw loan records. All **15 original result CSVs** are transcribed into the tables above, either directly or as an equivalent complete matrix. The separate findings Markdown is summarized by the interpretations and limitations in this reference.
 
 | CSV | Records (excluding header) | SHA-256 |
 | --- | --- | --- |
@@ -1492,3 +1493,233 @@ After a completed stage, update this file with the new values, source artifact p
 For model experiments, add one row per model/run/split rather than overwriting comparisons with only the best result. For stress tests, add one row per workload/scenario with offered load, infrastructure, duration, successful predictions, latency quantiles, lag, and failures. For subgroup metrics, include sample sizes and label availability. Report measured results only; projected targets and SLOs must be labeled as targets.
 
 The original notebook remains the reproducible analysis source: [`scripts/01_data_analysis.py`](../scripts/01_data_analysis.py). This document is the factual reading reference; it does not trigger computation or refresh itself when the notebook changes.
+
+<!-- deeper-eda-statistics -->
+
+## 15. Follow-up EDA
+
+Updated: 2026-11-08T14:59:36+00:00. The original statistics and artifact inventory in sections 2–14 describe the first EDA snapshot. Quick-answer artifact counts include this follow-up. No model or stress-test measurements have been added.
+
+Source: [second marimo notebook](../scripts/02_deeper_eda.py), [HTML report](../docs/deeper_eda.html). It reads the existing clean Parquet; it does not repeat raw-data cleaning.
+
+### Follow-up interpretation
+
+#### Scope
+
+All analyses use clean development loans issued through 2015. The FICO/DTI grid
+uses 36-month loans issued in 2011–2014. No model training or cleaning changes were made.
+
+#### What the follow-up found
+
+- Annual income above the development p99: 7,967 loans; above $1 million: 153.
+- DTI above 100: 9 loans; exactly 999: 1. These counts overlap.
+- Revolving utilization above 100%: 3,506 loans. These flags do not prove data errors, so records are retained.
+- Missing employment length: 44,835 loans, with 23.65% charged off among 42,577 resolved loans. Present employment: 18.14% among 784,027 resolved loans. These are unadjusted associations.
+- The FICO/DTI grid covers 320,563 loans with 100.00% ordinary outcome coverage. Its smaller population must not be confused with the full 887,440-loan development sample.
+- Between 2007 and 2015, median principal changed from $6,000 to $14,000; the 60-month share changed from 0.00% to 32.75%. Borrower/loan mix is not constant over time.
+
+#### How to read the outputs
+
+Missingness percentages are after cleaning and use each issue year's total loans.
+Outcome rates use ordinary Fully Paid / Charged Off loans only. Missingness,
+affordability, and interaction rate plots require at least 200 resolved loans per
+displayed group; the complete CSV tables retain smaller groups. The tail comparison
+suppresses flagged-group rates below 200 resolved loans. No confidence intervals
+or causal estimates were calculated. The income p99 is an exploratory development
+cutoff, not a future training-time preprocessing rule.
+
+Principal-to-income and installment-to-income are distinct ratios. Installment is
+post-pricing information. Neither ratio measures all living costs or total household
+debt service. Missing income is shown as its own group rather than filled with zero.
+
+No extreme values were deleted, no new predictor set was selected, and no claim
+about protected-group fairness or model performance follows from these charts.
+
+#### Verification
+
+Group totals reconcile to the development population. Tail, missingness, and
+affordability outcome counts reconcile to the full development label counts.
+The FICO/DTI grid reconciles independently to its narrower SQL population.
+
+
+### Complete follow-up result tables
+
+All six new CSVs are transcribed below. Counts are integers; display rounding is at most six decimal places. Percentages use the denominators stated above. No group is omitted from these tables.
+
+#### Diagnostic tail groups
+
+Source: [14_tail_investigation.csv](results/14_tail_investigation.csv). Records: 15. SHA-256: `0206be052ea55a5725da2f881c7095a8cf3c4d487c827a4540f125651620c996`.
+
+| check_name | cutoff | value_group | loans | resolved_loans | charged_off_loans | charged_off_pct | minimum | median | maximum |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dti_above_100 | 100 | flagged | 9 | 8 | 0 | 0 | 100.09 | 136.97 | 999 |
+| dti_above_100 | 100 | missing | 2 | 2 | 1 | 50 | — | — | — |
+| dti_above_100 | 100 | not_flagged | 887,429 | 826,594 | 152,301 | 18.425128 | 0 | 17.66 | 90 |
+| dti_equals_999 | 999 | flagged | 1 | 1 | 0 | 0 | 999 | 999 | 999 |
+| dti_equals_999 | 999 | missing | 2 | 2 | 1 | 50 | — | — | — |
+| dti_equals_999 | 999 | not_flagged | 887,437 | 826,601 | 152,301 | 18.424972 | 0 | 17.66 | 672.52 |
+| income_above_1m | 1,000,000 | flagged | 153 | 143 | 20 | 13.986014 | 1,007,787 | 1,473,000 | 9,500,000 |
+| income_above_1m | 1,000,000 | missing | 6 | 2 | 1 | 50 | — | — | — |
+| income_above_1m | 1,000,000 | not_flagged | 887,281 | 826,459 | 152,281 | 18.425717 | 1,200 | 65,000 | 1,000,000 |
+| income_above_p99 | 250,000 | flagged | 7,967 | 7,285 | 875 | 12.010981 | 250,142 | 322,000 | 9,500,000 |
+| income_above_p99 | 250,000 | missing | 6 | 2 | 1 | 50 | — | — | — |
+| income_above_p99 | 250,000 | not_flagged | 879,467 | 819,317 | 151,426 | 18.48198 | 1,200 | 64,000 | 250,000 |
+| utilization_above_100 | 100 | flagged | 3,506 | 3,075 | 783 | 25.463415 | 100.1 | 101.3 | 892.3 |
+| utilization_above_100 | 100 | missing | 502 | 444 | 96 | 21.621622 | — | — | — |
+| utilization_above_100 | 100 | not_flagged | 883,432 | 823,085 | 151,423 | 18.397006 | 0 | 55.8 | 100 |
+
+#### Missingness by development year
+
+Source: [15_missingness_by_year.csv](results/15_missingness_by_year.csv). Records: 54. SHA-256: `4e6c20b4cd9a22dc268b5b4cf559f63a49b89ec2732dd748951a5b9ba47167c5`.
+
+| issue_year | feature | total_loans | missing_loans | missing_pct |
+| --- | --- | --- | --- | --- |
+| 2,007 | annual_inc | 603 | 4 | 0.66335 |
+| 2,008 | annual_inc | 2,393 | 0 | 0 |
+| 2,009 | annual_inc | 5,281 | 0 | 0 |
+| 2,010 | annual_inc | 12,537 | 0 | 0 |
+| 2,011 | annual_inc | 21,721 | 0 | 0 |
+| 2,012 | annual_inc | 53,367 | 0 | 0 |
+| 2,013 | annual_inc | 134,814 | 0 | 0 |
+| 2,014 | annual_inc | 235,629 | 0 | 0 |
+| 2,015 | annual_inc | 421,095 | 2 | 0.000475 |
+| 2,007 | credit_history_years | 603 | 29 | 4.809287 |
+| 2,008 | credit_history_years | 2,393 | 0 | 0 |
+| 2,009 | credit_history_years | 5,281 | 0 | 0 |
+| 2,010 | credit_history_years | 12,537 | 0 | 0 |
+| 2,011 | credit_history_years | 21,721 | 0 | 0 |
+| 2,012 | credit_history_years | 53,367 | 0 | 0 |
+| 2,013 | credit_history_years | 134,814 | 0 | 0 |
+| 2,014 | credit_history_years | 235,629 | 0 | 0 |
+| 2,015 | credit_history_years | 421,095 | 0 | 0 |
+| 2,007 | dti | 603 | 0 | 0 |
+| 2,008 | dti | 2,393 | 0 | 0 |
+| 2,009 | dti | 5,281 | 0 | 0 |
+| 2,010 | dti | 12,537 | 0 | 0 |
+| 2,011 | dti | 21,721 | 0 | 0 |
+| 2,012 | dti | 53,367 | 0 | 0 |
+| 2,013 | dti | 134,814 | 0 | 0 |
+| 2,014 | dti | 235,629 | 0 | 0 |
+| 2,015 | dti | 421,095 | 2 | 0.000475 |
+| 2,007 | emp_length_years | 603 | 0 | 0 |
+| 2,008 | emp_length_years | 2,393 | 0 | 0 |
+| 2,009 | emp_length_years | 5,281 | 0 | 0 |
+| 2,010 | emp_length_years | 12,537 | 353 | 2.815666 |
+| 2,011 | emp_length_years | 21,721 | 759 | 3.494314 |
+| 2,012 | emp_length_years | 53,367 | 1,925 | 3.607098 |
+| 2,013 | emp_length_years | 134,814 | 5,962 | 4.422389 |
+| 2,014 | emp_length_years | 235,629 | 12,019 | 5.100815 |
+| 2,015 | emp_length_years | 421,095 | 23,817 | 5.655968 |
+| 2,007 | pub_rec_bankruptcies | 603 | 583 | 96.68325 |
+| 2,008 | pub_rec_bankruptcies | 2,393 | 779 | 32.55328 |
+| 2,009 | pub_rec_bankruptcies | 5,281 | 3 | 0.056807 |
+| 2,010 | pub_rec_bankruptcies | 12,537 | 0 | 0 |
+| 2,011 | pub_rec_bankruptcies | 21,721 | 0 | 0 |
+| 2,012 | pub_rec_bankruptcies | 53,367 | 0 | 0 |
+| 2,013 | pub_rec_bankruptcies | 134,814 | 0 | 0 |
+| 2,014 | pub_rec_bankruptcies | 235,629 | 0 | 0 |
+| 2,015 | pub_rec_bankruptcies | 421,095 | 0 | 0 |
+| 2,007 | revol_util | 603 | 32 | 5.306799 |
+| 2,008 | revol_util | 2,393 | 12 | 0.501463 |
+| 2,009 | revol_util | 5,281 | 16 | 0.302973 |
+| 2,010 | revol_util | 12,537 | 21 | 0.167504 |
+| 2,011 | revol_util | 21,721 | 9 | 0.041435 |
+| 2,012 | revol_util | 53,367 | 47 | 0.088069 |
+| 2,013 | revol_util | 134,814 | 78 | 0.057857 |
+| 2,014 | revol_util | 235,629 | 125 | 0.053049 |
+| 2,015 | revol_util | 421,095 | 162 | 0.038471 |
+
+#### Missing versus present: outcomes and coverage
+
+Source: [16_missingness_outcomes.csv](results/16_missingness_outcomes.csv). Records: 12. SHA-256: `0b726befff7731ba39c06ade9548f76a868ccb82a9adb3b3be8250db405f24bd`.
+
+| feature | value_group | total_loans | resolved_loans | charged_off_loans | resolved_pct | charged_off_pct |
+| --- | --- | --- | --- | --- | --- | --- |
+| annual_inc | missing | 6 | 2 | 1 | 33.333333 | 50 |
+| annual_inc | present | 887,434 | 826,602 | 152,301 | 93.14518 | 18.424949 |
+| credit_history_years | missing | 29 | 0 | — | 0 | — |
+| credit_history_years | present | 887,411 | 826,604 | 152,302 | 93.14782 | 18.425026 |
+| dti | missing | 2 | 2 | 1 | 100 | 50 |
+| dti | present | 887,438 | 826,602 | 152,301 | 93.144761 | 18.424949 |
+| emp_length_years | missing | 44,835 | 42,577 | 10,070 | 94.963756 | 23.651267 |
+| emp_length_years | present | 842,605 | 784,027 | 142,232 | 93.047988 | 18.141212 |
+| pub_rec_bankruptcies | missing | 1,365 | 697 | 118 | 51.062271 | 16.929699 |
+| pub_rec_bankruptcies | present | 886,075 | 825,907 | 152,184 | 93.209604 | 18.426288 |
+| revol_util | missing | 502 | 444 | 96 | 88.446215 | 21.621622 |
+| revol_util | present | 886,938 | 826,160 | 152,206 | 93.147435 | 18.423308 |
+
+#### Affordability ratios and outcome bands
+
+Source: [17_affordability.csv](results/17_affordability.csv). Records: 12. SHA-256: `d81ae6a28b03bc0f7081722cf04ffdd7eecb43bd9302e82c47e1fb7779b72f89`.
+
+| metric | band_order | ratio_band | total_loans | resolved_loans | charged_off_loans | resolved_pct | charged_off_pct | median_ratio | maximum_ratio |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| installment_to_monthly_income | 1 | <10% | 629,555 | 585,685 | 94,879 | 93.031586 | 16.199664 | 0.059613 | 0.099999 |
+| installment_to_monthly_income | 2 | 10-<20% | 254,939 | 238,024 | 56,676 | 93.365079 | 23.811044 | 0.125144 | 0.199993 |
+| installment_to_monthly_income | 3 | 20-<30% | 2,905 | 2,871 | 743 | 98.829604 | 25.879485 | 0.20979 | 0.297558 |
+| installment_to_monthly_income | 4 | 30-<50% | 26 | 15 | 2 | 57.692308 | 13.333333 | 0.377772 | 0.48209 |
+| installment_to_monthly_income | 5 | 50%+ | 9 | 7 | 1 | 77.777778 | 14.285714 | 0.672169 | 4.4591 |
+| installment_to_monthly_income | 6 | Missing | 6 | 2 | 1 | 33.333333 | 50 | — | — |
+| principal_to_annual_income | 1 | <10% | 126,940 | 124,549 | 14,862 | 98.116433 | 11.932653 | 0.069444 | 0.099998 |
+| principal_to_annual_income | 2 | 10-<20% | 281,819 | 268,710 | 39,227 | 95.348433 | 14.598266 | 0.15 | 0.2 |
+| principal_to_annual_income | 3 | 20-<30% | 252,223 | 232,138 | 45,061 | 92.036809 | 19.411298 | 0.242857 | 0.299998 |
+| principal_to_annual_income | 4 | 30-<50% | 221,319 | 196,936 | 51,907 | 88.982871 | 26.357294 | 0.359687 | 0.499999 |
+| principal_to_annual_income | 5 | 50%+ | 5,133 | 4,269 | 1,244 | 83.167738 | 29.140314 | 0.5 | 10 |
+| principal_to_annual_income | 6 | Missing | 6 | 2 | 1 | 33.333333 | 50 | — | — |
+
+#### FICO and DTI: 2011–2014, 36-month loans
+
+Source: [18_fico_dti_interaction.csv](results/18_fico_dti_interaction.csv). Records: 16. SHA-256: `6be9ad9637332829188c0a64a32f6312e907b9c29482a7b31dd8c48e39fe2c00`.
+
+| fico_order | fico_band | dti_order | dti_band | total_loans | resolved_loans | charged_off_loans | resolved_pct | charged_off_pct |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | 660-<680 | 1 | <10 | 22,282 | 22,282 | 2,947 | 100 | 13.225922 |
+| 2 | 660-<680 | 2 | 10-<20 | 48,225 | 48,225 | 7,794 | 100 | 16.161742 |
+| 2 | 660-<680 | 3 | 20-<30 | 31,693 | 31,693 | 6,495 | 100 | 20.493484 |
+| 2 | 660-<680 | 4 | 30+ | 6,586 | 6,586 | 1,521 | 100 | 23.094443 |
+| 3 | 680-<700 | 1 | <10 | 16,119 | 16,119 | 1,829 | 100 | 11.346858 |
+| 3 | 680-<700 | 2 | 10-<20 | 40,138 | 40,138 | 5,187 | 100 | 12.922916 |
+| 3 | 680-<700 | 3 | 20-<30 | 27,933 | 27,933 | 4,550 | 100 | 16.288977 |
+| 3 | 680-<700 | 4 | 30+ | 5,760 | 5,760 | 1,086 | 100 | 18.854167 |
+| 4 | 700-<740 | 1 | <10 | 16,897 | 16,897 | 1,464 | 100 | 8.66426 |
+| 4 | 700-<740 | 2 | 10-<20 | 40,545 | 40,545 | 3,611 | 100 | 8.906154 |
+| 4 | 700-<740 | 3 | 20-<30 | 27,032 | 27,032 | 3,080 | 100 | 11.393904 |
+| 4 | 700-<740 | 4 | 30+ | 5,231 | 5,231 | 753 | 100 | 14.394953 |
+| 5 | 740+ | 1 | <10 | 10,725 | 10,725 | 540 | 100 | 5.034965 |
+| 5 | 740+ | 2 | 10-<20 | 13,733 | 13,733 | 698 | 100 | 5.082648 |
+| 5 | 740+ | 3 | 20-<30 | 6,732 | 6,732 | 461 | 100 | 6.847891 |
+| 5 | 740+ | 4 | 30+ | 932 | 932 | 79 | 100 | 8.476395 |
+
+#### Development cohort composition
+
+Source: [19_development_composition.csv](results/19_development_composition.csv). Records: 9. SHA-256: `8bb59ddc9a49e92bee47292d3bad3970e35b5babb640dca1e36562884fe3539e`.
+
+| issue_year | total_loans | term_60_pct | grade_ab_pct | median_loan_amnt | median_annual_inc | median_dti | median_fico | median_int_rate | resolved_pct | charged_off_pct |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2,007 | 603 | 0 | 29.187396 | 6,000 | 50,000 | 10 | 682 | 11.54 | 41.625207 | 17.928287 |
+| 2,008 | 2,393 | 0 | 38.111158 | 7,500 | 52,500 | 13.1 | 692 | 11.91 | 65.273715 | 15.81306 |
+| 2,009 | 5,281 | 0 | 50.142019 | 8,800 | 57,000 | 12.59 | 712 | 12.53 | 89.301269 | 12.59542 |
+| 2,010 | 12,537 | 26.968174 | 51.982133 | 9,300 | 57,996 | 13.24 | 712 | 11.86 | 92.015634 | 12.890083 |
+| 2,011 | 21,721 | 35.081258 | 56.7147 | 10,000 | 60,000 | 13.92 | 712 | 11.99 | 100 | 15.178859 |
+| 2,012 | 53,367 | 18.545168 | 55.105215 | 12,000 | 60,000 | 16.48 | 697 | 13.67 | 100 | 16.197275 |
+| 2,013 | 134,814 | 25.510704 | 45.837228 | 13,000 | 64,000 | 16.89 | 692 | 14.33 | 99.992582 | 15.595976 |
+| 2,014 | 235,629 | 31.005946 | 41.609055 | 13,000 | 65,000 | 17.63 | 687 | 13.65 | 94.683592 | 18.449409 |
+| 2,015 | 421,095 | 32.753179 | 45.344162 | 14,000 | 65,000 | 18.6 | 687 | 12.29 | 89.182963 | 20.184798 |
+
+### Follow-up figure inventory
+
+- [12_tail_investigation.png](figures/12_tail_investigation.png) · [12_tail_investigation.svg](figures/12_tail_investigation.svg)
+
+- [13_missingness_by_year.png](figures/13_missingness_by_year.png) · [13_missingness_by_year.svg](figures/13_missingness_by_year.svg)
+
+- [14_missingness_outcomes.png](figures/14_missingness_outcomes.png) · [14_missingness_outcomes.svg](figures/14_missingness_outcomes.svg)
+
+- [15_affordability_outcomes.png](figures/15_affordability_outcomes.png) · [15_affordability_outcomes.svg](figures/15_affordability_outcomes.svg)
+
+- [16_fico_dti_interaction.png](figures/16_fico_dti_interaction.png) · [16_fico_dti_interaction.svg](figures/16_fico_dti_interaction.svg)
+
+- [17_development_composition.png](figures/17_development_composition.png) · [17_development_composition.svg](figures/17_development_composition.svg)
+
+### Snapshot maintenance
+
+This follow-up section is refreshed when the second notebook runs. The original sections retain their first-stage provenance; model and stress-test sections remain Not measured. The clean data is unchanged.
