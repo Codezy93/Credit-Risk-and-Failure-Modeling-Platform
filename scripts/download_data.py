@@ -4,11 +4,10 @@ import gzip
 from pathlib import Path
 import shutil
 
-import kagglehub
-
-
-def main():
-    raw_dir = Path(__file__).resolve().parents[1] / "data" / "raw"
+def main(raw_dir=None):
+    if raw_dir is None:
+        raw_dir = Path(__file__).resolve().parents[1] / "data" / "raw"
+    raw_dir = Path(raw_dir)
     csv_path = raw_dir / "accepted_2007_to_2018Q4.csv"
 
     if csv_path.exists():
@@ -17,12 +16,18 @@ def main():
 
     raw_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Downloading LendingClub accepted loans from Kaggle...")
-    compressed_path = kagglehub.dataset_download(
-        "wordsforthewise/lending-club",
-        path="accepted_2007_to_2018Q4.csv.gz",
-        output_dir=str(raw_dir),
-    )
+    compressed_path = raw_dir / "accepted_2007_to_2018Q4.csv.gz"
+    if not compressed_path.exists():
+        import kagglehub
+
+        print("Downloading LendingClub accepted loans from Kaggle...")
+        compressed_path = kagglehub.dataset_download(
+            "wordsforthewise/lending-club",
+            path="accepted_2007_to_2018Q4.csv.gz",
+            output_dir=str(raw_dir),
+        )
+    else:
+        print(f"Using local compressed data: {compressed_path}")
 
     # Stream the large file to disk instead of loading it into memory.
     # Rename only after extraction finishes so interrupted runs can be rerun.

@@ -23,24 +23,17 @@ import mlflow.sklearn
 from mlflow.models import infer_signature
 import numpy as np
 import pandas as pd
-from sklearn.compose import ColumnTransformer
-from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.impute import MissingIndicator, SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, average_precision_score, balanced_accuracy_score,
-                             brier_score_loss, confusion_matrix, f1_score, log_loss,
-                             precision_recall_curve, precision_score, recall_score,
-                             roc_auc_score, roc_curve)
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, OrdinalEncoder, StandardScaler
+from sklearn.metrics import precision_recall_curve, roc_curve
 from threadpoolctl import threadpool_limits
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from util.mlflow_evaluation import add_native_evaluations
+from util.modeling import build_models
+from util.metrics import calibration_table, choose_threshold, evaluate_model as evaluate
+from util.feature_policy import validate_features
 RESULTS = ROOT / "assets/results"
 SEED = 42
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -72,87 +65,6 @@ def markdown_table(frame):
                 values.append(str(value).replace("|", "\\|"))
         lines.append("| " + " | ".join(values) + " |")
     return "\n".join(lines)
-
-
-def build_models(numeric, categorical):
-    linear_log = ["annual_inc", "revol_bal"]
-    linear_other = [name for name in numeric if name not in linear_log]
-    linear = ColumnTransformer([
-        ("numeric", Pipeline([("impute", SimpleImputer(strategy="median")),
-                              ("scale", StandardScaler())]), linear_other),
-        ("log_numeric", Pipeline([("impute", SimpleImputer(strategy="median")),
-                                  ("log1p", FunctionTransformer(np.log1p, feature_names_out="one-to-one")),
-                                  ("scale", StandardScaler())]), linear_log),
-        ("missing_flags", MissingIndicator(features="all", error_on_new=False), numeric),
-        ("categories", Pipeline([("impute", SimpleImputer(strategy="constant", fill_value="Missing")),
-                                 ("encode", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical),
-    ])
-
-    def tree_preprocessor():
-        return ColumnTransformer([
-            ("numeric", SimpleImputer(strategy="median"), numeric),
-            ("missing_flags", MissingIndicator(features="all", error_on_new=False), numeric),
-            ("categories", Pipeline([("impute", SimpleImputer(strategy="constant", fill_value="Missing")),
-                                     ("encode", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical),
-        ])
-
-    boosting = ColumnTransformer([
-        ("numeric", "passthrough", numeric),
-        ("categories", Pipeline([("impute", SimpleImputer(strategy="constant", fill_value="Missing")),
-                                 ("encode", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1))]), categorical),
-    ])
-    return {
-        "dummy_prior": Pipeline([("prepare", tree_preprocessor()), ("model", DummyClassifier(strategy="prior"))]),
-        "logistic_regression": Pipeline([("prepare", linear),
-            ("model", LogisticRegression(C=1.0, max_iter=1000, random_state=SEED))]),
-        "random_forest": Pipeline([("prepare", tree_preprocessor()),
-            ("model", RandomForestClassifier(n_estimators=150, max_depth=12,
-                                              min_samples_leaf=50, n_jobs=4, random_state=SEED))]),
-        "hist_gradient_boosting": Pipeline([("prepare", boosting),
-            ("model", HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05,
-                max_leaf_nodes=15, min_samples_leaf=50, l2_regularization=1.0,
-                early_stopping=False, categorical_features=list(range(len(numeric), len(numeric) + len(categorical))),
-                random_state=SEED))]),
-    }
-
-
-def calibration_table(y, probabilities):
-    bins = np.minimum((probabilities * 10).astype(int), 9)
-    frame = pd.DataFrame({"bin": bins, "probability": probabilities, "outcome": np.asarray(y)})
-    result = frame.groupby("bin").agg(rows=("outcome", "size"),
-        mean_probability=("probability", "mean"), observed_positive_rate=("outcome", "mean")).reset_index()
-    result["bin_lower"] = result.bin / 10
-    result["bin_upper"] = (result.bin + 1) / 10
-    return result
-
-
-def evaluate(y, probabilities, threshold=0.5):
-    assert np.isfinite(probabilities).all()
-    assert ((probabilities >= 0) & (probabilities <= 1)).all()
-    decisions = (probabilities >= threshold).astype(int)
-    tn, fp, fn, tp = confusion_matrix(y, decisions, labels=[0, 1]).ravel()
-    calibration = calibration_table(y, probabilities)
-    ece = np.average(abs(calibration.mean_probability - calibration.observed_positive_rate), weights=calibration.rows)
-    return {"rows": len(y), "observed_positive_rate": float(np.mean(y)), "threshold": float(threshold),
-        "roc_auc": float(roc_auc_score(y, probabilities)),
-        "average_precision": float(average_precision_score(y, probabilities)),
-        "brier_score": float(brier_score_loss(y, probabilities)), "log_loss": float(log_loss(y, probabilities)),
-        "ece_10_uniform_bins": float(ece), "accuracy": float(accuracy_score(y, decisions)),
-        "balanced_accuracy": float(balanced_accuracy_score(y, decisions)),
-        "precision": float(precision_score(y, decisions, zero_division=0)),
-        "recall": float(recall_score(y, decisions, zero_division=0)),
-        "specificity": float(tn / (tn + fp)), "f1": float(f1_score(y, decisions, zero_division=0)),
-        "predicted_positive_rate": float(np.mean(decisions)),
-        "tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)}
-
-
-def choose_threshold(y, probabilities):
-    precision, recall, thresholds = precision_recall_curve(y, probabilities)
-    denominator = precision[:-1] + recall[:-1]
-    f1 = np.divide(2 * precision[:-1] * recall[:-1], denominator,
-                   out=np.zeros_like(denominator), where=denominator > 0)
-    # Thresholds ascend; ties take the lowest threshold with the same maximum F1.
-    return float(thresholds[int(np.argmax(f1))])
 
 
 def curve_table(y, probabilities, name, split):
@@ -225,6 +137,7 @@ def main():
     data = json.loads(data_path.read_text())
     assert data["status"] == "complete" and not data["fixed_horizon"]
     features = data["features"]
+    feature_policy = validate_features(features)
     numeric, categorical = data["numeric_features"], data["categorical_features"]
     dataset_frames = {}
     for artifact in data["artifacts"]:
@@ -240,7 +153,7 @@ def main():
     y_train = dataset_frames["train"][data["target"]]
     x_validation = dataset_frames["validation"][features]
     y_validation = dataset_frames["validation"][data["target"]]
-    models = build_models(numeric, categorical)
+    models = build_models(numeric, categorical, seed=SEED)
 
     tracking_uri = "sqlite:///" + str(ROOT / "models/mlflow.db")
     mlflow.set_tracking_uri(tracking_uri)
@@ -262,6 +175,8 @@ def main():
         model_dir = ROOT / "models/experiments" / batch_id
         for directory in [result_dir, figure_dir, model_dir]:
             directory.mkdir(parents=True, exist_ok=True)
+        mlflow.log_dict(feature_policy, "feature_policy_check.json")
+        mlflow.log_artifact(str(ROOT / "util/feature_policy.json"), artifact_path="source")
         mlflow.log_dict(data, "prepared_dataset_snapshot.json")
         mlflow.log_dict(versions, "versions.json")
         mlflow.log_artifact(str(Path(__file__)), artifact_path="source")
@@ -375,7 +290,7 @@ def main():
             "selected_threshold": threshold, "threshold_rule": "maximum validation F1; ties choose lowest threshold",
             "default_threshold": 0.5, "features": features, "numeric_features": numeric, "categorical_features": categorical,
             "positive_class": 1, "class_order": [0, 1], "seed": SEED, "thread_limit": 4,
-            "numeric_input_dtype": "float64",
+            "numeric_input_dtype": "float64", "feature_policy": feature_policy,
             "train_rows": len(y_train), "validation_rows": len(y_validation), "exploratory_test_rows": len(y_test),
             "test_scored_models": [winner], "refit_on_validation": False,
             "fixed_horizon": False, "deployment_backtest": False, "test_previously_explored": True,
@@ -517,7 +432,12 @@ for the underlying APIs.
     (result_dir / "report.md").write_text(report.replace("../assets/", "../../../"))
     path = ROOT / "assets/statistics.md"
     marker = "<!-- model-experiment-statistics -->"
-    original = path.read_text().split(marker)[0].rstrip()
+    existing_statistics = path.read_text()
+    evaluation_marker = "<!-- mlflow-evaluation-visibility-statistics -->"
+    later_sections = ""
+    if evaluation_marker in existing_statistics:
+        later_sections = evaluation_marker + existing_statistics.split(evaluation_marker, 1)[1]
+    original = existing_statistics.split(marker)[0].rstrip()
     original = re.sub(r"\| Completed stage \| [^\n]+ \|", "| Completed stage | First MLflow model comparison complete |", original)
     original = re.sub(r"\| Saved result CSVs \| [\d,]+ \|", f"| Saved result CSVs | {len(list(RESULTS.rglob('*.csv')))} |", original)
     original = re.sub(r"\| Saved figure sets \| [\d,]+ \|", f"| Saved figure sets | {len(list((ROOT / 'assets/figures').rglob('*.png')))} |", original)
@@ -545,7 +465,7 @@ for the underlying APIs.
         parts.append(f"- [{name}](results/{target}): `{digest}`")
     parts.extend(["Curve-point files retain at most 256 points per model/curve. They are plotting data; scalar metrics and threshold choice use all predictions. Full bin counts, confusion matrices, batch timings, model sizes, versions, identifiers, and aggregate metrics are recorded above or in the manifest. Uncertainty, bias, interpretability, and stress-test metrics remain Not measured.",
                   "### Verification", "Prepared dataset hashes matched; all four local pipelines reloaded with equivalent scores. Selected native and MLflow sklearn/pyfunc probability outputs matched. Model selection and threshold fitting used validation only; only the selected model scored the exploratory dataset."])
-    path.write_text(original + "\n\n" + "\n\n".join(parts) + "\n")
+    path.write_text(original + "\n\n" + "\n\n".join(parts) + "\n\n" + later_sections)
 
 
 if __name__ == "__main__":

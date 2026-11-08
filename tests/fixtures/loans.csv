@@ -1,0 +1,17 @@
+id,issue_d,earliest_cr_line,loan_amnt,int_rate,installment,term,grade,sub_grade,home_ownership,verification_status,application_type,purpose,addr_state,loan_status,emp_length,annual_inc,dti,revol_util,revol_bal,open_acc,delinq_2yrs,pub_rec_bankruptcies,fico_range_low,fico_range_high,total_pymnt,recoveries,last_fico_range_low,last_fico_range_high
+1001,Jan-2011,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Fully Paid,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1002,Jan-2012,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Charged Off,10+ years,not-a-number,bad,40,1000,5,0,0,680,684,999999,77777,300,304
+1003,Jan-2013,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Fully Paid,10+ years,0,-2,-1,1000,5,0,0,680,684,999999,77777,300,304
+1004,Jan-2013,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Default,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1005,Jan-2014,Jan-2000,10000,12.5,334.5, 36 months,B,B2,ANY,Not Verified,Individual,credit_card,CA,Fully Paid,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1006,Jan-2014,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Charged Off,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1007,Jan-2015,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Fully Paid,< 1 year,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1008,Jan-2015,Jan-2020,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Charged Off,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1009,Jan-2015,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Current,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1010,Jan-2015,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Late (31-120 days),10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1011,Jan-2015,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Does not meet the credit policy. Status:Charged Off,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1012,Jan-2015,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,In Grace Period,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1013,Jan-2016,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Fully Paid,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1014,Jan-2015,Jan-2000,10000,12.5,334.5,60 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Charged Off,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+1015,bad-date,Jan-2000,10000,12.5,334.5, 36 months,B,B2,RENT,Not Verified,Individual,credit_card,CA,Fully Paid,10+ years,50000,15,40,1000,5,0,0,680,684,999999,77777,300,304
+Total amount funded,,,,,,,,,,,,,,,,,,,,,,,,,,,,

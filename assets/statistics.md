@@ -1,6 +1,6 @@
 # Project statistics reference
 
-> Latest measured model results are in section 18 and docs/model_experiments.md. Earlier sections retain their stage-specific snapshots. Kafka stress tests, InterpretML, and bias evaluations have not run.
+> Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. Kafka stress tests, InterpretML, and bias evaluations have not run.
 
 Snapshot assembled: **2026-11-08T14:17:16+00:00**. This is a static record of the completed data-analysis stage, assembled from existing result CSVs, local file metadata, and the clean Parquet schema. The download, cleaning, and EDA pipeline was **not rerun** to create this document.
 
@@ -27,12 +27,14 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 17. [Model-data preparation](#17-model-data-preparation)
 18. [Model experiments](#18-model-experiments)
 19. [MLflow datasets and evaluations](#19-mlflow-datasets-and-evaluations)
+20. [AUC improvement experiments](#20-auc-improvement-experiments)
+21. [Validation hardening](#21-validation-hardening)
 
 ## 1. Quick answers
 
 | Statistic | Value |
 | --- | --- |
-| Completed stage | First MLflow model comparison complete |
+| Completed stage | Validation hardening complete (section 21); incumbent unchanged |
 | Dataset | LendingClub accepted loans, June 2007–December 2018 |
 | Raw rows | 2,260,701 |
 | Raw columns | 151 |
@@ -54,11 +56,11 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Other / unresolved loans, all years | 915,358 |
 | Charged off among resolved loans, all years (%) | 19.962611 |
 | Entirely missing source columns | 1 |
-| Saved figure sets | 24 |
-| Saved image files | 48 |
-| Saved result CSVs | 42 |
+| Saved figure sets | 27 |
+| Saved image files | 54 |
+| Saved result CSVs | 54 |
 | Deterministic scatterplot sample | 20,000 |
-| Models trained / MLflow evaluation metrics | Four fitted pipelines; current measured results in section 18 |
+| Models trained / MLflow evaluation metrics | Four baseline pipelines (section 18); seven AUC trials (section 20) |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
 
 The headline charged-off rate is a **resolved-loan share**, not a validated fixed-horizon probability of default or a model metric. The provisional split counts above include unresolved loans; they are not final model-training sample sizes.
@@ -2600,3 +2602,1302 @@ Each evaluation run has ROC, PR, lift, calibration, and confusion-matrix artifac
 ### Verification
 
 All five evaluation runs finished successfully. Each has its full dataset input and a logged table artifact. All four logged models have dataset-linked train/validation metrics, and the selected model also has exploratory metrics. All three comparison dataset inputs are persisted. Original validation ROC-AUC values and cohort counts match; no retraining or policy change occurred. These checks concern classic ML evaluations, not the separate GenAI dataset/scorer system.
+
+<!-- auc-improvement-statistics -->
+
+## 20. AUC improvement experiments
+
+Completed: 2026-11-08T16:44:45+00:00.
+
+MLflow experiment `lendingclub_auc_ablation`, batch `709d47fa0d5348f391bdef42dbb6174c`. Validation only: 157,993 train / 162,570 validation rows. No 2015 scoring, no incumbent replacement, no target/cohort changes.
+
+Best independent-scope ROC-AUC: 0.684553; separately scoped post-underwriting: 0.691254; original validation baseline: 0.653889. The 0.80 target was reached in independent scope: False; in post-underwriting scope: False.
+
+Added bureau fields have unverified exact as-of timing. Their scores remain exploratory and do not supersede the original prediction-time audit. Grade/subgrade/rate results require scoring after underwriting. Early stopping and selection both use validation, so these are selection-influenced estimates.
+
+### Full comparison
+
+| trial | feature_set | scoring_point | run_id | model_uri | feature_count | max_depth | min_child_weight | reg_lambda | train_roc_auc | validation_roc_auc | train_average_precision | validation_average_precision | validation_brier_score | validation_log_loss | best_iteration | fit_seconds |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| post_underwriting_regularized | post_underwriting | post_underwriting | 488c69d6d6c84b7caeaa505f2d011c34 | models:/m-dec4faa7348d402482ce8335d4de9d0b | 61 | 5 | 100 | 20 | 0.733505 | 0.691254 | 0.296785 | 0.250611 | 0.112163 | 0.373518 | 430 | 81.206909 |
+| post_underwriting_shallow | post_underwriting | post_underwriting | ed74c9ba21804b21bc46b3dcd916904b | models:/m-bb0f9341b64c46ad9b8902649a276d82 | 61 | 3 | 30 | 10 | 0.715804 | 0.690859 | 0.271854 | 0.250467 | 0.112224 | 0.373796 | 633 | 128.567778 |
+| post_underwriting_deep | post_underwriting | post_underwriting | 70187acc73f84d67a7d17303cfb0a22d | models:/m-5b79dddaa3554956a4b709793f06cb4c | 61 | 7 | 100 | 30 | 0.75078 | 0.690816 | 0.322179 | 0.250383 | 0.112186 | 0.373662 | 324 | 64.001626 |
+| expanded_bureau_deep | expanded_bureau | independent_risk_candidate | 57900240ac0240aba47094e6010aa0a3 | models:/m-db6a86fa5e74439ca0710b9bc43cca52 | 58 | 7 | 100 | 30 | 0.751578 | 0.684553 | 0.324037 | 0.244488 | 0.11245 | 0.374625 | 350 | 44.962758 |
+| expanded_bureau_shallow | expanded_bureau | independent_risk_candidate | 6a20281cbf374e1d8265b1becf0f2626 | models:/m-eed7cf1743f643048889e6d971cba8a2 | 58 | 3 | 30 | 10 | 0.721208 | 0.683984 | 0.278409 | 0.244959 | 0.112478 | 0.374822 | 829 | 86.172015 |
+| expanded_bureau_regularized | expanded_bureau | independent_risk_candidate | 2709a777e41d4fc2be69f91bbd5be0c1 | models:/m-2fcf39b1759849628e67843e707ebae3 | 58 | 5 | 100 | 20 | 0.733836 | 0.683864 | 0.296992 | 0.244796 | 0.112483 | 0.374803 | 454 | 53.83068 |
+| base13_shallow | base13 | independent_risk_candidate | 50cc37c3ddd34b9b942b112c0b644cdd | models:/m-1cee12e712864cdbb3170a73e1ff3a33 | 13 | 3 | 30 | 10 | 0.678768 | 0.655817 | 0.229416 | 0.218011 | 0.114275 | 0.3819 | 549 | 23.194086 |
+
+### Complete feature profiles (both splits)
+
+| split | feature | rows | nonmissing | missing | distinct_nonmissing | missing_pct |
+| --- | --- | --- | --- | --- | --- | --- |
+| train | acc_now_delinq | 157993 | 157993 | 0 | 6 | 0 |
+| validation | acc_now_delinq | 162570 | 162570 | 0 | 5 | 0 |
+| train | acc_open_past_24mths | 157993 | 137867 | 20126 | 31 | 12.738539 |
+| validation | acc_open_past_24mths | 162570 | 162570 | 0 | 37 | 0 |
+| train | annual_inc | 157993 | 157993 | 0 | 13325 | 0 |
+| validation | annual_inc | 162570 | 162570 | 0 | 13261 | 0 |
+| train | avg_cur_bal | 157993 | 121338 | 36655 | 37001 | 23.200395 |
+| validation | avg_cur_bal | 162570 | 162565 | 5 | 40612 | 0.003076 |
+| train | bc_open_to_buy | 157993 | 136643 | 21350 | 30152 | 13.513257 |
+| validation | bc_open_to_buy | 162570 | 160811 | 1759 | 33073 | 1.081995 |
+| train | bc_util | 157993 | 136580 | 21413 | 1177 | 13.553132 |
+| validation | bc_util | 162570 | 160682 | 1888 | 1212 | 1.161346 |
+| train | collections_12_mths_ex_med | 157993 | 157993 | 0 | 4 | 0 |
+| validation | collections_12_mths_ex_med | 162570 | 162570 | 0 | 9 | 0 |
+| train | credit_history_years | 157993 | 157993 | 0 | 603 | 0 |
+| validation | credit_history_years | 162570 | 162570 | 0 | 635 | 0 |
+| train | delinq_2yrs | 157993 | 157993 | 0 | 19 | 0 |
+| validation | delinq_2yrs | 162570 | 162570 | 0 | 21 | 0 |
+| train | dti | 157993 | 157993 | 0 | 3499 | 0 |
+| validation | dti | 162570 | 162570 | 0 | 3978 | 0 |
+| train | emp_length_years | 157993 | 150714 | 7279 | 11 | 4.607166 |
+| validation | emp_length_years | 162570 | 152924 | 9646 | 11 | 5.933444 |
+| train | fico_mid | 157993 | 157993 | 0 | 38 | 0 |
+| validation | fico_mid | 162570 | 162570 | 0 | 38 | 0 |
+| train | grade | 157993 | 157993 | 0 | 7 | 0 |
+| validation | grade | 162570 | 162570 | 0 | 7 | 0 |
+| train | high_dti_flag | 157993 | 157993 | 0 | 1 | 0 |
+| validation | high_dti_flag | 162570 | 162570 | 0 | 1 | 0 |
+| train | home_ownership | 157993 | 157993 | 0 | 5 | 0 |
+| validation | home_ownership | 162570 | 162570 | 0 | 4 | 0 |
+| train | inq_last_6mths | 157993 | 157993 | 0 | 9 | 0 |
+| validation | inq_last_6mths | 162570 | 162570 | 0 | 7 | 0 |
+| train | int_rate | 157993 | 157993 | 0 | 227 | 0 |
+| validation | int_rate | 162570 | 162570 | 0 | 88 | 0 |
+| train | loan_amnt | 157993 | 157993 | 0 | 1175 | 0 |
+| validation | loan_amnt | 162570 | 162570 | 0 | 1245 | 0 |
+| train | loan_to_income | 157993 | 157993 | 0 | 32148 | 0 |
+| validation | loan_to_income | 162570 | 162570 | 0 | 33043 | 0 |
+| train | mo_sin_old_il_acct | 157993 | 115962 | 42031 | 410 | 26.603077 |
+| validation | mo_sin_old_il_acct | 162570 | 156639 | 5931 | 441 | 3.648275 |
+| train | mo_sin_old_rev_tl_op | 157993 | 121341 | 36652 | 631 | 23.198496 |
+| validation | mo_sin_old_rev_tl_op | 162570 | 162570 | 0 | 665 | 0 |
+| train | mo_sin_rcnt_rev_tl_op | 157993 | 121341 | 36652 | 171 | 23.198496 |
+| validation | mo_sin_rcnt_rev_tl_op | 162570 | 162570 | 0 | 193 | 0 |
+| train | mo_sin_rcnt_tl | 157993 | 121342 | 36651 | 121 | 23.197863 |
+| validation | mo_sin_rcnt_tl | 162570 | 162570 | 0 | 127 | 0 |
+| train | mort_acc | 157993 | 137867 | 20126 | 28 | 12.738539 |
+| validation | mort_acc | 162570 | 162570 | 0 | 29 | 0 |
+| train | mths_since_last_delinq | 157993 | 66228 | 91765 | 126 | 58.081687 |
+| validation | mths_since_last_delinq | 162570 | 83035 | 79535 | 122 | 48.923541 |
+| train | mths_since_last_major_derog | 157993 | 25017 | 132976 | 131 | 84.165754 |
+| validation | mths_since_last_major_derog | 162570 | 47552 | 115018 | 136 | 70.749831 |
+| train | mths_since_last_record | 157993 | 14568 | 143425 | 120 | 90.779338 |
+| validation | mths_since_last_record | 162570 | 30778 | 131792 | 122 | 81.067848 |
+| train | mths_since_recent_bc | 157993 | 136797 | 21196 | 333 | 13.415784 |
+| validation | mths_since_recent_bc | 162570 | 160960 | 1610 | 350 | 0.990343 |
+| train | mths_since_recent_inq | 157993 | 121688 | 36305 | 25 | 22.978866 |
+| validation | mths_since_recent_inq | 162570 | 147156 | 15414 | 26 | 9.481454 |
+| train | num_accts_ever_120_pd | 157993 | 121342 | 36651 | 22 | 23.197863 |
+| validation | num_accts_ever_120_pd | 162570 | 162570 | 0 | 27 | 0 |
+| train | num_actv_bc_tl | 157993 | 121342 | 36651 | 26 | 23.197863 |
+| validation | num_actv_bc_tl | 162570 | 162570 | 0 | 26 | 0 |
+| train | num_actv_rev_tl | 157993 | 121342 | 36651 | 33 | 23.197863 |
+| validation | num_actv_rev_tl | 162570 | 162570 | 0 | 37 | 0 |
+| train | num_bc_sats | 157993 | 130916 | 27077 | 31 | 17.138101 |
+| validation | num_bc_sats | 162570 | 162570 | 0 | 35 | 0 |
+| train | num_bc_tl | 157993 | 121342 | 36651 | 49 | 23.197863 |
+| validation | num_bc_tl | 162570 | 162570 | 0 | 54 | 0 |
+| train | num_il_tl | 157993 | 121342 | 36651 | 59 | 23.197863 |
+| validation | num_il_tl | 162570 | 162570 | 0 | 80 | 0 |
+| train | num_op_rev_tl | 157993 | 121342 | 36651 | 46 | 23.197863 |
+| validation | num_op_rev_tl | 162570 | 162570 | 0 | 53 | 0 |
+| train | num_rev_accts | 157993 | 121342 | 36651 | 66 | 23.197863 |
+| validation | num_rev_accts | 162570 | 162570 | 0 | 79 | 0 |
+| train | num_rev_tl_bal_gt_0 | 157993 | 121342 | 36651 | 33 | 23.197863 |
+| validation | num_rev_tl_bal_gt_0 | 162570 | 162570 | 0 | 36 | 0 |
+| train | num_sats | 157993 | 130916 | 27077 | 53 | 17.138101 |
+| validation | num_sats | 162570 | 162570 | 0 | 58 | 0 |
+| train | num_tl_30dpd | 157993 | 121342 | 36651 | 5 | 23.197863 |
+| validation | num_tl_30dpd | 162570 | 162570 | 0 | 5 | 0 |
+| train | num_tl_90g_dpd_24m | 157993 | 121342 | 36651 | 18 | 23.197863 |
+| validation | num_tl_90g_dpd_24m | 162570 | 162570 | 0 | 20 | 0 |
+| train | num_tl_op_past_12m | 157993 | 121342 | 36651 | 21 | 23.197863 |
+| validation | num_tl_op_past_12m | 162570 | 162570 | 0 | 22 | 0 |
+| train | open_acc | 157993 | 157993 | 0 | 53 | 0 |
+| validation | open_acc | 162570 | 162570 | 0 | 59 | 0 |
+| train | over_limit_flag | 157993 | 157889 | 104 | 2 | 0.065826 |
+| validation | over_limit_flag | 162570 | 162493 | 77 | 2 | 0.047364 |
+| train | pct_tl_nvr_dlq | 157993 | 121228 | 36765 | 332 | 23.270018 |
+| validation | pct_tl_nvr_dlq | 162570 | 162570 | 0 | 454 | 0 |
+| train | percent_bc_gt_75 | 157993 | 136641 | 21352 | 134 | 13.514523 |
+| validation | percent_bc_gt_75 | 162570 | 160712 | 1858 | 162 | 1.142892 |
+| train | pub_rec | 157993 | 157993 | 0 | 14 | 0 |
+| validation | pub_rec | 162570 | 162570 | 0 | 23 | 0 |
+| train | pub_rec_bankruptcies | 157993 | 157993 | 0 | 9 | 0 |
+| validation | pub_rec_bankruptcies | 162570 | 162570 | 0 | 9 | 0 |
+| train | purpose | 157993 | 157993 | 0 | 13 | 0 |
+| validation | purpose | 162570 | 162570 | 0 | 13 | 0 |
+| train | revol_bal | 157993 | 157993 | 0 | 39758 | 0 |
+| validation | revol_bal | 162570 | 162570 | 0 | 41185 | 0 |
+| train | revol_util | 157993 | 157889 | 104 | 1101 | 0.065826 |
+| validation | revol_util | 162570 | 162493 | 77 | 1126 | 0.047364 |
+| train | revolving_balance_to_income | 157993 | 157993 | 0 | 135567 | 0 |
+| validation | revolving_balance_to_income | 162570 | 162570 | 0 | 138410 | 0 |
+| train | sub_grade | 157993 | 157993 | 0 | 35 | 0 |
+| validation | sub_grade | 162570 | 162570 | 0 | 35 | 0 |
+| train | tax_liens | 157993 | 157993 | 0 | 13 | 0 |
+| validation | tax_liens | 162570 | 162570 | 0 | 22 | 0 |
+| train | tot_coll_amt | 157993 | 121342 | 36651 | 2315 | 23.197863 |
+| validation | tot_coll_amt | 162570 | 162570 | 0 | 4955 | 0 |
+| train | tot_cur_bal | 157993 | 121342 | 36651 | 92391 | 23.197863 |
+| validation | tot_cur_bal | 162570 | 162570 | 0 | 116245 | 0 |
+| train | tot_hi_cred_lim | 157993 | 121342 | 36651 | 88800 | 23.197863 |
+| validation | tot_hi_cred_lim | 162570 | 162570 | 0 | 114355 | 0 |
+| train | total_acc | 157993 | 157993 | 0 | 85 | 0 |
+| validation | total_acc | 162570 | 162570 | 0 | 110 | 0 |
+| train | total_bal_ex_mort | 157993 | 137867 | 20126 | 69604 | 12.738539 |
+| validation | total_bal_ex_mort | 162570 | 162570 | 0 | 80468 | 0 |
+| train | total_bc_limit | 157993 | 137867 | 20126 | 8457 | 12.738539 |
+| validation | total_bc_limit | 162570 | 162570 | 0 | 2527 | 0 |
+| train | total_il_high_credit_limit | 157993 | 121342 | 36651 | 55592 | 23.197863 |
+| validation | total_il_high_credit_limit | 162570 | 162570 | 0 | 70663 | 0 |
+| train | total_rev_hi_lim | 157993 | 121342 | 36651 | 8571 | 23.197863 |
+| validation | total_rev_hi_lim | 162570 | 162570 | 0 | 4822 | 0 |
+
+### Feature-set availability audit
+
+| feature_set | feature | role | availability | deployment_timing_review_required |
+| --- | --- | --- | --- | --- |
+| base13 | loan_amnt | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | annual_inc | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | dti | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | revol_util | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | revol_bal | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | open_acc | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | delinq_2yrs | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | pub_rec_bankruptcies | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | emp_length_years | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | fico_mid | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | credit_history_years | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | home_ownership | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| base13 | purpose | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | loan_amnt | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | annual_inc | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | dti | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | revol_util | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | revol_bal | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | open_acc | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | delinq_2yrs | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | pub_rec_bankruptcies | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | emp_length_years | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | fico_mid | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | credit_history_years | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | home_ownership | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | purpose | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | acc_now_delinq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | acc_open_past_24mths | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | avg_cur_bal | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | bc_open_to_buy | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | bc_util | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | collections_12_mths_ex_med | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | inq_last_6mths | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mo_sin_old_il_acct | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mo_sin_old_rev_tl_op | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mo_sin_rcnt_rev_tl_op | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mo_sin_rcnt_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mort_acc | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mths_since_last_delinq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mths_since_last_major_derog | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mths_since_last_record | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mths_since_recent_bc | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | mths_since_recent_inq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_accts_ever_120_pd | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_actv_bc_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_actv_rev_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_bc_sats | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_bc_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_il_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_op_rev_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_rev_accts | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_rev_tl_bal_gt_0 | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_sats | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_tl_30dpd | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_tl_90g_dpd_24m | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | num_tl_op_past_12m | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | pct_tl_nvr_dlq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | percent_bc_gt_75 | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | pub_rec | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | tax_liens | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | tot_coll_amt | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | tot_cur_bal | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | tot_hi_cred_lim | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | total_acc | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | total_bal_ex_mort | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | total_bc_limit | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | total_il_high_credit_limit | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | total_rev_hi_lim | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | loan_to_income | derived_ratio_or_flag | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | revolving_balance_to_income | derived_ratio_or_flag | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| expanded_bureau | over_limit_flag | derived_ratio_or_flag | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | loan_amnt | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | annual_inc | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | dti | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | revol_util | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | revol_bal | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | open_acc | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | delinq_2yrs | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | pub_rec_bankruptcies | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | emp_length_years | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | fico_mid | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | credit_history_years | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | home_ownership | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | purpose | existing_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | acc_now_delinq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | acc_open_past_24mths | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | avg_cur_bal | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | bc_open_to_buy | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | bc_util | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | collections_12_mths_ex_med | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | inq_last_6mths | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mo_sin_old_il_acct | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mo_sin_old_rev_tl_op | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mo_sin_rcnt_rev_tl_op | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mo_sin_rcnt_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mort_acc | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mths_since_last_delinq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mths_since_last_major_derog | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mths_since_last_record | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mths_since_recent_bc | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | mths_since_recent_inq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_accts_ever_120_pd | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_actv_bc_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_actv_rev_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_bc_sats | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_bc_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_il_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_op_rev_tl | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_rev_accts | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_rev_tl_bal_gt_0 | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_sats | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_tl_30dpd | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_tl_90g_dpd_24m | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | num_tl_op_past_12m | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | pct_tl_nvr_dlq | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | percent_bc_gt_75 | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | pub_rec | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | tax_liens | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | tot_coll_amt | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | tot_cur_bal | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | tot_hi_cred_lim | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | total_acc | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | total_bal_ex_mort | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | total_bc_limit | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | total_il_high_credit_limit | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | total_rev_hi_lim | additional_bureau_candidate | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | loan_to_income | derived_ratio_or_flag | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | revolving_balance_to_income | derived_ratio_or_flag | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | over_limit_flag | derived_ratio_or_flag | application_or_credit_snapshot_candidate; exact as-of timing not source-certified | True |
+| post_underwriting | grade | underwriting_output | after_underwriting | True |
+| post_underwriting | sub_grade | underwriting_output | after_underwriting | True |
+| post_underwriting | int_rate | underwriting_output | after_underwriting | True |
+
+### Native evaluation metrics and IDs
+
+| model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| base13_shallow | validation | e45d872ca0a444ac81412973bda9bd71 | 50cc37c3ddd34b9b942b112c0b644cdd | m-1cee12e712864cdbb3170a73e1ff3a33 | validation_base13 | 7b0440d0 | 0.5 | 0.862718 | 140252 | 3 | 22315 | 0 | 162570 | 0.862718 | 0 | 0 | 0 | 0.3819 | 0.655817 | 0.218011 |
+| expanded_bureau_shallow | validation | c9103e0bd09d4504937c94778bedd9ab | 6a20281cbf374e1d8265b1becf0f2626 | m-eed7cf1743f643048889e6d971cba8a2 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862588 | 140150 | 105 | 22234 | 81 | 162570 | 0.862588 | 0.00363 | 0.435484 | 0.0072 | 0.374822 | 0.683984 | 0.244959 |
+| expanded_bureau_regularized | validation | 72590fe3f811447aab5f69c17eccbf33 | 2709a777e41d4fc2be69f91bbd5be0c1 | m-2fcf39b1759849628e67843e707ebae3 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862767 | 140193 | 62 | 22248 | 67 | 162570 | 0.862767 | 0.003002 | 0.51938 | 0.00597 | 0.374803 | 0.683864 | 0.244796 |
+| expanded_bureau_deep | validation | e300481a616241328bc879b3bde1adef | 57900240ac0240aba47094e6010aa0a3 | m-db6a86fa5e74439ca0710b9bc43cca52 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862687 | 140200 | 55 | 22268 | 47 | 162570 | 0.862687 | 0.002106 | 0.460784 | 0.004193 | 0.374625 | 0.684553 | 0.244488 |
+| post_underwriting_shallow | validation | 137148965cc549ba86adabfcde8c700a | ed74c9ba21804b21bc46b3dcd916904b | m-bb0f9341b64c46ad9b8902649a276d82 | validation_post_underwriting | 7f86e93f | 0.5 | 0.862822 | 140225 | 30 | 22271 | 44 | 162570 | 0.862822 | 0.001972 | 0.594595 | 0.003931 | 0.373796 | 0.690859 | 0.250467 |
+| post_underwriting_regularized | validation | 28e3b4eee5c3425ba58d1abdbb22c892 | 488c69d6d6c84b7caeaa505f2d011c34 | m-dec4faa7348d402482ce8335d4de9d0b | validation_post_underwriting | 7f86e93f | 0.5 | 0.862761 | 140225 | 30 | 22281 | 34 | 162570 | 0.862761 | 0.001524 | 0.53125 | 0.003039 | 0.373518 | 0.691254 | 0.250611 |
+| post_underwriting_deep | validation | a4c5897520254b55abd4a1eb2972583e | 70187acc73f84d67a7d17303cfb0a22d | m-5b79dddaa3554956a4b709793f06cb4c | validation_post_underwriting | 7f86e93f | 0.5 | 0.862773 | 140232 | 23 | 22286 | 29 | 162570 | 0.862773 | 0.0013 | 0.557692 | 0.002593 | 0.373662 | 0.690816 | 0.250383 |
+
+### Dataset fingerprints
+
+| dataset | path | sha256 | mlflow_digest | rows |
+| --- | --- | --- | --- | --- |
+| base13_train | data/clean/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/base13_train.parquet | bc6257e5f8a2ac6ec11fe4be6fd577732f0d1c8b3f4430ed5495a01c548bd106 | 3fc22603 | 157993 |
+| base13_validation | data/clean/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/base13_validation.parquet | e033e8ea6598c7e07cd1f6a50c54fefa369c191701e54c1e80d83c653c81498c | 7b0440d0 | 162570 |
+| expanded_bureau_train | data/clean/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/expanded_bureau_train.parquet | 0a1a2c038dc0a29cd1df9e62122ba6e2180f50c7bfd72b6c3a53125a59100d0b | 7b8864dc | 157993 |
+| expanded_bureau_validation | data/clean/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/expanded_bureau_validation.parquet | a87dc81d9411cf894c4bd50b63a9d320f3b52b28b5a93e0dc7862870fe6b2730 | e7edb5f9 | 162570 |
+| post_underwriting_train | data/clean/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/post_underwriting_train.parquet | ef7c5c981b5bc4760769f15d1a803d9d334d2ba06eb29e072ee299595dd8bba6 | 89ebc42f | 157993 |
+| post_underwriting_validation | data/clean/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/post_underwriting_validation.parquet | 84d7deb6be0eedb779b3584c57be4e2a4904dc5a6140b873226d1df3c9570d7c | 7f86e93f | 162570 |
+
+### Configuration
+
+```json
+{
+  "fixed_params": {
+    "n_estimators": 1200,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "early_stopping_rounds": 60,
+    "eval_metric": "auc",
+    "random_state": 42,
+    "n_jobs": 4
+  },
+  "grid": [
+    {
+      "name": "shallow",
+      "max_depth": 3,
+      "min_child_weight": 30,
+      "reg_lambda": 10
+    },
+    {
+      "name": "regularized",
+      "max_depth": 5,
+      "min_child_weight": 100,
+      "reg_lambda": 20
+    },
+    {
+      "name": "deep",
+      "max_depth": 7,
+      "min_child_weight": 100,
+      "reg_lambda": 30
+    }
+  ],
+  "versions": {
+    "xgboost-cpu": "3.4.1",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "mlflow": "3.18.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "cloudpickle": "3.1.2",
+    "threadpoolctl": "3.8.0"
+  },
+  "training_only_dropped_features": [
+    "high_dti_flag"
+  ],
+  "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
+  "clean_source_sha256": "51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20",
+  "script_sha256": "e6d0db201ad7a4ebd77982dee94d7d0b7c5a27c30a766da4e9725a84531fd06b"
+}
+```
+
+### Source fingerprints
+
+- [auc_comparison.csv](results/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/auc_comparison.csv): `84545a1ebb31dd4ef27fa58aac57d997d09554374f4f48c61b16bed6246842ec`
+
+- [feature_profile.csv](results/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/feature_profile.csv): `6df4d211b9b7bf72197076302a2559b7362087bacc78c4d48abc07326ce64cd9`
+
+- [native_evaluations.csv](results/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/native_evaluations.csv): `05045c96158c95cf3ce15e8f9da62b4cbbf632acd27083d9dd9facf5fb1fd497`
+
+- [feature_availability.csv](results/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/feature_availability.csv): `7f5eae9faf162c302c8573438c907360a56d0c1d424ef416f36297e5c94657e8`
+
+[Full report](../docs/auc_improvement.md). Earlier model/threshold results remain unchanged. No new exploratory-test, bias, stress-test, or production metrics are implied.
+
+<!-- validation-hardening-statistics -->
+
+## 21. Validation hardening
+
+
+This is a retrospective analysis of charged-off versus fully-paid, resolved 36-month loans. The data has already been explored. There is no fresh holdout, fixed-horizon regulatory PD, or point-in-time deployment backtest. No 2015 rows are read by this stage.
+
+## Exact historical diagnostics
+
+Original saved models, unchanged inputs. KS uses every distinct score threshold and is the maximum absolute TPR–FPR difference; Gini = 2 × AUC − 1. Threshold metrics use 0.5.
+
+| model | split | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dummy_prior | train | 157993 | 0.125195 | 0.125195 | 0.5 | 0.5 | 0 | 0 | 0.125195 | 0.109522 | 0.37715 | 0 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138213 | 0 | 19780 | 0 |
+| dummy_prior | validation | 162570 | 0.137264 | 0.125195 | 0.5 | 0.5 | 0 | 0 | 0.137264 | 0.118568 | 0.400613 | 0.012069 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+| logistic_regression | train | 157993 | 0.125195 | 0.125206 | 0.5 | 0.650936 | 0.301871 | 0.218646 | 0.199628 | 0.106127 | 0.36132 | 0.002319 | 0.874792 | 0.500101 | 0.416667 | 0.000253 | 0.999949 | 0.000505 | 0.000076 | 138206 | 7 | 19775 | 5 |
+| logistic_regression | validation | 162570 | 0.137264 | 0.132214 | 0.5 | 0.646231 | 0.292462 | 0.213711 | 0.21028 | 0.114869 | 0.384341 | 0.006675 | 0.862705 | 0.500152 | 0.391304 | 0.000403 | 0.9999 | 0.000806 | 0.000141 | 140241 | 14 | 22306 | 9 |
+| random_forest | train | 157993 | 0.125195 | 0.125167 | 0.5 | 0.711889 | 0.423779 | 0.307458 | 0.266368 | 0.103944 | 0.352131 | 0.019663 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138213 | 0 | 19780 | 0 |
+| random_forest | validation | 162570 | 0.137264 | 0.129408 | 0.5 | 0.649133 | 0.298265 | 0.216818 | 0.213944 | 0.114923 | 0.384513 | 0.013567 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+| hist_gradient_boosting | train | 157993 | 0.125195 | 0.125187 | 0.5 | 0.684525 | 0.369051 | 0.265112 | 0.239525 | 0.104177 | 0.353495 | 0.008189 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138213 | 0 | 19780 | 0 |
+| hist_gradient_boosting | validation | 162570 | 0.137264 | 0.131767 | 0.5 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+
+## Paired AUC uncertainty
+
+500 stratified loan-level bootstrap resamples, seed 42; identical sampled loans for both original models. Intervals are 2.5th/97.5th percentiles, conditional on the fitted models and observed class counts. They exclude model fitting and selection uncertainty, year-to-year variation, and possible borrower clustering. They are not a significance claim after model selection.
+
+| comparison | metric | estimate | lower_95 | upper_95 |
+| --- | --- | --- | --- | --- |
+| logistic_regression | roc_auc | 0.646231 | 0.642467 | 0.650918 |
+| logistic_regression | gini | 0.292462 | 0.284933 | 0.301835 |
+| hist_gradient_boosting | roc_auc | 0.653889 | 0.649973 | 0.657992 |
+| hist_gradient_boosting | gini | 0.307779 | 0.299945 | 0.315983 |
+| boosting_minus_logistic | auc_difference | 0.007659 | 0.005913 | 0.009094 |
+
+## Separate-year calibration
+
+Both base models use the original fixed settings, refitted on 2011–2012 only. A frozen estimator receives sigmoid calibration using 2013 only; both versions are evaluated on 2014. This differs from the historical 2011–2013 training protocol, so compare raw and sigmoid within the table below. A calibration method can worsen later-cohort predictions. No model is promoted.
+
+| role | rows | positives | positive_rate | first_issue_date | last_issue_date | dataset_digest |
+| --- | --- | --- | --- | --- | --- | --- |
+| model_fit | 57571 | 7402 | 0.128572 | 2011-01-01 | 2012-12-01 | f2d0b047 |
+| calibration | 100422 | 12378 | 0.12326 | 2013-01-01 | 2013-12-01 | 342aece7 |
+| evaluation | 162570 | 22315 | 0.137264 | 2014-01-01 | 2014-12-01 | 722bf1f9 |
+
+| model | version | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| logistic_regression | raw | 162570 | 0.137264 | 0.144645 | 0.5 | 0.639135 | 0.278269 | 0.203654 | 0.204675 | 0.115308 | 0.385851 | 0.007381 | 0.862687 | 0.500198 | 0.375 | 0.000538 | 0.999857 | 0.001074 | 0.000197 | 140235 | 20 | 22303 | 12 |
+| logistic_regression | sigmoid | 162570 | 0.137264 | 0.128976 | 0.5 | 0.639135 | 0.278269 | 0.203654 | 0.204675 | 0.115251 | 0.385862 | 0.009377 | 0.862711 | 0.500042 | 0.3 | 0.000134 | 0.99995 | 0.000269 | 0.000062 | 140248 | 7 | 22312 | 3 |
+| hist_gradient_boosting | raw | 162570 | 0.137264 | 0.143733 | 0.5 | 0.64165 | 0.283299 | 0.20478 | 0.20503 | 0.115216 | 0.385312 | 0.006469 | 0.862693 | 0.500069 | 0.294118 | 0.000224 | 0.999914 | 0.000448 | 0.000105 | 140243 | 12 | 22310 | 5 |
+| hist_gradient_boosting | sigmoid | 162570 | 0.137264 | 0.129437 | 0.5 | 0.64165 | 0.283299 | 0.20478 | 0.20503 | 0.115126 | 0.38525 | 0.008678 | 0.862742 | 0.500041 | 0.666667 | 0.00009 | 0.999993 | 0.000179 | 0.000018 | 140254 | 1 | 22313 | 2 |
+
+hist_gradient_boosting: sigmoid minus raw Brier change -0.000090; log-loss change -0.000062; ECE change +0.002209. Calibrated mean probability 12.9437%, observed rate 13.7264%.
+
+logistic_regression: sigmoid minus raw Brier change -0.000057; log-loss change +0.000011; ECE change +0.001997. Calibrated mean probability 12.8976%, observed rate 13.7264%.
+
+Negative Brier, log-loss, and ECE changes indicate improvement. Assess these together before choosing a calibration policy.
+
+![Calibration](../assets/figures/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1/calibration.png)
+
+![Paired differences](../assets/figures/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1/paired_auc_difference.png)
+
+Calibration curves show all occupied uniform-width bins, including sparse bins; counts are saved in calibration_bins.csv. Interpret the tails using those counts.
+
+## Controls and artifacts
+
+Shared feature policy rejects post-origination fields before preparation/training, including when a denied field is accidentally added to an allowlist. This enforces the selected vocabulary; it cannot certify source timestamps. Expanded bureau fields remain research candidates.
+
+The coefficient CSV describes the historical logistic pipeline's transformed coordinates (including scaling, log transforms, missing flags, and one-hot categories). These are not scorecard points or causal effects.
+
+All CSVs and the hashed manifest: [assets/results/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1](../assets/results/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1/manifest.json). MLflow stores the three full role datasets, four model versions, dataset-linked metrics, and four native classifier evaluations. The incumbent model remains unchanged.
+
+Reproduce with `make validate` after the core workflow. Use `make all RAW_DATA=/path/to/accepted.csv` for a headless core run, or a `.csv.gz` file for local decompression.
+
+Calibration follows the [scikit-learn guidance on disjoint fitting and calibration data](https://scikit-learn.org/stable/modules/calibration.html). Dependency locking uses [uv hash-locked requirements](https://docs.astral.sh/uv/pip/compile/).
+
+
+### paired_auc_bootstrap
+
+| resample | auc_a | auc_b | delta_b_minus_a |
+| --- | --- | --- | --- |
+| 0 | 0.644809 | 0.651252 | 0.006443 |
+| 1 | 0.644012 | 0.652466 | 0.008454 |
+| 2 | 0.645481 | 0.653429 | 0.007948 |
+| 3 | 0.646213 | 0.653786 | 0.007573 |
+| 4 | 0.650878 | 0.657496 | 0.006617 |
+| 5 | 0.644949 | 0.652036 | 0.007088 |
+| 6 | 0.647095 | 0.654498 | 0.007403 |
+| 7 | 0.645388 | 0.65385 | 0.008463 |
+| 8 | 0.646559 | 0.653525 | 0.006965 |
+| 9 | 0.646876 | 0.65368 | 0.006804 |
+| 10 | 0.64495 | 0.652346 | 0.007396 |
+| 11 | 0.645422 | 0.652954 | 0.007531 |
+| 12 | 0.648042 | 0.655708 | 0.007666 |
+| 13 | 0.645437 | 0.653378 | 0.00794 |
+| 14 | 0.648827 | 0.655341 | 0.006514 |
+| 15 | 0.644695 | 0.651667 | 0.006971 |
+| 16 | 0.645627 | 0.653306 | 0.00768 |
+| 17 | 0.646104 | 0.653509 | 0.007405 |
+| 18 | 0.646628 | 0.654347 | 0.007719 |
+| 19 | 0.645194 | 0.652977 | 0.007783 |
+| 20 | 0.646241 | 0.652985 | 0.006744 |
+| 21 | 0.645732 | 0.653126 | 0.007394 |
+| 22 | 0.645653 | 0.653984 | 0.008332 |
+| 23 | 0.647946 | 0.653776 | 0.00583 |
+| 24 | 0.646908 | 0.653383 | 0.006475 |
+| 25 | 0.651622 | 0.659805 | 0.008182 |
+| 26 | 0.645027 | 0.652186 | 0.00716 |
+| 27 | 0.644367 | 0.653458 | 0.009091 |
+| 28 | 0.642367 | 0.650016 | 0.007648 |
+| 29 | 0.64611 | 0.653472 | 0.007362 |
+| 30 | 0.646614 | 0.655663 | 0.009048 |
+| 31 | 0.64267 | 0.650352 | 0.007682 |
+| 32 | 0.64392 | 0.651499 | 0.007579 |
+| 33 | 0.644454 | 0.65222 | 0.007767 |
+| 34 | 0.645964 | 0.653104 | 0.00714 |
+| 35 | 0.644899 | 0.652118 | 0.007219 |
+| 36 | 0.648634 | 0.654707 | 0.006073 |
+| 37 | 0.646634 | 0.653856 | 0.007223 |
+| 38 | 0.645489 | 0.653345 | 0.007857 |
+| 39 | 0.646193 | 0.652471 | 0.006278 |
+| 40 | 0.644129 | 0.651565 | 0.007435 |
+| 41 | 0.645436 | 0.653633 | 0.008196 |
+| 42 | 0.646866 | 0.655041 | 0.008175 |
+| 43 | 0.643091 | 0.651513 | 0.008422 |
+| 44 | 0.643894 | 0.651246 | 0.007353 |
+| 45 | 0.64298 | 0.652337 | 0.009358 |
+| 46 | 0.644495 | 0.652626 | 0.008131 |
+| 47 | 0.650646 | 0.657609 | 0.006963 |
+| 48 | 0.649006 | 0.655754 | 0.006748 |
+| 49 | 0.648882 | 0.654669 | 0.005787 |
+| 50 | 0.645164 | 0.65348 | 0.008316 |
+| 51 | 0.649652 | 0.657462 | 0.00781 |
+| 52 | 0.648392 | 0.655555 | 0.007163 |
+| 53 | 0.643782 | 0.651438 | 0.007656 |
+| 54 | 0.649187 | 0.656957 | 0.00777 |
+| 55 | 0.647253 | 0.655403 | 0.00815 |
+| 56 | 0.646212 | 0.653105 | 0.006893 |
+| 57 | 0.645729 | 0.65283 | 0.007101 |
+| 58 | 0.646458 | 0.653743 | 0.007285 |
+| 59 | 0.648526 | 0.656609 | 0.008083 |
+| 60 | 0.646811 | 0.65326 | 0.006449 |
+| 61 | 0.650943 | 0.657206 | 0.006263 |
+| 62 | 0.648047 | 0.655738 | 0.007691 |
+| 63 | 0.644186 | 0.65183 | 0.007644 |
+| 64 | 0.648691 | 0.655763 | 0.007072 |
+| 65 | 0.647903 | 0.65488 | 0.006977 |
+| 66 | 0.646243 | 0.655025 | 0.008782 |
+| 67 | 0.646389 | 0.654025 | 0.007636 |
+| 68 | 0.643997 | 0.651068 | 0.007071 |
+| 69 | 0.644091 | 0.652423 | 0.008332 |
+| 70 | 0.6447 | 0.652558 | 0.007858 |
+| 71 | 0.646641 | 0.652845 | 0.006204 |
+| 72 | 0.646004 | 0.652819 | 0.006815 |
+| 73 | 0.643758 | 0.652756 | 0.008997 |
+| 74 | 0.644341 | 0.653196 | 0.008856 |
+| 75 | 0.646097 | 0.654546 | 0.008449 |
+| 76 | 0.645367 | 0.653612 | 0.008245 |
+| 77 | 0.644167 | 0.651838 | 0.007671 |
+| 78 | 0.644926 | 0.652199 | 0.007273 |
+| 79 | 0.642288 | 0.651152 | 0.008864 |
+| 80 | 0.646395 | 0.654874 | 0.008478 |
+| 81 | 0.644385 | 0.652083 | 0.007698 |
+| 82 | 0.648418 | 0.655704 | 0.007286 |
+| 83 | 0.64747 | 0.655245 | 0.007774 |
+| 84 | 0.650036 | 0.657195 | 0.007159 |
+| 85 | 0.645298 | 0.651757 | 0.006458 |
+| 86 | 0.648077 | 0.656263 | 0.008186 |
+| 87 | 0.650037 | 0.65693 | 0.006893 |
+| 88 | 0.642876 | 0.650787 | 0.007911 |
+| 89 | 0.644164 | 0.652618 | 0.008455 |
+| 90 | 0.645554 | 0.653014 | 0.00746 |
+| 91 | 0.646692 | 0.653721 | 0.007029 |
+| 92 | 0.642354 | 0.649147 | 0.006794 |
+| 93 | 0.64524 | 0.652264 | 0.007024 |
+| 94 | 0.644038 | 0.651597 | 0.00756 |
+| 95 | 0.646736 | 0.65372 | 0.006984 |
+| 96 | 0.649075 | 0.656087 | 0.007011 |
+| 97 | 0.642933 | 0.651089 | 0.008156 |
+| 98 | 0.644894 | 0.652706 | 0.007812 |
+| 99 | 0.643463 | 0.650907 | 0.007444 |
+| 100 | 0.646199 | 0.653688 | 0.007489 |
+| 101 | 0.640184 | 0.64928 | 0.009096 |
+| 102 | 0.64898 | 0.657052 | 0.008073 |
+| 103 | 0.647078 | 0.653914 | 0.006836 |
+| 104 | 0.644914 | 0.654022 | 0.009109 |
+| 105 | 0.645091 | 0.653379 | 0.008288 |
+| 106 | 0.647378 | 0.65413 | 0.006752 |
+| 107 | 0.6488 | 0.655832 | 0.007032 |
+| 108 | 0.650362 | 0.657984 | 0.007622 |
+| 109 | 0.646886 | 0.654024 | 0.007138 |
+| 110 | 0.646509 | 0.65427 | 0.007761 |
+| 111 | 0.645873 | 0.653029 | 0.007156 |
+| 112 | 0.649781 | 0.657676 | 0.007895 |
+| 113 | 0.643169 | 0.649934 | 0.006765 |
+| 114 | 0.645865 | 0.652223 | 0.006358 |
+| 115 | 0.648007 | 0.655954 | 0.007947 |
+| 116 | 0.6451 | 0.652993 | 0.007892 |
+| 117 | 0.64898 | 0.656748 | 0.007768 |
+| 118 | 0.646353 | 0.653641 | 0.007289 |
+| 119 | 0.644955 | 0.653662 | 0.008707 |
+| 120 | 0.647922 | 0.655334 | 0.007412 |
+| 121 | 0.648946 | 0.657742 | 0.008796 |
+| 122 | 0.646997 | 0.654207 | 0.00721 |
+| 123 | 0.651539 | 0.658057 | 0.006518 |
+| 124 | 0.645041 | 0.652153 | 0.007113 |
+| 125 | 0.648292 | 0.655487 | 0.007196 |
+| 126 | 0.644366 | 0.651798 | 0.007432 |
+| 127 | 0.645291 | 0.653332 | 0.008042 |
+| 128 | 0.646997 | 0.656679 | 0.009683 |
+| 129 | 0.646021 | 0.652458 | 0.006437 |
+| 130 | 0.646115 | 0.653668 | 0.007553 |
+| 131 | 0.649573 | 0.657221 | 0.007649 |
+| 132 | 0.645369 | 0.652777 | 0.007408 |
+| 133 | 0.646664 | 0.654464 | 0.0078 |
+| 134 | 0.64811 | 0.656701 | 0.008591 |
+| 135 | 0.643869 | 0.650181 | 0.006312 |
+| 136 | 0.647583 | 0.656403 | 0.00882 |
+| 137 | 0.647574 | 0.655205 | 0.007632 |
+| 138 | 0.64533 | 0.652924 | 0.007594 |
+| 139 | 0.65035 | 0.657999 | 0.00765 |
+| 140 | 0.647728 | 0.654819 | 0.007091 |
+| 141 | 0.644737 | 0.651927 | 0.007189 |
+| 142 | 0.646931 | 0.65478 | 0.00785 |
+| 143 | 0.645134 | 0.652924 | 0.007789 |
+| 144 | 0.64438 | 0.65218 | 0.0078 |
+| 145 | 0.645253 | 0.653184 | 0.007931 |
+| 146 | 0.648726 | 0.655534 | 0.006808 |
+| 147 | 0.642403 | 0.65005 | 0.007647 |
+| 148 | 0.647555 | 0.653118 | 0.005563 |
+| 149 | 0.646942 | 0.654827 | 0.007885 |
+| 150 | 0.645507 | 0.651759 | 0.006252 |
+| 151 | 0.644579 | 0.65235 | 0.007771 |
+| 152 | 0.649783 | 0.657243 | 0.00746 |
+| 153 | 0.647545 | 0.655396 | 0.007851 |
+| 154 | 0.645345 | 0.651987 | 0.006642 |
+| 155 | 0.646057 | 0.654017 | 0.00796 |
+| 156 | 0.647362 | 0.654537 | 0.007176 |
+| 157 | 0.645626 | 0.653506 | 0.00788 |
+| 158 | 0.648981 | 0.657696 | 0.008715 |
+| 159 | 0.64832 | 0.654584 | 0.006264 |
+| 160 | 0.646085 | 0.654565 | 0.00848 |
+| 161 | 0.649042 | 0.655759 | 0.006717 |
+| 162 | 0.644187 | 0.651819 | 0.007632 |
+| 163 | 0.646792 | 0.654323 | 0.00753 |
+| 164 | 0.647414 | 0.654527 | 0.007113 |
+| 165 | 0.646959 | 0.652742 | 0.005782 |
+| 166 | 0.642693 | 0.651559 | 0.008866 |
+| 167 | 0.646282 | 0.653657 | 0.007376 |
+| 168 | 0.643844 | 0.651676 | 0.007833 |
+| 169 | 0.642656 | 0.650259 | 0.007603 |
+| 170 | 0.645274 | 0.653572 | 0.008298 |
+| 171 | 0.65015 | 0.657426 | 0.007276 |
+| 172 | 0.643738 | 0.651726 | 0.007987 |
+| 173 | 0.650349 | 0.657322 | 0.006974 |
+| 174 | 0.645415 | 0.652735 | 0.007319 |
+| 175 | 0.64527 | 0.65298 | 0.00771 |
+| 176 | 0.64596 | 0.653694 | 0.007734 |
+| 177 | 0.644274 | 0.652583 | 0.008309 |
+| 178 | 0.645511 | 0.653672 | 0.008162 |
+| 179 | 0.647789 | 0.655582 | 0.007793 |
+| 180 | 0.647096 | 0.655007 | 0.007911 |
+| 181 | 0.645979 | 0.651921 | 0.005941 |
+| 182 | 0.647143 | 0.65325 | 0.006107 |
+| 183 | 0.643242 | 0.652981 | 0.009739 |
+| 184 | 0.645766 | 0.652809 | 0.007043 |
+| 185 | 0.648414 | 0.654783 | 0.006369 |
+| 186 | 0.644628 | 0.65294 | 0.008312 |
+| 187 | 0.647673 | 0.656923 | 0.00925 |
+| 188 | 0.643816 | 0.650646 | 0.006831 |
+| 189 | 0.649563 | 0.656955 | 0.007392 |
+| 190 | 0.644919 | 0.651758 | 0.006839 |
+| 191 | 0.643661 | 0.651657 | 0.007997 |
+| 192 | 0.644928 | 0.653941 | 0.009013 |
+| 193 | 0.647441 | 0.653786 | 0.006345 |
+| 194 | 0.649685 | 0.657253 | 0.007568 |
+| 195 | 0.646561 | 0.652907 | 0.006346 |
+| 196 | 0.648518 | 0.657388 | 0.00887 |
+| 197 | 0.647403 | 0.655098 | 0.007694 |
+| 198 | 0.648669 | 0.65638 | 0.007711 |
+| 199 | 0.644526 | 0.652105 | 0.007579 |
+| 200 | 0.645035 | 0.653266 | 0.008231 |
+| 201 | 0.643793 | 0.651065 | 0.007272 |
+| 202 | 0.641601 | 0.648584 | 0.006983 |
+| 203 | 0.649322 | 0.656484 | 0.007162 |
+| 204 | 0.651579 | 0.658909 | 0.00733 |
+| 205 | 0.646747 | 0.654756 | 0.008009 |
+| 206 | 0.647848 | 0.65553 | 0.007682 |
+| 207 | 0.64284 | 0.650841 | 0.008001 |
+| 208 | 0.644433 | 0.65242 | 0.007987 |
+| 209 | 0.645647 | 0.652446 | 0.006799 |
+| 210 | 0.646642 | 0.653695 | 0.007053 |
+| 211 | 0.643748 | 0.651309 | 0.00756 |
+| 212 | 0.646022 | 0.652926 | 0.006904 |
+| 213 | 0.643775 | 0.651746 | 0.007971 |
+| 214 | 0.644372 | 0.650655 | 0.006283 |
+| 215 | 0.64423 | 0.652769 | 0.008539 |
+| 216 | 0.651236 | 0.659434 | 0.008198 |
+| 217 | 0.644251 | 0.651762 | 0.007511 |
+| 218 | 0.646363 | 0.654925 | 0.008562 |
+| 219 | 0.651104 | 0.658076 | 0.006972 |
+| 220 | 0.645077 | 0.652867 | 0.00779 |
+| 221 | 0.646188 | 0.653566 | 0.007378 |
+| 222 | 0.647178 | 0.656105 | 0.008927 |
+| 223 | 0.645967 | 0.65383 | 0.007863 |
+| 224 | 0.645679 | 0.65248 | 0.006801 |
+| 225 | 0.646328 | 0.6528 | 0.006471 |
+| 226 | 0.652384 | 0.658636 | 0.006252 |
+| 227 | 0.645723 | 0.654068 | 0.008345 |
+| 228 | 0.646433 | 0.654525 | 0.008092 |
+| 229 | 0.64728 | 0.654092 | 0.006812 |
+| 230 | 0.645273 | 0.653624 | 0.008351 |
+| 231 | 0.64603 | 0.653573 | 0.007543 |
+| 232 | 0.646698 | 0.653986 | 0.007288 |
+| 233 | 0.644809 | 0.651857 | 0.007048 |
+| 234 | 0.645736 | 0.652793 | 0.007056 |
+| 235 | 0.645127 | 0.652959 | 0.007832 |
+| 236 | 0.647238 | 0.656165 | 0.008928 |
+| 237 | 0.647655 | 0.654658 | 0.007003 |
+| 238 | 0.645409 | 0.653284 | 0.007875 |
+| 239 | 0.648016 | 0.654899 | 0.006883 |
+| 240 | 0.647169 | 0.653721 | 0.006552 |
+| 241 | 0.64539 | 0.652263 | 0.006872 |
+| 242 | 0.647537 | 0.6563 | 0.008763 |
+| 243 | 0.647078 | 0.65453 | 0.007451 |
+| 244 | 0.646878 | 0.653905 | 0.007027 |
+| 245 | 0.649872 | 0.655878 | 0.006005 |
+| 246 | 0.643147 | 0.650268 | 0.007121 |
+| 247 | 0.644416 | 0.652774 | 0.008358 |
+| 248 | 0.64896 | 0.65387 | 0.00491 |
+| 249 | 0.645279 | 0.6528 | 0.00752 |
+| 250 | 0.645941 | 0.653153 | 0.007213 |
+| 251 | 0.644795 | 0.653846 | 0.009051 |
+| 252 | 0.647549 | 0.656188 | 0.008639 |
+| 253 | 0.644808 | 0.651866 | 0.007058 |
+| 254 | 0.642568 | 0.650482 | 0.007914 |
+| 255 | 0.647528 | 0.655559 | 0.008031 |
+| 256 | 0.645965 | 0.654065 | 0.008099 |
+| 257 | 0.648543 | 0.656583 | 0.00804 |
+| 258 | 0.650056 | 0.657405 | 0.007349 |
+| 259 | 0.643575 | 0.649778 | 0.006203 |
+| 260 | 0.645078 | 0.65243 | 0.007352 |
+| 261 | 0.651527 | 0.658029 | 0.006502 |
+| 262 | 0.646448 | 0.653884 | 0.007435 |
+| 263 | 0.646035 | 0.654384 | 0.00835 |
+| 264 | 0.649906 | 0.656369 | 0.006462 |
+| 265 | 0.64876 | 0.655413 | 0.006653 |
+| 266 | 0.647753 | 0.656533 | 0.00878 |
+| 267 | 0.643278 | 0.651099 | 0.007821 |
+| 268 | 0.646546 | 0.654965 | 0.008419 |
+| 269 | 0.647876 | 0.654751 | 0.006875 |
+| 270 | 0.648078 | 0.653711 | 0.005634 |
+| 271 | 0.647946 | 0.655561 | 0.007615 |
+| 272 | 0.644224 | 0.651035 | 0.006811 |
+| 273 | 0.647239 | 0.655912 | 0.008673 |
+| 274 | 0.647038 | 0.655045 | 0.008006 |
+| 275 | 0.64536 | 0.653239 | 0.00788 |
+| 276 | 0.644834 | 0.651566 | 0.006732 |
+| 277 | 0.645357 | 0.652446 | 0.007089 |
+| 278 | 0.648482 | 0.655188 | 0.006706 |
+| 279 | 0.644241 | 0.651929 | 0.007688 |
+| 280 | 0.645571 | 0.652857 | 0.007286 |
+| 281 | 0.645879 | 0.654024 | 0.008146 |
+| 282 | 0.646224 | 0.653622 | 0.007398 |
+| 283 | 0.649055 | 0.655775 | 0.00672 |
+| 284 | 0.64651 | 0.653621 | 0.007111 |
+| 285 | 0.648592 | 0.656335 | 0.007743 |
+| 286 | 0.647366 | 0.654581 | 0.007215 |
+| 287 | 0.647527 | 0.652838 | 0.005311 |
+| 288 | 0.642901 | 0.650504 | 0.007603 |
+| 289 | 0.647563 | 0.655688 | 0.008125 |
+| 290 | 0.644858 | 0.65278 | 0.007922 |
+| 291 | 0.648326 | 0.656176 | 0.00785 |
+| 292 | 0.648352 | 0.655662 | 0.007309 |
+| 293 | 0.644495 | 0.653092 | 0.008597 |
+| 294 | 0.646723 | 0.65383 | 0.007107 |
+| 295 | 0.643725 | 0.652758 | 0.009033 |
+| 296 | 0.645917 | 0.653259 | 0.007342 |
+| 297 | 0.649481 | 0.657508 | 0.008028 |
+| 298 | 0.648149 | 0.654593 | 0.006443 |
+| 299 | 0.647958 | 0.656046 | 0.008088 |
+| 300 | 0.642717 | 0.650807 | 0.008089 |
+| 301 | 0.646062 | 0.653084 | 0.007022 |
+| 302 | 0.64762 | 0.653968 | 0.006348 |
+| 303 | 0.644218 | 0.65201 | 0.007791 |
+| 304 | 0.646018 | 0.655149 | 0.009131 |
+| 305 | 0.643695 | 0.649572 | 0.005877 |
+| 306 | 0.641182 | 0.649863 | 0.008681 |
+| 307 | 0.647324 | 0.654408 | 0.007084 |
+| 308 | 0.644525 | 0.651939 | 0.007414 |
+| 309 | 0.645653 | 0.652941 | 0.007288 |
+| 310 | 0.644613 | 0.652809 | 0.008196 |
+| 311 | 0.644408 | 0.653256 | 0.008848 |
+| 312 | 0.643738 | 0.652416 | 0.008678 |
+| 313 | 0.644836 | 0.653314 | 0.008478 |
+| 314 | 0.646595 | 0.653669 | 0.007073 |
+| 315 | 0.641456 | 0.648812 | 0.007355 |
+| 316 | 0.647969 | 0.657072 | 0.009102 |
+| 317 | 0.64725 | 0.65537 | 0.00812 |
+| 318 | 0.648724 | 0.656296 | 0.007572 |
+| 319 | 0.651166 | 0.657329 | 0.006163 |
+| 320 | 0.650876 | 0.656359 | 0.005483 |
+| 321 | 0.645731 | 0.652055 | 0.006324 |
+| 322 | 0.643222 | 0.651503 | 0.008281 |
+| 323 | 0.643958 | 0.650295 | 0.006337 |
+| 324 | 0.645114 | 0.651957 | 0.006843 |
+| 325 | 0.647724 | 0.655646 | 0.007922 |
+| 326 | 0.647138 | 0.654133 | 0.006995 |
+| 327 | 0.643641 | 0.652663 | 0.009022 |
+| 328 | 0.651156 | 0.658087 | 0.006931 |
+| 329 | 0.645773 | 0.654109 | 0.008336 |
+| 330 | 0.643828 | 0.651882 | 0.008054 |
+| 331 | 0.646497 | 0.653715 | 0.007218 |
+| 332 | 0.648307 | 0.655461 | 0.007153 |
+| 333 | 0.646598 | 0.653298 | 0.0067 |
+| 334 | 0.646848 | 0.653581 | 0.006733 |
+| 335 | 0.64688 | 0.655441 | 0.008561 |
+| 336 | 0.645631 | 0.654103 | 0.008472 |
+| 337 | 0.646384 | 0.65411 | 0.007727 |
+| 338 | 0.647851 | 0.656544 | 0.008693 |
+| 339 | 0.646813 | 0.654092 | 0.007279 |
+| 340 | 0.647663 | 0.65503 | 0.007367 |
+| 341 | 0.65089 | 0.65757 | 0.00668 |
+| 342 | 0.643973 | 0.651372 | 0.007399 |
+| 343 | 0.64712 | 0.655309 | 0.008189 |
+| 344 | 0.646753 | 0.654763 | 0.008009 |
+| 345 | 0.650105 | 0.656744 | 0.006639 |
+| 346 | 0.644139 | 0.652494 | 0.008355 |
+| 347 | 0.646761 | 0.654734 | 0.007973 |
+| 348 | 0.644054 | 0.652671 | 0.008617 |
+| 349 | 0.644895 | 0.652168 | 0.007273 |
+| 350 | 0.646923 | 0.654802 | 0.007879 |
+| 351 | 0.647321 | 0.655291 | 0.00797 |
+| 352 | 0.643919 | 0.651425 | 0.007505 |
+| 353 | 0.646155 | 0.654435 | 0.00828 |
+| 354 | 0.64983 | 0.65668 | 0.00685 |
+| 355 | 0.644217 | 0.649835 | 0.005618 |
+| 356 | 0.644112 | 0.651264 | 0.007152 |
+| 357 | 0.646894 | 0.654412 | 0.007518 |
+| 358 | 0.646299 | 0.654678 | 0.008379 |
+| 359 | 0.645369 | 0.653527 | 0.008158 |
+| 360 | 0.647047 | 0.65492 | 0.007873 |
+| 361 | 0.645164 | 0.651794 | 0.006631 |
+| 362 | 0.645722 | 0.65403 | 0.008308 |
+| 363 | 0.645165 | 0.652608 | 0.007443 |
+| 364 | 0.648241 | 0.656085 | 0.007845 |
+| 365 | 0.645796 | 0.653538 | 0.007742 |
+| 366 | 0.650337 | 0.657006 | 0.006669 |
+| 367 | 0.648586 | 0.656128 | 0.007541 |
+| 368 | 0.645322 | 0.653153 | 0.007831 |
+| 369 | 0.64628 | 0.652144 | 0.005864 |
+| 370 | 0.646464 | 0.65403 | 0.007566 |
+| 371 | 0.648288 | 0.656738 | 0.00845 |
+| 372 | 0.644422 | 0.652201 | 0.00778 |
+| 373 | 0.646859 | 0.653597 | 0.006738 |
+| 374 | 0.646204 | 0.653364 | 0.00716 |
+| 375 | 0.644813 | 0.65256 | 0.007747 |
+| 376 | 0.645671 | 0.653606 | 0.007935 |
+| 377 | 0.641426 | 0.649643 | 0.008217 |
+| 378 | 0.646522 | 0.654754 | 0.008232 |
+| 379 | 0.64686 | 0.654881 | 0.008022 |
+| 380 | 0.644497 | 0.653506 | 0.009009 |
+| 381 | 0.642743 | 0.64935 | 0.006608 |
+| 382 | 0.646269 | 0.654594 | 0.008325 |
+| 383 | 0.647846 | 0.655695 | 0.007849 |
+| 384 | 0.647102 | 0.653791 | 0.006689 |
+| 385 | 0.64421 | 0.651947 | 0.007737 |
+| 386 | 0.644817 | 0.652495 | 0.007678 |
+| 387 | 0.647564 | 0.655526 | 0.007962 |
+| 388 | 0.646983 | 0.654991 | 0.008008 |
+| 389 | 0.647038 | 0.654104 | 0.007065 |
+| 390 | 0.647748 | 0.655722 | 0.007974 |
+| 391 | 0.646475 | 0.652575 | 0.006099 |
+| 392 | 0.647862 | 0.65545 | 0.007588 |
+| 393 | 0.647335 | 0.655148 | 0.007812 |
+| 394 | 0.646538 | 0.653584 | 0.007047 |
+| 395 | 0.644725 | 0.652635 | 0.00791 |
+| 396 | 0.64536 | 0.65349 | 0.008129 |
+| 397 | 0.646359 | 0.653354 | 0.006995 |
+| 398 | 0.649372 | 0.65581 | 0.006438 |
+| 399 | 0.646151 | 0.654032 | 0.007882 |
+| 400 | 0.643578 | 0.651726 | 0.008148 |
+| 401 | 0.644843 | 0.652829 | 0.007986 |
+| 402 | 0.646362 | 0.653563 | 0.007201 |
+| 403 | 0.647401 | 0.654395 | 0.006994 |
+| 404 | 0.646251 | 0.65457 | 0.00832 |
+| 405 | 0.647453 | 0.654902 | 0.007449 |
+| 406 | 0.64911 | 0.655409 | 0.006299 |
+| 407 | 0.647954 | 0.655786 | 0.007831 |
+| 408 | 0.648133 | 0.654219 | 0.006086 |
+| 409 | 0.648308 | 0.654393 | 0.006086 |
+| 410 | 0.6464 | 0.656148 | 0.009747 |
+| 411 | 0.646475 | 0.653296 | 0.006821 |
+| 412 | 0.645496 | 0.652097 | 0.0066 |
+| 413 | 0.648166 | 0.655428 | 0.007261 |
+| 414 | 0.645401 | 0.65298 | 0.007579 |
+| 415 | 0.645243 | 0.653065 | 0.007823 |
+| 416 | 0.645769 | 0.652836 | 0.007066 |
+| 417 | 0.645989 | 0.653017 | 0.007027 |
+| 418 | 0.646027 | 0.654935 | 0.008907 |
+| 419 | 0.646945 | 0.655027 | 0.008082 |
+| 420 | 0.645728 | 0.654265 | 0.008537 |
+| 421 | 0.647819 | 0.655687 | 0.007868 |
+| 422 | 0.644924 | 0.653957 | 0.009033 |
+| 423 | 0.6475 | 0.654782 | 0.007282 |
+| 424 | 0.644253 | 0.652252 | 0.007999 |
+| 425 | 0.645586 | 0.653702 | 0.008116 |
+| 426 | 0.644963 | 0.653409 | 0.008447 |
+| 427 | 0.645624 | 0.652155 | 0.006531 |
+| 428 | 0.645682 | 0.654246 | 0.008564 |
+| 429 | 0.652245 | 0.659457 | 0.007213 |
+| 430 | 0.645304 | 0.653342 | 0.008038 |
+| 431 | 0.646324 | 0.654769 | 0.008445 |
+| 432 | 0.647405 | 0.656036 | 0.008631 |
+| 433 | 0.646394 | 0.654686 | 0.008292 |
+| 434 | 0.645734 | 0.654069 | 0.008335 |
+| 435 | 0.648334 | 0.656952 | 0.008618 |
+| 436 | 0.647268 | 0.65373 | 0.006463 |
+| 437 | 0.642537 | 0.650099 | 0.007561 |
+| 438 | 0.646913 | 0.655068 | 0.008156 |
+| 439 | 0.647724 | 0.655623 | 0.007899 |
+| 440 | 0.649353 | 0.656792 | 0.007439 |
+| 441 | 0.645679 | 0.653691 | 0.008012 |
+| 442 | 0.644785 | 0.652252 | 0.007467 |
+| 443 | 0.641412 | 0.65066 | 0.009249 |
+| 444 | 0.645666 | 0.653389 | 0.007723 |
+| 445 | 0.647925 | 0.654271 | 0.006346 |
+| 446 | 0.644351 | 0.652543 | 0.008192 |
+| 447 | 0.647424 | 0.655172 | 0.007748 |
+| 448 | 0.648489 | 0.654396 | 0.005907 |
+| 449 | 0.640604 | 0.649092 | 0.008488 |
+| 450 | 0.647241 | 0.654543 | 0.007302 |
+| 451 | 0.64341 | 0.651535 | 0.008125 |
+| 452 | 0.645675 | 0.653487 | 0.007812 |
+| 453 | 0.64769 | 0.654706 | 0.007017 |
+| 454 | 0.644116 | 0.652083 | 0.007966 |
+| 455 | 0.647231 | 0.653571 | 0.006339 |
+| 456 | 0.64589 | 0.653412 | 0.007522 |
+| 457 | 0.64572 | 0.65383 | 0.00811 |
+| 458 | 0.644739 | 0.653217 | 0.008478 |
+| 459 | 0.642322 | 0.651079 | 0.008756 |
+| 460 | 0.645025 | 0.651568 | 0.006543 |
+| 461 | 0.647764 | 0.655329 | 0.007564 |
+| 462 | 0.644624 | 0.651333 | 0.006709 |
+| 463 | 0.645276 | 0.653128 | 0.007851 |
+| 464 | 0.648371 | 0.655506 | 0.007135 |
+| 465 | 0.64957 | 0.657396 | 0.007825 |
+| 466 | 0.643292 | 0.650395 | 0.007103 |
+| 467 | 0.6463 | 0.655114 | 0.008814 |
+| 468 | 0.64462 | 0.650812 | 0.006192 |
+| 469 | 0.647796 | 0.655683 | 0.007886 |
+| 470 | 0.6441 | 0.651905 | 0.007805 |
+| 471 | 0.650878 | 0.65819 | 0.007312 |
+| 472 | 0.645669 | 0.651647 | 0.005978 |
+| 473 | 0.650195 | 0.655988 | 0.005793 |
+| 474 | 0.648093 | 0.654705 | 0.006612 |
+| 475 | 0.651371 | 0.658745 | 0.007374 |
+| 476 | 0.645411 | 0.652214 | 0.006804 |
+| 477 | 0.648865 | 0.657001 | 0.008136 |
+| 478 | 0.646429 | 0.65298 | 0.006551 |
+| 479 | 0.647529 | 0.654689 | 0.00716 |
+| 480 | 0.647571 | 0.655144 | 0.007573 |
+| 481 | 0.649623 | 0.65589 | 0.006267 |
+| 482 | 0.644118 | 0.652027 | 0.007909 |
+| 483 | 0.647524 | 0.654648 | 0.007124 |
+| 484 | 0.648097 | 0.654914 | 0.006817 |
+| 485 | 0.64561 | 0.655023 | 0.009413 |
+| 486 | 0.64411 | 0.653815 | 0.009704 |
+| 487 | 0.64148 | 0.650044 | 0.008564 |
+| 488 | 0.652017 | 0.658198 | 0.006181 |
+| 489 | 0.648392 | 0.65571 | 0.007318 |
+| 490 | 0.643541 | 0.649874 | 0.006333 |
+| 491 | 0.646235 | 0.653598 | 0.007363 |
+| 492 | 0.64611 | 0.655362 | 0.009252 |
+| 493 | 0.643994 | 0.652418 | 0.008424 |
+| 494 | 0.647523 | 0.654361 | 0.006838 |
+| 495 | 0.646248 | 0.654073 | 0.007826 |
+| 496 | 0.648527 | 0.655613 | 0.007086 |
+| 497 | 0.646309 | 0.652228 | 0.005919 |
+| 498 | 0.64448 | 0.651194 | 0.006714 |
+| 499 | 0.647905 | 0.656284 | 0.00838 |
+
+### mlflow_native_evaluations
+
+| model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| logistic_regression_raw | validation | 431d0eabd7fb4924ba3b56dff4696851 | 2817d66b73c84a6982437b7f027a6b86 | m-2fe7b57dbc7348afb27249c138d77c3d | evaluation_loans | 722bf1f9 | 0.5 | 0.862687 | 140235 | 20 | 22303 | 12 | 162570 | 0.862687 | 0.000538 | 0.375 | 0.001074 | 0.385851 | 0.639135 | 0.204675 |
+| logistic_regression_sigmoid | validation | 86bcdaf2e7f0483191495aef81ac7ba9 | 49b38470d8b24b3fb72e7a966b22b6e3 | m-9b2d8c8d14ed42d79400cf05b8a4a01c | evaluation_loans | 722bf1f9 | 0.5 | 0.862711 | 140248 | 7 | 22312 | 3 | 162570 | 0.862711 | 0.000134 | 0.3 | 0.000269 | 0.385862 | 0.639135 | 0.204675 |
+| hist_gradient_boosting_raw | validation | bd3f96cf152b4076806626c7892ae059 | de8537f5330e47e08f428ba44a840258 | m-370a896af37b46b79df3d4d2eb830ce1 | evaluation_loans | 722bf1f9 | 0.5 | 0.862693 | 140243 | 12 | 22310 | 5 | 162570 | 0.862693 | 0.000224 | 0.294118 | 0.000448 | 0.385312 | 0.64165 | 0.20503 |
+| hist_gradient_boosting_sigmoid | validation | bd445558d1eb45cb8790d85d4e13728c | a21388aa503b4f48b1c63c17f679663d | m-4002b8bc39084d96ace7de8c5e4b5493 | evaluation_loans | 722bf1f9 | 0.5 | 0.862742 | 140254 | 1 | 22313 | 2 | 162570 | 0.862742 | 0.00009 | 0.666667 | 0.000179 | 0.38525 | 0.64165 | 0.20503 |
+
+### logistic_coefficients
+
+| transformed_feature | coefficient |
+| --- | --- |
+| numeric__loan_amnt | 0.17579 |
+| numeric__dti | 0.10686 |
+| numeric__revol_util | 0.082465 |
+| numeric__open_acc | 0.085205 |
+| numeric__delinq_2yrs | -0.018985 |
+| numeric__pub_rec_bankruptcies | -0.043006 |
+| numeric__emp_length_years | 0.02401 |
+| numeric__fico_mid | -0.383836 |
+| numeric__credit_history_years | -0.023221 |
+| log_numeric__annual_inc | -0.294973 |
+| log_numeric__revol_bal | -0.123783 |
+| missing_flags__missingindicator_loan_amnt | 0 |
+| missing_flags__missingindicator_annual_inc | 0 |
+| missing_flags__missingindicator_dti | 0 |
+| missing_flags__missingindicator_revol_util | -0.035718 |
+| missing_flags__missingindicator_revol_bal | 0 |
+| missing_flags__missingindicator_open_acc | 0 |
+| missing_flags__missingindicator_delinq_2yrs | 0 |
+| missing_flags__missingindicator_pub_rec_bankruptcies | 0 |
+| missing_flags__missingindicator_emp_length_years | 0.308442 |
+| missing_flags__missingindicator_fico_mid | 0 |
+| missing_flags__missingindicator_credit_history_years | 0 |
+| categories__home_ownership_MORTGAGE | -0.512519 |
+| categories__home_ownership_NONE | -0.003868 |
+| categories__home_ownership_OTHER | -0.007369 |
+| categories__home_ownership_OWN | -0.455311 |
+| categories__home_ownership_RENT | -0.34078 |
+| categories__purpose_car | -0.302869 |
+| categories__purpose_credit_card | -0.53244 |
+| categories__purpose_debt_consolidation | -0.321476 |
+| categories__purpose_home_improvement | -0.167456 |
+| categories__purpose_house | -0.063623 |
+| categories__purpose_major_purchase | -0.371686 |
+| categories__purpose_medical | 0.062173 |
+| categories__purpose_moving | -0.023051 |
+| categories__purpose_other | 0.037381 |
+| categories__purpose_renewable_energy | 0.015272 |
+| categories__purpose_small_business | 0.606318 |
+| categories__purpose_vacation | -0.048306 |
+| categories__purpose_wedding | -0.210084 |
+| intercept | -1.327954 |
+
+### historical_exact_metrics
+
+| model | split | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dummy_prior | train | 157993 | 0.125195 | 0.125195 | 0.5 | 0.5 | 0 | 0 | 0.125195 | 0.109522 | 0.37715 | 0 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138213 | 0 | 19780 | 0 |
+| dummy_prior | validation | 162570 | 0.137264 | 0.125195 | 0.5 | 0.5 | 0 | 0 | 0.137264 | 0.118568 | 0.400613 | 0.012069 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+| logistic_regression | train | 157993 | 0.125195 | 0.125206 | 0.5 | 0.650936 | 0.301871 | 0.218646 | 0.199628 | 0.106127 | 0.36132 | 0.002319 | 0.874792 | 0.500101 | 0.416667 | 0.000253 | 0.999949 | 0.000505 | 0.000076 | 138206 | 7 | 19775 | 5 |
+| logistic_regression | validation | 162570 | 0.137264 | 0.132214 | 0.5 | 0.646231 | 0.292462 | 0.213711 | 0.21028 | 0.114869 | 0.384341 | 0.006675 | 0.862705 | 0.500152 | 0.391304 | 0.000403 | 0.9999 | 0.000806 | 0.000141 | 140241 | 14 | 22306 | 9 |
+| random_forest | train | 157993 | 0.125195 | 0.125167 | 0.5 | 0.711889 | 0.423779 | 0.307458 | 0.266368 | 0.103944 | 0.352131 | 0.019663 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138213 | 0 | 19780 | 0 |
+| random_forest | validation | 162570 | 0.137264 | 0.129408 | 0.5 | 0.649133 | 0.298265 | 0.216818 | 0.213944 | 0.114923 | 0.384513 | 0.013567 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+| hist_gradient_boosting | train | 157993 | 0.125195 | 0.125187 | 0.5 | 0.684525 | 0.369051 | 0.265112 | 0.239525 | 0.104177 | 0.353495 | 0.008189 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138213 | 0 | 19780 | 0 |
+| hist_gradient_boosting | validation | 162570 | 0.137264 | 0.131767 | 0.5 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+
+### auc_confidence_intervals
+
+| comparison | metric | estimate | lower_95 | upper_95 |
+| --- | --- | --- | --- | --- |
+| logistic_regression | roc_auc | 0.646231 | 0.642467 | 0.650918 |
+| logistic_regression | gini | 0.292462 | 0.284933 | 0.301835 |
+| hist_gradient_boosting | roc_auc | 0.653889 | 0.649973 | 0.657992 |
+| hist_gradient_boosting | gini | 0.307779 | 0.299945 | 0.315983 |
+| boosting_minus_logistic | auc_difference | 0.007659 | 0.005913 | 0.009094 |
+
+### calibration_metrics
+
+| model | version | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| logistic_regression | raw | 162570 | 0.137264 | 0.144645 | 0.5 | 0.639135 | 0.278269 | 0.203654 | 0.204675 | 0.115308 | 0.385851 | 0.007381 | 0.862687 | 0.500198 | 0.375 | 0.000538 | 0.999857 | 0.001074 | 0.000197 | 140235 | 20 | 22303 | 12 |
+| logistic_regression | sigmoid | 162570 | 0.137264 | 0.128976 | 0.5 | 0.639135 | 0.278269 | 0.203654 | 0.204675 | 0.115251 | 0.385862 | 0.009377 | 0.862711 | 0.500042 | 0.3 | 0.000134 | 0.99995 | 0.000269 | 0.000062 | 140248 | 7 | 22312 | 3 |
+| hist_gradient_boosting | raw | 162570 | 0.137264 | 0.143733 | 0.5 | 0.64165 | 0.283299 | 0.20478 | 0.20503 | 0.115216 | 0.385312 | 0.006469 | 0.862693 | 0.500069 | 0.294118 | 0.000224 | 0.999914 | 0.000448 | 0.000105 | 140243 | 12 | 22310 | 5 |
+| hist_gradient_boosting | sigmoid | 162570 | 0.137264 | 0.129437 | 0.5 | 0.64165 | 0.283299 | 0.20478 | 0.20503 | 0.115126 | 0.38525 | 0.008678 | 0.862742 | 0.500041 | 0.666667 | 0.00009 | 0.999993 | 0.000179 | 0.000018 | 140254 | 1 | 22313 | 2 |
+
+### calibration_bins
+
+| bin | rows | mean_probability | observed_positive_rate | bin_lower | bin_upper | model | version |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 43662 | 0.069693 | 0.067335 | 0 | 0.1 | logistic_regression | raw |
+| 1 | 88249 | 0.146547 | 0.142551 | 0.1 | 0.2 | logistic_regression | raw |
+| 2 | 27392 | 0.234218 | 0.216815 | 0.2 | 0.3 | logistic_regression | raw |
+| 3 | 2939 | 0.333072 | 0.261313 | 0.3 | 0.4 | logistic_regression | raw |
+| 4 | 296 | 0.429816 | 0.256757 | 0.4 | 0.5 | logistic_regression | raw |
+| 5 | 29 | 0.529896 | 0.37931 | 0.5 | 0.6 | logistic_regression | raw |
+| 6 | 2 | 0.625567 | 0.5 | 0.6 | 0.7 | logistic_regression | raw |
+| 8 | 1 | 0.874572 | 0 | 0.8 | 0.9 | logistic_regression | raw |
+| 0 | 54879 | 0.069499 | 0.074965 | 0 | 0.1 | logistic_regression | sigmoid |
+| 1 | 89336 | 0.142921 | 0.154417 | 0.1 | 0.2 | logistic_regression | sigmoid |
+| 2 | 16927 | 0.230403 | 0.236841 | 0.2 | 0.3 | logistic_regression | sigmoid |
+| 3 | 1320 | 0.331674 | 0.276515 | 0.3 | 0.4 | logistic_regression | sigmoid |
+| 4 | 98 | 0.430033 | 0.295918 | 0.4 | 0.5 | logistic_regression | sigmoid |
+| 5 | 9 | 0.533645 | 0.333333 | 0.5 | 0.6 | logistic_regression | sigmoid |
+| 8 | 1 | 0.843962 | 0 | 0.8 | 0.9 | logistic_regression | sigmoid |
+| 0 | 48822 | 0.069532 | 0.069108 | 0 | 0.1 | hist_gradient_boosting | raw |
+| 1 | 80687 | 0.146662 | 0.144001 | 0.1 | 0.2 | hist_gradient_boosting | raw |
+| 2 | 29579 | 0.235434 | 0.216302 | 0.2 | 0.3 | hist_gradient_boosting | raw |
+| 3 | 3250 | 0.330094 | 0.267077 | 0.3 | 0.4 | hist_gradient_boosting | raw |
+| 4 | 215 | 0.430686 | 0.237209 | 0.4 | 0.5 | hist_gradient_boosting | raw |
+| 5 | 17 | 0.528324 | 0.294118 | 0.5 | 0.6 | hist_gradient_boosting | raw |
+| 0 | 57013 | 0.069722 | 0.074597 | 0 | 0.1 | hist_gradient_boosting | sigmoid |
+| 1 | 85642 | 0.144295 | 0.156162 | 0.1 | 0.2 | hist_gradient_boosting | sigmoid |
+| 2 | 18790 | 0.230766 | 0.233262 | 0.2 | 0.3 | hist_gradient_boosting | sigmoid |
+| 3 | 1069 | 0.326877 | 0.272217 | 0.3 | 0.4 | hist_gradient_boosting | sigmoid |
+| 4 | 53 | 0.428592 | 0.226415 | 0.4 | 0.5 | hist_gradient_boosting | sigmoid |
+| 5 | 3 | 0.507373 | 0.666667 | 0.5 | 0.6 | hist_gradient_boosting | sigmoid |
+
+### cohort_roles
+
+| role | rows | positives | positive_rate | first_issue_date | last_issue_date | dataset_digest |
+| --- | --- | --- | --- | --- | --- | --- |
+| model_fit | 57571 | 7402 | 0.128572 | 2011-01-01 | 2012-12-01 | f2d0b047 |
+| calibration | 100422 | 12378 | 0.12326 | 2013-01-01 | 2013-12-01 | 342aece7 |
+| evaluation | 162570 | 22315 | 0.137264 | 2014-01-01 | 2014-12-01 | 722bf1f9 |
+
+### Full validation manifest
+
+```json
+{
+  "status": "complete",
+  "batch_run_id": "b55ad4d088e54ccb98600fb06dbb40b1",
+  "experiment_id": "3",
+  "experiment_name": "lendingclub_validation_hardening",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "selected_model": "",
+  "model_uris": {
+    "logistic_regression_raw": "models:/m-2fe7b57dbc7348afb27249c138d77c3d",
+    "logistic_regression_sigmoid": "models:/m-9b2d8c8d14ed42d79400cf05b8a4a01c",
+    "hist_gradient_boosting_raw": "models:/m-370a896af37b46b79df3d4d2eb830ce1",
+    "hist_gradient_boosting_sigmoid": "models:/m-4002b8bc39084d96ace7de8c5e4b5493"
+  },
+  "run_ids": {
+    "logistic_regression_raw": "2817d66b73c84a6982437b7f027a6b86",
+    "logistic_regression_sigmoid": "49b38470d8b24b3fb72e7a966b22b6e3",
+    "hist_gradient_boosting_raw": "de8537f5330e47e08f428ba44a840258",
+    "hist_gradient_boosting_sigmoid": "a21388aa503b4f48b1c63c17f679663d"
+  },
+  "seed": 42,
+  "bootstrap_resamples": 500,
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
+  },
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "mlflow": "3.18.0",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "cloudpickle": "3.1.2",
+    "threadpoolctl": "3.8.0"
+  },
+  "historical_batch_id": "72061e0a7a1e4d68addcc79a2aae631d",
+  "exploratory_2015_read": false,
+  "deployment_backtest": false,
+  "data_previously_explored": true,
+  "result_directory": "assets/results/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1",
+  "figure_directory": "assets/figures/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1",
+  "model_directory": "models/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1",
+  "completed_at_utc": "2026-11-08T23:15:46.264916+00:00",
+  "incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "incumbent_unchanged": true,
+  "historical_model_sha256": {
+    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/dummy_prior.joblib": "8c6938429a36c91a8d7a048fd65b19a9da2593b96f41502d70f1eea1a5b131f7",
+    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/logistic_regression.joblib": "c53ff5f083379466a9540692611fedb67c83e1a8b1b9dd81a604f8361b74872d",
+    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/random_forest.joblib": "975ef4500cfd0ef1df8e5ed943294334d22d29ac24e64cb5da20ece6be2c4082",
+    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/hist_gradient_boosting.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078"
+  },
+  "source_sha256": {
+    "scripts/08_validate_models.py": "7d01ee34a5b23fdefd08d3b10ac7226b68477f8d27201cc746a6cfede5461cfa",
+    "requirements.txt": "8809ba57e29aedae23094e6760d4299feb97e26dcdd13aa792c2aa007664ef7a",
+    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825",
+    "util/calibration.py": "3747c86cebea481223ee6207d81305a5898fb5f65a42db6e0896334bb63abf5c",
+    "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/mlflow_evaluation.py": "45225a16ba776a20f68452eefa6ff0c0aa59f855f393eb2222daf3a99ec1d11b",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/validation.py": "dfad932f43a678b2eff1bf2a68bb90f86635d662b59505db6875adfb910dd036"
+  },
+  "results_sha256": {
+    "paired_auc_bootstrap.csv": "db4847c126322cb03bd9469e44be67724ee0719c5b62219d270579c8fb90809f",
+    "mlflow_native_evaluations.csv": "e4a064f352221c4290418cb1933a3c790ba8fd5b0985a60f025d5db505ae6bc0",
+    "logistic_coefficients.csv": "e9cb8907cc9cc927441c27ba49240a58c8892df73ae50e155c427cbdbf5498c6",
+    "historical_exact_metrics.csv": "8ec1fa554f5bd13ea99b0678f87adceaf17e721387bb6a29cdd6f8ccc2a168f1",
+    "auc_confidence_intervals.csv": "a973717e07e7ee2fd3a0111b05b7a0a388c66f2e3cee0ef209ecde5e0a9be45f",
+    "calibration_metrics.csv": "f72959c7b5e762b7d2e70b7cab30a8d93100c9fb6af5bf4d9257a49d76250cc3",
+    "calibration_bins.csv": "f225e2dc51867a885ad919f0ad65e1044862a29be54b12018186f66cb1185745",
+    "cohort_roles.csv": "3fc62d792ca04cb7935f279c382718aabbfe3a8e020cf1c6a5587b556556fb57"
+  },
+  "model_sha256": {
+    "logistic_regression_raw.joblib": "e0496e5513a2d68a46b87ace5d9b1f079b34831bb8832b5328f934c01072426d",
+    "hist_gradient_boosting_sigmoid.joblib": "730fb66c5b9cd35fe141a0bc5429e839059afaeb89eab8665885451649ced8d9",
+    "logistic_regression_sigmoid.joblib": "e2a684b3d5fc37f3db71045469dfac121cda1dfdd355b3f055cd3dc022a0048a",
+    "hist_gradient_boosting_raw.joblib": "a2145001594bcc79fde974bb6caf4add8bd2d32694461204ab5a7e8b5fc74127"
+  },
+  "execution_script_sha256": "7d01ee34a5b23fdefd08d3b10ac7226b68477f8d27201cc746a6cfede5461cfa",
+  "reporting_script_sha256": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25",
+  "reporting_revision_note": "Report formatting and reference updates only; no model retraining, metric changes, or dataset changes."
+}
+```
+
+
+<!-- validation-hardening-verification -->
+
+### Reproducibility verification
+
+72 tests passed in the isolated Python 3.14.9 environment; zero failures and zero dependency conflicts. The full headless core workflow completed on the real CSV in a separate checkout. It began with 70 tests; the two added preparation-export tests subsequently passed with the final suite. All six prepared artifact hashes matched exactly. Historical metrics (8 rows), bootstrap samples (500 rows), intervals (5 rows), and calibration metrics (4 rows) reproduced at relative tolerance 1e-9 and absolute tolerance 1e-12. All three HTML exports, four logged models, and four native evaluation runs were verified. Each native evaluation used 162,570 rows. The incumbent hash was unchanged. The optional seven-trial AUC search was not rerun.
+
+The initial hardening logging attempt failed under the default serializer; its failed run is retained. The successful rerun uses explicit cloudpickle. Execution and later report-only source hashes are distinguished in the manifest.
+
+[Verification details](../docs/reproducibility.md); [machine-readable evidence](results/validation_hardening_verification.json).
+
+```json
+{
+  "completed_at_utc": "2026-11-08T23:18:11.119016+00:00",
+  "status": "passed",
+  "python": "3.14.9",
+  "platform": "Linux x86_64",
+  "isolated_environment": true,
+  "dependency_conflicts": 0,
+  "lock_sha256": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825",
+  "pytest_tests_passed": 72,
+  "pytest_failures": 0,
+  "end_to_end_command": "make all ENV_DIR=<verified isolated environment> BOOTSTRAP_PYTHON=<Python 3.14>",
+  "end_to_end_exit_code": 0,
+  "end_to_end_initial_tests_passed": 70,
+  "end_to_end_note": "The two additional prepared-data export tests were run separately after the workflow began; the final complete test suite has 72 passing tests.",
+  "download_mode": "existing local accepted-loans CSV; no Kaggle network request",
+  "marimo_headless_exports_passed": 3,
+  "prepared_artifact_hashes_identical": true,
+  "reproduced_tables": [
+    "historical_exact_metrics",
+    "auc_confidence_intervals",
+    "calibration_metrics",
+    "paired_auc_bootstrap"
+  ],
+  "comparison_relative_tolerance": 1e-09,
+  "comparison_absolute_tolerance": 1e-12,
+  "reference_validation_batch_id": "b55ad4d088e54ccb98600fb06dbb40b1",
+  "verification_validation_batch_id": "886ff59147994320b18ffc434938766f",
+  "native_evaluations_verified": 4,
+  "logged_models_verified": 4,
+  "incumbent_unchanged": true,
+  "optional_seven_trial_auc_search_rerun": false,
+  "workflow_execution_source_sha256": {
+    "scripts/01_data_analysis.py": "e74e91216f4524497cb7ed10e94f522db4b1b887e6dae4bc8acad56347e2f2f5",
+    "scripts/02_deeper_eda.py": "e12691c61ec6391e552d77a32ea99dbaa2d524f45f61aab782f8cb50c07e8c38",
+    "scripts/03_complete_eda.py": "8b8d7270b71850e10d212c2115483f2cececc63c5ab4de84c28a1350dcbd7262",
+    "scripts/04_prepare_model_data.py": "6b771a6a6e63ddb33832e4dab7a170cf1435bdc39cfdb31884aea979bcdc6d21",
+    "scripts/05_train_models.py": "9eb6221904ff17128058a75f31d94be67b3506d443a6817e8345b63b104a723e",
+    "scripts/06_log_mlflow_evaluations.py": "b5fce1c04ad3b97465d2baedfe541e358e4c8c3951cb1ef8947781cbfaaea8ac",
+    "scripts/07_improve_auc.py": "9110b478b42eaa47a3ff936c21ed5e7ee576308bd4585b29d91d55fc90e79824",
+    "scripts/08_validate_models.py": "7d01ee34a5b23fdefd08d3b10ac7226b68477f8d27201cc746a6cfede5461cfa",
+    "scripts/download_data.py": "d2abcffa1b3e8b66c40d6f13725ef1abc60af9beae32e0d3763849f87472616e",
+    "scripts/run_project.py": "baa71d968d528bc049f03ba7399ed304cbd50dded532b805cdbf4389880af090",
+    "scripts/setup_environment.py": "20ef15b3cbe837c29f4acb222dd06d0ab4dd3c1934b1ac76895ba25fa6537316"
+  },
+  "final_source_sha256": {
+    "scripts/01_data_analysis.py": "e74e91216f4524497cb7ed10e94f522db4b1b887e6dae4bc8acad56347e2f2f5",
+    "scripts/02_deeper_eda.py": "e12691c61ec6391e552d77a32ea99dbaa2d524f45f61aab782f8cb50c07e8c38",
+    "scripts/03_complete_eda.py": "8b8d7270b71850e10d212c2115483f2cececc63c5ab4de84c28a1350dcbd7262",
+    "scripts/04_prepare_model_data.py": "6b771a6a6e63ddb33832e4dab7a170cf1435bdc39cfdb31884aea979bcdc6d21",
+    "scripts/05_train_models.py": "9eb6221904ff17128058a75f31d94be67b3506d443a6817e8345b63b104a723e",
+    "scripts/06_log_mlflow_evaluations.py": "b5fce1c04ad3b97465d2baedfe541e358e4c8c3951cb1ef8947781cbfaaea8ac",
+    "scripts/07_improve_auc.py": "9110b478b42eaa47a3ff936c21ed5e7ee576308bd4585b29d91d55fc90e79824",
+    "scripts/08_validate_models.py": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25",
+    "scripts/download_data.py": "d2abcffa1b3e8b66c40d6f13725ef1abc60af9beae32e0d3763849f87472616e",
+    "scripts/run_project.py": "baa71d968d528bc049f03ba7399ed304cbd50dded532b805cdbf4389880af090",
+    "scripts/setup_environment.py": "20ef15b3cbe837c29f4acb222dd06d0ab4dd3c1934b1ac76895ba25fa6537316",
+    "util/calibration.py": "3747c86cebea481223ee6207d81305a5898fb5f65a42db6e0896334bb63abf5c",
+    "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/mlflow_evaluation.py": "45225a16ba776a20f68452eefa6ff0c0aa59f855f393eb2222daf3a99ec1d11b",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/validation.py": "dfad932f43a678b2eff1bf2a68bb90f86635d662b59505db6875adfb910dd036",
+    "tests/conftest.py": "e48c9961bacb37d532f9dd3141e18c9c2c6b556156616aa4253c8e1d65193ff9",
+    "tests/test_calibration.py": "98a5a04b27cd6a2640970ca5892fdb7cf5e74ea0d3ca444665bd3d25767e4346",
+    "tests/test_feature_policy.py": "ab8abc37d0c854113ea554d25fb434db72afa3d476c70c5b7e6e4b51a970f644",
+    "tests/test_metrics.py": "f0cb48a48ca21ac6aa4af4b571e85cc7ec40891b9b62d935ab5754075f1d6825",
+    "tests/test_modeling.py": "f22e4b80b520e2464e148750b1aa2c006e28a21414f4221d3cbbbeca7b95e5c7",
+    "tests/test_prepared_data.py": "a0190a2a32267c72c2cfa2f4b36dc0a6646e95c73f8eaf08d3e835579dd03123",
+    "tests/test_sql_pipeline.py": "2969fbc5baa76f521d1bf5440864301ac4222a3ef0741b7afdffbca9c99cf259",
+    "tests/test_validation.py": "510bdf1a0bf9c172838214f650c0e9a00873e37cb2aadd0331b9972e9480b4e7",
+    "tests/test_workflow.py": "06b0ded14dd524395f6a5dace99379ca64c1512b310c4852edb3fcf7348e8838"
+  }
+}
+```

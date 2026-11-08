@@ -93,7 +93,12 @@ datasets/scorers are not used for this loan-classification benchmark.
     archive.write_text(archive.read_text().split(report_marker)[0].rstrip() + "\n\n" + report.replace("../assets/", "../../../") + "\n")
     stats = ROOT / "assets/statistics.md"
     marker = "<!-- mlflow-evaluation-visibility-statistics -->"
-    original = stats.read_text().split(marker)[0].rstrip()
+    existing_statistics = stats.read_text()
+    auc_marker = "<!-- auc-improvement-statistics -->"
+    auc_section = ""
+    if auc_marker in existing_statistics:
+        auc_section = auc_marker + existing_statistics.split(auc_marker, 1)[1]
+    original = existing_statistics.split(marker)[0].rstrip()
     original = original.replace("19. [MLflow datasets and evaluations](#19-mlflow-datasets-and-evaluations)\n", "")
     original = original.replace("18. [Model experiments](#18-model-experiments)", "18. [Model experiments](#18-model-experiments)\n19. [MLflow datasets and evaluations](#19-mlflow-datasets-and-evaluations)")
     old_count = "| Saved result CSVs | "
@@ -112,7 +117,7 @@ datasets/scorers are not used for this loan-classification benchmark.
              "Native metrics evaluate the full 162,570 validation rows for each model and 283,026 exploratory rows for the selected model. The classifier's default rule is 0.5; custom frozen-threshold metrics remain separate on the selected training run. Native binary precision_recall_auc matches this MLflow version's average precision; no selection was changed.",
              "Each evaluation run has ROC, PR, lift, calibration, and confusion-matrix artifacts, a dataset input, model linkage, and a 1,000-row uniformly sampled evaluation table (seed 42). Sample rows are not the population used to compute metrics. No explanation/SHAP evaluation was enabled.",
              "### Verification", "All five evaluation runs finished successfully. Each has its full dataset input and a logged table artifact. All four logged models have dataset-linked train/validation metrics, and the selected model also has exploratory metrics. All three comparison dataset inputs are persisted. Original validation ROC-AUC values and cohort counts match; no retraining or policy change occurred. These checks concern classic ML evaluations, not the separate GenAI dataset/scorer system."]
-    stats.write_text(original + "\n\n" + "\n\n".join(parts) + "\n")
+    stats.write_text(original + "\n\n" + "\n\n".join(parts) + "\n\n" + auc_section)
 
 
 def log_saved_model_evaluation(manifest, name, split, dataset):

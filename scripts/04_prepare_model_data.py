@@ -5,12 +5,16 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 
 import duckdb
 import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from util.feature_policy import validate_features
+from util.validation import validate_model_population
 RESULTS = ROOT / "assets/results"
 
 
@@ -51,6 +55,7 @@ def main():
     assert eda["validation_years"] == [2014]
     assert eda["exploratory_test_years"] == [2015]
     candidates = eda["candidate_features"]
+    validate_features(candidates)
     decisions = pd.read_csv(RESULTS / "eda_feature_decisions.csv")
     assert candidates == decisions.loc[decisions.initial_feature_decision == "candidate", "column"].tolist()
     assert all(name.isidentifier() for name in candidates)
@@ -85,12 +90,12 @@ def main():
     drop_mask = (profile.distinct_nonmissing == 0) | ((profile.distinct_nonmissing == 1) & (profile.missing == 0))
     dropped = profile.loc[drop_mask, "feature"].tolist()
     features = [name for name in candidates if name not in dropped]
+    feature_policy = validate_features(features)
     profile["retained"] = ~drop_mask
     profile.to_csv(RESULTS / "27_training_feature_profile.csv", index=False)
     assert features
-    forbidden = {"loan_id", "issue_date", "issue_year", "loan_status", "charged_off",
-                 "grade", "sub_grade", "int_rate", "installment", "verification_status", "addr_state"}
-    assert not (set(features) & forbidden)
+    population_metadata = con.execute("SELECT loan_id, issue_date, loan_status, charged_off, split FROM model_population").df()
+    validate_model_population(population_metadata)
 
     expected = {row["proposed_split"]: row for row in eda["splits"]}
     assert set(summary.split) == set(expected)
@@ -143,6 +148,7 @@ def main():
         "fixed_horizon": False, "deployment_backtest": False,
         "test_previously_explored": True, "preprocessing_fitted": False,
         "model_training_started": False, "row_order": ["issue_date", "loan_id"],
+        "feature_policy": feature_policy,
         "artifacts": artifacts,
         "sql_sha256": {path.name: file_hash(path) for path in sorted((ROOT / "sql").glob("*.sql")) if 26 <= int(path.name[:2]) <= 31},
         "script_sha256": file_hash(Path(__file__)),
