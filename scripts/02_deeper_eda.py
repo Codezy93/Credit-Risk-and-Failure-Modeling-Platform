@@ -9,6 +9,7 @@ def _():
     from datetime import datetime, timezone
     import hashlib
     from pathlib import Path
+    import re
 
     import duckdb
     import marimo as mo
@@ -16,7 +17,7 @@ def _():
     import pandas as pd
     import seaborn as sns
 
-    return Path, datetime, duckdb, hashlib, mo, pd, plt, sns, timezone
+    return Path, datetime, duckdb, hashlib, mo, pd, plt, re, sns, timezone
 
 
 @app.cell
@@ -60,7 +61,10 @@ def _(Path, duckdb, mo, pd, plt, sns):
     def save_figure(figure, name):
         figure.tight_layout()
         figure.savefig(figures_dir / f"{name}.png", dpi=160, bbox_inches="tight")
-        figure.savefig(figures_dir / f"{name}.svg", bbox_inches="tight")
+        svg_path = figures_dir / f"{name}.svg"
+        figure.savefig(svg_path, bbox_inches="tight")
+        svg_lines = svg_path.read_text().splitlines()
+        svg_path.write_text("\n".join(line.rstrip() for line in svg_lines) + "\n")
         display = mo.as_html(figure)
         plt.close(figure)
         return display
@@ -355,7 +359,7 @@ The FICO/DTI grid reconciles independently to its narrower SQL population.
 
 
 @app.cell
-def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_dir, hashlib, markdown_table, missing_by_year, missing_outcomes, mo, results_dir, root, tail_checks, timezone):
+def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_dir, hashlib, markdown_table, missing_by_year, missing_outcomes, mo, re, results_dir, root, tail_checks, timezone):
     _tables = [
         ("14_tail_investigation", "Diagnostic tail groups", tail_checks),
         ("15_missingness_by_year", "Missingness by development year", missing_by_year),
@@ -366,12 +370,17 @@ def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_d
     ]
     _marker = "<!-- deeper-eda-statistics -->"
     _stats_path = root / "assets/statistics.md"
-    _original = _stats_path.read_text().split(_marker)[0].rstrip()
+    _existing = _stats_path.read_text()
+    _final_marker = "<!-- final-eda-statistics -->"
+    _final_section = ""
+    if _final_marker in _existing:
+        _final_section = _final_marker + _existing.split(_final_marker, 1)[1]
+    _original = _existing.split(_marker)[0].rstrip()
     _image_count = len(list(figures_dir.glob("*.png"))) + len(list(figures_dir.glob("*.svg")))
     _csv_count = len(list(results_dir.glob("*.csv")))
-    _original = _original.replace("| Saved figure sets | 11 |", f"| Saved figure sets | {_image_count // 2} |")
-    _original = _original.replace("| Saved image files | 22 |", f"| Saved image files | {_image_count} |")
-    _original = _original.replace("| Saved result CSVs | 15 |", f"| Saved result CSVs | {_csv_count} |")
+    _original = re.sub(r"\| Saved figure sets \| [\d,]+ \|", f"| Saved figure sets | {_image_count // 2} |", _original)
+    _original = re.sub(r"\| Saved image files \| [\d,]+ \|", f"| Saved image files | {_image_count} |", _original)
+    _original = re.sub(r"\| Saved result CSVs \| [\d,]+ \|", f"| Saved result CSVs | {_csv_count} |", _original)
     _original = _original.replace("All **15 existing result CSVs**", "All **15 original result CSVs**")
     _original = _original.replace("15. [Follow-up EDA](#15-follow-up-eda)\n", "")
     _original = _original.replace("14. [Source fingerprints and update rules](#14-source-fingerprints-and-update-rules)", "14. [Source fingerprints and update rules](#14-source-fingerprints-and-update-rules)\n15. [Follow-up EDA](#15-follow-up-eda)")
@@ -395,7 +404,7 @@ def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_d
     for _name in ["12_tail_investigation", "13_missingness_by_year", "14_missingness_outcomes", "15_affordability_outcomes", "16_fico_dti_interaction", "17_development_composition"]:
         _parts.append(f"- [{_name}.png](figures/{_name}.png) · [{_name}.svg](figures/{_name}.svg)")
     _parts.append("### Snapshot maintenance\n\nThis follow-up section is refreshed when the second notebook runs. The original sections retain their first-stage provenance; model and stress-test sections remain Not measured. The clean data is unchanged.")
-    _stats_path.write_text(_original + "\n\n" + "\n\n".join(_parts) + "\n")
+    _stats_path.write_text(_original + "\n\n" + "\n\n".join(_parts) + "\n\n" + _final_section)
     mo.md("Saved six result CSVs, six PNG/SVG figures, the follow-up findings, and the detailed tables in section 15 of `assets/statistics.md`.")
     return
 

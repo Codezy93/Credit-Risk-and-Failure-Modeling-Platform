@@ -1,0 +1,27 @@
+column,source_fields,meaning,role,initial_feature_decision,reason_or_handling,column_type
+loan_id,id,Loan identifier,identifier,exclude,Join/audit key; never a risk predictor,BIGINT
+issue_date,issue_d,Issue month parsed to its first day,split_metadata,exclude,Cohort assignment; no exact daily issue timestamp,DATE
+issue_year,issue_d,Year of issue month,split_metadata,exclude,Time split and monitoring,BIGINT
+loan_status,loan_status,Status in the source snapshot,outcome,exclude,Outcome information; direct target leakage,VARCHAR
+charged_off,loan_status,"1 charged off, 0 fully paid, otherwise missing",target,exclude,"Analysis label, never an input",INTEGER
+term_months,term,Contract term in months,constant_in_benchmark,exclude,First benchmark fixes term to 36 months,INTEGER
+grade,grade,Assigned LendingClub grade,underwriting_output,exclude,Existing underwriting output; defer to a separate ablation,VARCHAR
+sub_grade,sub_grade,Assigned LendingClub subgrade,underwriting_output,exclude,Existing underwriting output; defer to a separate ablation,VARCHAR
+int_rate,int_rate,Assigned interest rate in percentage points,underwriting_output,exclude,Pricing output; not independent borrower information,DOUBLE
+installment,installment,Scheduled payment on the approved loan,underwriting_output,exclude,Depends on pricing and term,DOUBLE
+verification_status,verification_status,Reported income-verification status,workflow_review,exclude,Availability depends on the scoring point in the workflow,VARCHAR
+addr_state,addr_state,Reported state,geographic_review,exclude,Descriptive group review; excluding it does not prove fairness,VARCHAR
+loan_amnt,loan_amnt,Loan principal in USD,candidate,candidate,Use only if requested principal is known at the chosen scoring point,DOUBLE
+annual_inc,annual_inc,Reported annual income in USD,candidate,candidate,Keep missing; consider training-only log1p and missingness indicator,DOUBLE
+dti,dti,Source debt-to-income measure,candidate,candidate,Keep extremes; investigate 999; consider a greater-than-100 flag,DOUBLE
+revol_util,revol_util,Revolving utilization in percentage points,candidate,candidate,Keep values above 100; consider a high-utilization flag,DOUBLE
+revol_bal,revol_bal,Reported revolving balance in USD,candidate,candidate,Keep zero; consider training-only log1p for linear models,DOUBLE
+open_acc,open_acc,Reported open credit-account count,candidate,candidate,Preserve missing; fit imputation on training only if needed,DOUBLE
+delinq_2yrs,delinq_2yrs,Reported delinquency count over the stated two-year window,candidate,candidate,Keep zero distinct from missing,DOUBLE
+pub_rec_bankruptcies,pub_rec_bankruptcies,Reported public-record bankruptcy count,candidate,candidate,Keep zero distinct from missing,DOUBLE
+emp_length_years,emp_length,Employment category converted to capped years,candidate,candidate,0 is less than one year; 10 includes 10+; preserve missing,INTEGER
+fico_mid,"fico_range_low,fico_range_high",Midpoint of the source origination FICO range,candidate,candidate,"Use original FICO bounds, never last_fico fields",DOUBLE
+credit_history_years,"earliest_cr_line,issue_d",Month-based credit-history length at issue,candidate,candidate,Derived at issue; scoring before issue needs an as-of application date,DOUBLE
+home_ownership,home_ownership,Reported home-ownership category,candidate,candidate,Keep categories; training-only rare grouping and unknown handling,VARCHAR
+purpose,purpose,Reported loan purpose,candidate,candidate,Training-only rare grouping and unknown handling,VARCHAR
+application_type,application_type,Individual or joint application category,candidate,candidate,Joint group is small; co-applicant financial fields are not retained,VARCHAR

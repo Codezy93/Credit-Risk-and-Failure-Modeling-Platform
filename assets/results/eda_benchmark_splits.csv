@@ -1,0 +1,4 @@
+proposed_split,all_loans,eligible_resolved_loans,excluded_other_status,fully_paid,charged_off,resolved_pct,charged_off_pct
+train,157993,157993,0,138213,19780,100.0,12.519542005025539
+validation,162570,162570,0,140255,22315,100.0,13.726394783785446
+exploratory_test,283173,283026,147,240894,42132,99.94808827112755,14.886264866125373

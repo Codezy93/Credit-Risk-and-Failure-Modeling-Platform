@@ -1,5 +1,7 @@
 # Project statistics reference
 
+> EDA is complete. The final cohort, feature, and preprocessing decisions are in section 16 and docs/eda_summary.md. Earlier split proposals remain historical snapshot records. No models or stress tests have been run.
+
 Snapshot assembled: **2026-11-08T14:17:16+00:00**. This is a static record of the completed data-analysis stage, assembled from existing result CSVs, local file metadata, and the clean Parquet schema. The download, cleaning, and EDA pipeline was **not rerun** to create this document.
 
 Use this file for factual project answers. Counts are exact integers; displayed noninteger values are rounded to at most six decimal places. Linked CSVs retain the original exported precision. Future measurements are marked **Not measured** rather than assigned invented values or zeros. A static snapshot becomes stale when code, data, or results change; update this file after each completed project stage.
@@ -21,12 +23,13 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 13. [Complete SQL histogram bins](#13-complete-sql-histogram-bins)
 14. [Source fingerprints and update rules](#14-source-fingerprints-and-update-rules)
 15. [Follow-up EDA](#15-follow-up-eda)
+16. [EDA completion](#16-eda-completion)
 
 ## 1. Quick answers
 
 | Statistic | Value |
 | --- | --- |
-| Completed stage | Download, SQL cleaning, and marimo exploratory analysis |
+| Completed stage | EDA complete: audits, exploration, feature decisions, and benchmark definition |
 | Dataset | LendingClub accepted loans, June 2007–December 2018 |
 | Raw rows | 2,260,701 |
 | Raw columns | 151 |
@@ -48,9 +51,9 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Other / unresolved loans, all years | 915,358 |
 | Charged off among resolved loans, all years (%) | 19.962611 |
 | Entirely missing source columns | 1 |
-| Saved figure sets | 17 |
-| Saved image files | 34 |
-| Saved result CSVs | 21 |
+| Saved figure sets | 21 |
+| Saved image files | 42 |
+| Saved result CSVs | 31 |
 | Deterministic scatterplot sample | 20,000 |
 | Models trained / MLflow evaluation metrics | Not measured; training stage not implemented |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
@@ -1498,7 +1501,7 @@ The original notebook remains the reproducible analysis source: [`scripts/01_dat
 
 ## 15. Follow-up EDA
 
-Updated: 2026-11-08T14:59:36+00:00. The original statistics and artifact inventory in sections 2–14 describe the first EDA snapshot. Quick-answer artifact counts include this follow-up. No model or stress-test measurements have been added.
+Updated: 2026-11-08T15:10:49+00:00. The original statistics and artifact inventory in sections 2–14 describe the first EDA snapshot. Quick-answer artifact counts include this follow-up. No model or stress-test measurements have been added.
 
 Source: [second marimo notebook](../scripts/02_deeper_eda.py), [HTML report](../docs/deeper_eda.html). It reads the existing clean Parquet; it does not repeat raw-data cleaning.
 
@@ -1723,3 +1726,511 @@ Source: [19_development_composition.csv](results/19_development_composition.csv)
 ### Snapshot maintenance
 
 This follow-up section is refreshed when the second notebook runs. The original sections retain their first-stage provenance; model and stress-test sections remain Not measured. The clean data is unchanged.
+
+<!-- final-eda-statistics -->
+
+## 16. EDA completion
+
+Completed: 2026-11-08T15:19:48+00:00.
+
+Final decisions: [EDA summary](../docs/eda_summary.md); [clean dictionary](../docs/data_dictionary.md); [HTML report](../docs/eda_completion.html). The original source and clean data are unchanged.
+
+### Final benchmark and interpretation
+
+36-month loans issued in 2011–2015 with exact Fully Paid / Charged Off status. Train 2011–2013, validation 2014, exploratory evaluation 2015. This supersedes the original 2016 / 2017–2018 proposal. EDA previously inspected these years. No fixed prediction horizon, deployment backtest, or pristine holdout claim is made.
+
+### Verification
+
+All 151 source and 26 clean columns accounted for; 14 candidate features recorded. All numeric/category/outcome and cohort totals reconcile. Sixteen source conversions have zero parse/nonfinite failures on valid development rows; all 15 clean-value checks pass. None of this certifies the economic meaning of extremes or source timing.
+
+### Complete final-stage tables
+
+All ten new result CSVs are transcribed below. Counts are exact; displayed noninteger values are rounded to six places. Numeric moments exclude NULLs. Category percentages use all development loans; outcome percentages use ordinary resolved loans. Dictionary dispositions are project judgments, not an official source dictionary.
+
+#### 20_complete_numeric_profile
+
+Source: [20_complete_numeric_profile.csv](results/20_complete_numeric_profile.csv). Records: 14. SHA-256: `817d95c0918e56ff0733a91fed2ad1a3743edadbb49a6fc7988c376eb824185d`.
+
+| feature | nonmissing | missing | missing_pct | distinct_values | minimum | p01 | p25 | median | mean | standard_deviation | p75 | p99 | maximum | skewness | excess_kurtosis |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| annual_inc | 887,434 | 6 | 0.000676 | 49,388 | 1,200 | 19,000 | 45,000 | 65,000 | 75,026.445863 | 64,696.673972 | 90,000 | 250,000 | 9,500,000 | 44.478935 | 4,808.359191 |
+| credit_history_years | 887,411 | 29 | 0.003268 | 728 | 0.5 | 4 | 11.25 | 14.833333 | 16.344135 | 7.463974 | 20.083333 | 39.5 | 71 | 1.064661 | 1.580715 |
+| delinq_2yrs | 887,411 | 29 | 0.003268 | 29 | 0 | 0 | 0 | 0 | 0.314439 | 0.862233 | 0 | 4 | 39 | 5.473726 | 57.308357 |
+| dti | 887,438 | 2 | 0.000225 | 4,085 | 0 | 1.98 | 11.91 | 17.66 | 18.134669 | 8.413134 | 23.95 | 37.48 | 999 | 2.643529 | 252.863814 |
+| emp_length_years | 842,605 | 44,835 | 5.052173 | 11 | 0 | 0 | 3 | 6 | 6.008783 | 3.666145 | 10 | 10 | 10 | -0.243431 | -1.472534 |
+| fico_mid | 887,440 | 0 | 0 | 48 | 612 | 662 | 672 | 692 | 696.943984 | 30.492781 | 712 | 797 | 847.5 | 1.299438 | 1.82563 |
+| installment | 887,440 | 0 | 0 | 68,783 | 4.93 | 60.65 | 260.6375 | 382.55 | 436.691727 | 244.176822 | 572.59 | 1,184.86 | 1,445.46 | 0.937023 | 0.68628 |
+| int_rate | 887,440 | 0 | 0 | 544 | 5.32 | 5.32 | 9.99 | 12.99 | 13.245226 | 4.382606 | 16.2 | 24.99 | 28.99 | 0.429265 | -0.155824 |
+| loan_amnt | 887,440 | 0 | 0 | 1,372 | 500 | 1,800 | 8,000 | 13,000 | 14,755.167673 | 8,435.379336 | 20,000 | 35,000 | 35,000 | 0.681691 | -0.256685 |
+| open_acc | 887,411 | 29 | 0.003268 | 77 | 0 | 3 | 8 | 11 | 11.548394 | 5.31725 | 14 | 28 | 90 | 1.249382 | 3.104 |
+| pub_rec_bankruptcies | 886,075 | 1,365 | 0.153813 | 12 | 0 | 0 | 0 | 0 | 0.11927 | 0.359222 | 0 | 1 | 12 | 3.75523 | 24.497173 |
+| revol_bal | 887,440 | 0 | 0 | 73,741 | 0 | 309 | 6,443 | 11,875 | 16,920.605872 | 22,426.235824 | 20,828 | 93,407.66 | 2,904,836 | 15.949428 | 985.921431 |
+| revol_util | 886,938 | 502 | 0.056567 | 1,356 | 0 | 2.2 | 37.7 | 56 | 55.068132 | 23.834234 | 73.6 | 98.5 | 892.3 | -0.123885 | 1.027192 |
+| term_months | 887,440 | 0 | 0 | 2 | 36 | 36 | 36 | 36 | 43.201055 | 10.998648 | 60 | 60 | 60 | 0.872645 | -1.238494 |
+
+#### 21_complete_category_profile
+
+Source: [21_complete_category_profile.csv](results/21_complete_category_profile.csv). Records: 118. SHA-256: `e8f857a53aeeb275fe7987bde58e58311cf31a77666d7179a536691b6713b59b`.
+
+| feature | category | total_loans | pct_of_development | resolved_loans | charged_off_loans | charged_off_pct | rare_in_development |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| addr_state | CA | 129,527 | 14.595578 | 123,084 | 21,974 | 17.852848 | 0 |
+| addr_state | NY | 74,089 | 8.348621 | 69,172 | 13,769 | 19.905453 | 0 |
+| addr_state | TX | 71,139 | 8.016204 | 66,345 | 11,819 | 17.814455 | 0 |
+| addr_state | FL | 60,941 | 6.867056 | 57,189 | 11,284 | 19.731067 | 0 |
+| addr_state | IL | 35,477 | 3.997679 | 32,650 | 5,354 | 16.398162 | 0 |
+| addr_state | NJ | 33,258 | 3.747634 | 30,786 | 5,991 | 19.460144 | 0 |
+| addr_state | PA | 31,393 | 3.537479 | 28,864 | 5,573 | 19.307788 | 0 |
+| addr_state | OH | 29,632 | 3.339043 | 27,208 | 5,353 | 19.67436 | 0 |
+| addr_state | GA | 29,088 | 3.277743 | 26,823 | 4,550 | 16.963054 | 0 |
+| addr_state | VA | 26,257 | 2.958735 | 24,291 | 4,561 | 18.776502 | 0 |
+| addr_state | NC | 24,724 | 2.785991 | 22,893 | 4,429 | 19.346525 | 0 |
+| addr_state | MI | 22,986 | 2.590147 | 21,430 | 3,978 | 18.562762 | 0 |
+| addr_state | MD | 21,033 | 2.370076 | 19,376 | 3,743 | 19.317713 | 0 |
+| addr_state | MA | 20,594 | 2.320608 | 19,121 | 3,267 | 17.085926 | 0 |
+| addr_state | AZ | 20,412 | 2.300099 | 19,234 | 3,543 | 18.420505 | 0 |
+| addr_state | WA | 19,435 | 2.190007 | 18,261 | 2,769 | 15.163463 | 0 |
+| addr_state | CO | 18,807 | 2.119242 | 17,732 | 2,622 | 14.786826 | 0 |
+| addr_state | MN | 15,957 | 1.798093 | 14,795 | 2,724 | 18.411626 | 0 |
+| addr_state | MO | 14,208 | 1.60101 | 13,119 | 2,595 | 19.780471 | 0 |
+| addr_state | IN | 13,791 | 1.554021 | 12,592 | 2,547 | 20.227128 | 0 |
+| addr_state | CT | 13,532 | 1.524835 | 12,367 | 2,022 | 16.349964 | 0 |
+| addr_state | TN | 12,888 | 1.452267 | 11,821 | 2,459 | 20.801963 | 0 |
+| addr_state | NV | 12,445 | 1.402348 | 11,857 | 2,487 | 20.974952 | 0 |
+| addr_state | WI | 11,575 | 1.304314 | 10,718 | 1,784 | 16.644896 | 0 |
+| addr_state | AL | 11,204 | 1.262508 | 10,361 | 2,298 | 22.179326 | 0 |
+| addr_state | OR | 10,894 | 1.227576 | 10,303 | 1,446 | 14.034747 | 0 |
+| addr_state | SC | 10,640 | 1.198954 | 9,729 | 1,519 | 15.613115 | 0 |
+| addr_state | LA | 10,588 | 1.193095 | 9,773 | 2,070 | 21.180804 | 0 |
+| addr_state | KY | 8,550 | 0.963445 | 7,848 | 1,547 | 19.712029 | 0 |
+| addr_state | OK | 8,086 | 0.91116 | 7,474 | 1,646 | 22.023013 | 0 |
+| addr_state | KS | 7,927 | 0.893243 | 7,254 | 1,124 | 15.494899 | 0 |
+| addr_state | AR | 6,640 | 0.74822 | 6,162 | 1,355 | 21.989614 | 0 |
+| addr_state | UT | 6,265 | 0.705963 | 5,978 | 1,031 | 17.246571 | 0 |
+| addr_state | NM | 4,941 | 0.55677 | 4,615 | 931 | 20.173348 | 0 |
+| addr_state | HI | 4,570 | 0.514964 | 4,287 | 829 | 19.337532 | 0 |
+| addr_state | WV | 4,386 | 0.494231 | 3,959 | 613 | 15.483708 | 0 |
+| addr_state | NH | 4,294 | 0.483864 | 3,944 | 518 | 13.133874 | 0 |
+| addr_state | RI | 3,894 | 0.43879 | 3,615 | 620 | 17.150761 | 0 |
+| addr_state | MS | 3,819 | 0.430339 | 3,383 | 818 | 24.179722 | 0 |
+| addr_state | MT | 2,559 | 0.288358 | 2,385 | 384 | 16.100629 | 0 |
+| addr_state | DE | 2,511 | 0.282949 | 2,293 | 429 | 18.709115 | 0 |
+| addr_state | DC | 2,433 | 0.274159 | 2,317 | 285 | 12.300388 | 0 |
+| addr_state | AK | 2,205 | 0.248468 | 2,068 | 372 | 17.988395 | 0 |
+| addr_state | WY | 2,028 | 0.228522 | 1,903 | 293 | 15.396742 | 0 |
+| addr_state | SD | 1,815 | 0.204521 | 1,702 | 349 | 20.505288 | 0 |
+| addr_state | VT | 1,797 | 0.202493 | 1,607 | 211 | 13.130056 | 0 |
+| addr_state | NE | 1,176 | 0.132516 | 1,040 | 265 | 25.480769 | 0 |
+| addr_state | ME | 525 | 0.059159 | 439 | 62 | 14.123007 | 0 |
+| addr_state | ND | 479 | 0.053975 | 421 | 88 | 20.902613 | 0 |
+| addr_state | IA | 14 | 0.001578 | 7 | 1 | 14.285714 | 1 |
+| addr_state | ID | 12 | 0.001352 | 9 | 1 | 11.111111 | 1 |
+| application_type | Individual | 886,929 | 99.942419 | 826,203 | 152,203 | 18.421986 | 0 |
+| application_type | Joint App | 511 | 0.057581 | 401 | 99 | 24.688279 | 0 |
+| grade | B | 254,553 | 28.683967 | 241,510 | 29,063 | 12.03387 | 0 |
+| grade | C | 245,881 | 27.706775 | 225,234 | 45,872 | 20.366375 | 0 |
+| grade | A | 148,207 | 16.700509 | 146,430 | 8,154 | 5.568531 | 0 |
+| grade | D | 139,554 | 15.725457 | 126,002 | 35,442 | 28.128125 | 0 |
+| grade | E | 70,707 | 7.967525 | 61,870 | 22,739 | 36.752869 | 0 |
+| grade | F | 23,049 | 2.597246 | 20,693 | 8,758 | 42.323491 | 0 |
+| grade | G | 5,489 | 0.618521 | 4,865 | 2,274 | 46.742035 | 0 |
+| home_ownership | MORTGAGE | 443,591 | 49.985464 | 409,456 | 66,741 | 16.29992 | 0 |
+| home_ownership | RENT | 356,136 | 40.130713 | 335,535 | 70,063 | 20.880981 | 0 |
+| home_ownership | OWN | 87,478 | 9.857342 | 81,421 | 15,464 | 18.992643 | 0 |
+| home_ownership | OTHER | 182 | 0.020508 | 144 | 27 | 18.75 | 1 |
+| home_ownership | NONE | 50 | 0.005634 | 45 | 7 | 15.555556 | 1 |
+| home_ownership | ANY | 3 | 0.000338 | 3 | 0 | 0 | 1 |
+| purpose | debt_consolidation | 524,253 | 59.074754 | 487,230 | 95,788 | 19.659709 | 0 |
+| purpose | credit_card | 206,194 | 23.234698 | 190,950 | 29,519 | 15.459021 | 0 |
+| purpose | home_improvement | 51,834 | 5.840846 | 48,295 | 7,954 | 16.469614 | 0 |
+| purpose | other | 42,896 | 4.833679 | 40,825 | 7,942 | 19.453766 | 0 |
+| purpose | major_purchase | 17,277 | 1.946836 | 16,264 | 2,641 | 16.238318 | 0 |
+| purpose | small_business | 10,378 | 1.169431 | 9,833 | 2,651 | 26.960236 | 0 |
+| purpose | car | 8,864 | 0.998828 | 8,473 | 1,135 | 13.395492 | 0 |
+| purpose | medical | 8,541 | 0.962431 | 8,164 | 1,580 | 19.353258 | 0 |
+| purpose | moving | 5,415 | 0.610182 | 5,223 | 1,105 | 21.156424 | 0 |
+| purpose | vacation | 4,736 | 0.53367 | 4,642 | 797 | 17.169324 | 0 |
+| purpose | house | 3,707 | 0.417718 | 3,530 | 734 | 20.793201 | 0 |
+| purpose | wedding | 2,347 | 0.264469 | 2,291 | 278 | 12.134439 | 0 |
+| purpose | renewable_energy | 575 | 0.064793 | 558 | 122 | 21.863799 | 0 |
+| purpose | educational | 423 | 0.047665 | 326 | 56 | 17.177914 | 0 |
+| sub_grade | B3 | 56,327 | 6.347133 | 53,247 | 6,310 | 11.850433 | 0 |
+| sub_grade | B4 | 55,629 | 6.26848 | 52,211 | 7,036 | 13.476087 | 0 |
+| sub_grade | C1 | 53,393 | 6.016519 | 49,623 | 8,411 | 16.949802 | 0 |
+| sub_grade | C2 | 52,241 | 5.886708 | 48,358 | 9,052 | 18.718723 | 0 |
+| sub_grade | C3 | 50,167 | 5.653002 | 45,671 | 9,448 | 20.687088 | 0 |
+| sub_grade | C4 | 48,860 | 5.505724 | 43,859 | 10,103 | 23.035181 | 0 |
+| sub_grade | B5 | 48,839 | 5.503358 | 46,476 | 6,909 | 14.865737 | 0 |
+| sub_grade | B2 | 48,783 | 5.497048 | 46,842 | 4,857 | 10.3689 | 0 |
+| sub_grade | B1 | 44,975 | 5.067948 | 42,734 | 3,951 | 9.245566 | 0 |
+| sub_grade | A5 | 44,818 | 5.050257 | 43,378 | 3,336 | 7.690534 | 0 |
+| sub_grade | C5 | 41,220 | 4.644821 | 37,723 | 8,858 | 23.481696 | 0 |
+| sub_grade | D1 | 36,239 | 4.083544 | 32,765 | 8,321 | 25.396002 | 0 |
+| sub_grade | A4 | 34,531 | 3.89108 | 34,227 | 2,126 | 6.21147 | 0 |
+| sub_grade | D2 | 29,804 | 3.358424 | 27,163 | 7,466 | 27.485918 | 0 |
+| sub_grade | D3 | 26,560 | 2.992878 | 24,082 | 6,697 | 27.809152 | 0 |
+| sub_grade | D4 | 25,560 | 2.880195 | 22,821 | 6,961 | 30.502607 | 0 |
+| sub_grade | A3 | 23,458 | 2.643334 | 23,444 | 1,140 | 4.862651 | 0 |
+| sub_grade | A1 | 22,915 | 2.582146 | 22,911 | 631 | 2.754136 | 0 |
+| sub_grade | A2 | 22,485 | 2.533692 | 22,470 | 921 | 4.098798 | 0 |
+| sub_grade | D5 | 21,391 | 2.410416 | 19,171 | 5,997 | 31.281623 | 0 |
+| sub_grade | E1 | 18,269 | 2.058618 | 16,018 | 5,450 | 34.024223 | 0 |
+| sub_grade | E2 | 17,004 | 1.916073 | 14,840 | 5,332 | 35.929919 | 0 |
+| sub_grade | E3 | 14,135 | 1.592784 | 12,311 | 4,600 | 37.364958 | 0 |
+| sub_grade | E4 | 11,724 | 1.321103 | 10,254 | 3,995 | 38.960406 | 0 |
+| sub_grade | E5 | 9,575 | 1.078946 | 8,447 | 3,362 | 39.801113 | 0 |
+| sub_grade | F1 | 7,219 | 0.813463 | 6,432 | 2,529 | 39.31903 | 0 |
+| sub_grade | F2 | 5,393 | 0.607703 | 4,816 | 2,028 | 42.109635 | 0 |
+| sub_grade | F3 | 4,433 | 0.499527 | 4,008 | 1,695 | 42.290419 | 0 |
+| sub_grade | F4 | 3,410 | 0.384251 | 3,096 | 1,418 | 45.801034 | 0 |
+| sub_grade | F5 | 2,594 | 0.292301 | 2,341 | 1,088 | 46.475865 | 0 |
+| sub_grade | G1 | 1,871 | 0.210831 | 1,687 | 777 | 46.058091 | 0 |
+| sub_grade | G2 | 1,398 | 0.157532 | 1,265 | 570 | 45.059289 | 0 |
+| sub_grade | G3 | 981 | 0.110543 | 876 | 426 | 48.630137 | 0 |
+| sub_grade | G4 | 663 | 0.074709 | 571 | 263 | 46.059545 | 0 |
+| sub_grade | G5 | 576 | 0.064906 | 466 | 238 | 51.072961 | 0 |
+| verification_status | Source Verified | 336,925 | 37.965947 | 308,528 | 61,189 | 19.83256 | 0 |
+| verification_status | Verified | 291,105 | 32.802781 | 273,980 | 58,314 | 21.284035 | 0 |
+| verification_status | Not Verified | 259,410 | 29.231272 | 244,096 | 32,799 | 13.436926 | 0 |
+
+#### 22_numeric_by_outcome
+
+Source: [22_numeric_by_outcome.csv](results/22_numeric_by_outcome.csv). Records: 24. SHA-256: `dee6090a681423230c41483621ee7c567ade27bad049c5889f6e3901b0e137c3`.
+
+| feature | charged_off | group_loans | nonmissing | missing | minimum | p01 | p25 | median | mean | standard_deviation | p75 | p99 | maximum |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| annual_inc | 0 | 674,302 | 674,301 | 1 | 1,200 | 18,900 | 45,600 | 65,000 | 75,851.154601 | 64,376.906818 | 90,000 | 250,000 | 9,000,000 |
+| annual_inc | 1 | 152,302 | 152,301 | 1 | 4,000 | 18,000 | 42,500 | 60,000 | 68,714.178928 | 65,738.997454 | 81,500 | 223,000 | 9,500,000 |
+| credit_history_years | 0 | 674,302 | 674,302 | 0 | 3 | 4 | 11.25 | 14.916667 | 16.361061 | 7.468725 | 20.166667 | 39.5 | 71 |
+| credit_history_years | 1 | 152,302 | 152,302 | 0 | 3 | 3.833333 | 10.833333 | 14.25 | 15.716639 | 7.317794 | 19.166667 | 39.416667 | 70.166667 |
+| delinq_2yrs | 0 | 674,302 | 674,302 | 0 | 0 | 0 | 0 | 0 | 0.305126 | 0.845309 | 0 | 4 | 39 |
+| delinq_2yrs | 1 | 152,302 | 152,302 | 0 | 0 | 0 | 0 | 0 | 0.339483 | 0.912316 | 0 | 4 | 27 |
+| dti | 0 | 674,302 | 674,301 | 1 | 0 | 1.85 | 11.43 | 17.03 | 17.549498 | 8.301356 | 23.21 | 36.89 | 999 |
+| dti | 1 | 152,302 | 152,301 | 1 | 0 | 2.48 | 13.6 | 19.62 | 19.842882 | 8.449486 | 25.97 | 38.26 | 67.5 |
+| emp_length_years | 0 | 674,302 | 641,795 | 32,507 | 0 | 0 | 3 | 6 | 5.994198 | 3.662789 | 10 | 10 | 10 |
+| emp_length_years | 1 | 152,302 | 142,232 | 10,070 | 0 | 0 | 3 | 6 | 5.945631 | 3.665192 | 10 | 10 | 10 |
+| fico_mid | 0 | 674,302 | 674,302 | 0 | 627 | 662 | 677 | 692 | 698.839235 | 31.55839 | 717 | 802 | 847.5 |
+| fico_mid | 1 | 152,302 | 152,302 | 0 | 662 | 662 | 672 | 682 | 688.953733 | 24.735238 | 702 | 772 | 847.5 |
+| int_rate | 0 | 674,302 | 674,302 | 0 | 5.32 | 5.32 | 9.17 | 12.39 | 12.616406 | 4.24072 | 15.31 | 24.08 | 28.99 |
+| int_rate | 1 | 152,302 | 152,302 | 0 | 5.32 | 6.62 | 12.49 | 15.31 | 15.468892 | 4.332833 | 18.25 | 25.83 | 28.99 |
+| loan_amnt | 0 | 674,302 | 674,302 | 0 | 500 | 1,600 | 8,000 | 12,000 | 14,149.207736 | 8,350.730144 | 20,000 | 35,000 | 35,000 |
+| loan_amnt | 1 | 152,302 | 152,302 | 0 | 900 | 2,000 | 9,500 | 14,400 | 15,489.484708 | 8,427.62589 | 20,000 | 35,000 | 35,000 |
+| open_acc | 0 | 674,302 | 674,302 | 0 | 0 | 3 | 8 | 10 | 11.401666 | 5.236454 | 14 | 28 | 90 |
+| open_acc | 1 | 152,302 | 152,302 | 0 | 0 | 3 | 8 | 11 | 11.878977 | 5.468953 | 15 | 29 | 76 |
+| pub_rec_bankruptcies | 0 | 674,302 | 673,723 | 579 | 0 | 0 | 0 | 0 | 0.117565 | 0.355277 | 0 | 1 | 12 |
+| pub_rec_bankruptcies | 1 | 152,302 | 152,184 | 118 | 0 | 0 | 0 | 0 | 0.140416 | 0.391223 | 0 | 1 | 11 |
+| revol_bal | 0 | 674,302 | 674,302 | 0 | 0 | 291 | 6,295 | 11,623 | 16,721.630784 | 22,488.849712 | 20,497 | 94,177.91 | 2,904,836 |
+| revol_bal | 1 | 152,302 | 152,302 | 0 | 0 | 350 | 6,312 | 11,438 | 15,601.437972 | 18,798.790111 | 19,604 | 74,434.94 | 1,746,716 |
+| revol_util | 0 | 674,302 | 673,954 | 348 | 0 | 2 | 36.5 | 54.8 | 54.075777 | 23.957058 | 72.6 | 98.2 | 892.3 |
+| revol_util | 1 | 152,302 | 152,206 | 96 | 0 | 3.2 | 41 | 58.7 | 57.519246 | 23.189908 | 75.5 | 98.9 | 366.6 |
+
+#### 23_final_cohort_audit
+
+Source: [23_final_cohort_audit.csv](results/23_final_cohort_audit.csv). Records: 15. SHA-256: `c7fe6171460c26ff8f6d1f5ec86ba232e9ecd74eb3a9040639a9a598119e8378`.
+
+| issue_year | term_months | proposed_split | all_loans | eligible_resolved_loans | excluded_other_status | fully_paid | charged_off | resolved_pct | charged_off_pct |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2,007 | 36 | outside_benchmark | 603 | 251 | 352 | 206 | 45 | 41.625207 | 17.928287 |
+| 2,008 | 36 | outside_benchmark | 2,393 | 1,562 | 831 | 1,315 | 247 | 65.273715 | 15.81306 |
+| 2,009 | 36 | outside_benchmark | 5,281 | 4,716 | 565 | 4,122 | 594 | 89.301269 | 12.59542 |
+| 2,010 | 36 | outside_benchmark | 9,156 | 8,466 | 690 | 7,624 | 842 | 92.463958 | 9.945665 |
+| 2,010 | 60 | outside_benchmark | 3,381 | 3,070 | 311 | 2,425 | 645 | 90.801538 | 21.009772 |
+| 2,011 | 36 | train | 14,101 | 14,101 | 0 | 12,602 | 1,499 | 100 | 10.630452 |
+| 2,011 | 60 | outside_benchmark | 7,620 | 7,620 | 0 | 5,822 | 1,798 | 100 | 23.595801 |
+| 2,012 | 36 | train | 43,470 | 43,470 | 0 | 37,567 | 5,903 | 100 | 13.57948 |
+| 2,012 | 60 | outside_benchmark | 9,897 | 9,897 | 0 | 7,156 | 2,741 | 100 | 27.695261 |
+| 2,013 | 36 | train | 100,422 | 100,422 | 0 | 88,044 | 12,378 | 100 | 12.325984 |
+| 2,013 | 60 | outside_benchmark | 34,392 | 34,382 | 10 | 25,736 | 8,646 | 99.970923 | 25.146879 |
+| 2,014 | 36 | validation | 162,570 | 162,570 | 0 | 140,255 | 22,315 | 100 | 13.726395 |
+| 2,014 | 60 | outside_benchmark | 73,059 | 60,532 | 12,527 | 41,686 | 18,846 | 82.853584 | 31.133946 |
+| 2,015 | 36 | exploratory_test | 283,173 | 283,026 | 147 | 240,894 | 42,132 | 99.948088 | 14.886265 |
+| 2,015 | 60 | outside_benchmark | 137,922 | 92,519 | 45,403 | 58,848 | 33,671 | 67.080669 | 36.393606 |
+
+#### 24_clean_value_checks
+
+Source: [24_clean_value_checks.csv](results/24_clean_value_checks.csv). Records: 15. SHA-256: `994515322dbb348a18d41c683b1244943493e606f2b6ecbfa4efe86d20c726b6`.
+
+| check_name | affected_loans |
+| --- | --- |
+| nonpositive_loan_amount | 0 |
+| missing_loan_amount | 0 |
+| interest_outside_0_to_100 | 0 |
+| nonpositive_installment | 0 |
+| unexpected_term | 0 |
+| nonpositive_clean_income | 0 |
+| negative_clean_dti | 0 |
+| negative_clean_utilization | 0 |
+| negative_revolving_balance | 0 |
+| negative_open_accounts | 0 |
+| negative_delinquencies | 0 |
+| negative_bankruptcies | 0 |
+| employment_outside_0_to_10 | 0 |
+| fico_outside_300_to_850 | 0 |
+| negative_credit_history | 0 |
+
+#### 25_numeric_source_parsing
+
+Source: [25_numeric_source_parsing.csv](results/25_numeric_source_parsing.csv). Records: 16. SHA-256: `3f4b05c5149ed412735eef73b407813b7aaae90e0c4d2db781bcb8342dd9b1e9`.
+
+| feature | development_rows | nonblank_source_values | missing_source_values | parse_failures | nonfinite_values |
+| --- | --- | --- | --- | --- | --- |
+| annual_inc | 887,440 | 887,436 | 4 | 0 | 0 |
+| delinq_2yrs | 887,440 | 887,411 | 29 | 0 | 0 |
+| dti | 887,440 | 887,438 | 2 | 0 | 0 |
+| earliest_cr_line | 887,440 | 887,411 | 29 | 0 | 0 |
+| emp_length | 887,440 | 842,605 | 44,835 | 0 | 0 |
+| fico_range_high | 887,440 | 887,440 | 0 | 0 | 0 |
+| fico_range_low | 887,440 | 887,440 | 0 | 0 | 0 |
+| installment | 887,440 | 887,440 | 0 | 0 | 0 |
+| int_rate | 887,440 | 887,440 | 0 | 0 | 0 |
+| issue_d | 887,440 | 887,440 | 0 | 0 | 0 |
+| loan_amnt | 887,440 | 887,440 | 0 | 0 | 0 |
+| open_acc | 887,440 | 887,411 | 29 | 0 | 0 |
+| pub_rec_bankruptcies | 887,440 | 886,075 | 1,365 | 0 | 0 |
+| revol_bal | 887,440 | 887,440 | 0 | 0 | 0 |
+| revol_util | 887,440 | 886,938 | 502 | 0 | 0 |
+| term | 887,440 | 887,440 | 0 | 0 | 0 |
+
+#### eda_benchmark_splits
+
+Source: [eda_benchmark_splits.csv](results/eda_benchmark_splits.csv). Records: 3. SHA-256: `3b1e3988df16b04c6cf49e4dfea991c632e501779c11c492d9c14b2a2db91dae`.
+
+| proposed_split | all_loans | eligible_resolved_loans | excluded_other_status | fully_paid | charged_off | resolved_pct | charged_off_pct |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| train | 157,993 | 157,993 | 0 | 138,213 | 19,780 | 100 | 12.519542 |
+| validation | 162,570 | 162,570 | 0 | 140,255 | 22,315 | 100 | 13.726395 |
+| exploratory_test | 283,173 | 283,026 | 147 | 240,894 | 42,132 | 99.948088 | 14.886265 |
+
+#### eda_clean_dictionary
+
+Source: [eda_clean_dictionary.csv](results/eda_clean_dictionary.csv). Records: 26. SHA-256: `c8f70e7e311e03a4f50c1348709e3b45ef6a457fc033d21f555d7ad371010212`.
+
+| column | source_fields | meaning | role | initial_feature_decision | reason_or_handling | column_type |
+| --- | --- | --- | --- | --- | --- | --- |
+| loan_id | id | Loan identifier | identifier | exclude | Join/audit key; never a risk predictor | BIGINT |
+| issue_date | issue_d | Issue month parsed to its first day | split_metadata | exclude | Cohort assignment; no exact daily issue timestamp | DATE |
+| issue_year | issue_d | Year of issue month | split_metadata | exclude | Time split and monitoring | BIGINT |
+| loan_status | loan_status | Status in the source snapshot | outcome | exclude | Outcome information; direct target leakage | VARCHAR |
+| charged_off | loan_status | 1 charged off, 0 fully paid, otherwise missing | target | exclude | Analysis label, never an input | INTEGER |
+| term_months | term | Contract term in months | constant_in_benchmark | exclude | First benchmark fixes term to 36 months | INTEGER |
+| grade | grade | Assigned LendingClub grade | underwriting_output | exclude | Existing underwriting output; defer to a separate ablation | VARCHAR |
+| sub_grade | sub_grade | Assigned LendingClub subgrade | underwriting_output | exclude | Existing underwriting output; defer to a separate ablation | VARCHAR |
+| int_rate | int_rate | Assigned interest rate in percentage points | underwriting_output | exclude | Pricing output; not independent borrower information | DOUBLE |
+| installment | installment | Scheduled payment on the approved loan | underwriting_output | exclude | Depends on pricing and term | DOUBLE |
+| verification_status | verification_status | Reported income-verification status | workflow_review | exclude | Availability depends on the scoring point in the workflow | VARCHAR |
+| addr_state | addr_state | Reported state | geographic_review | exclude | Descriptive group review; excluding it does not prove fairness | VARCHAR |
+| loan_amnt | loan_amnt | Loan principal in USD | candidate | candidate | Use only if requested principal is known at the chosen scoring point | DOUBLE |
+| annual_inc | annual_inc | Reported annual income in USD | candidate | candidate | Keep missing; consider training-only log1p and missingness indicator | DOUBLE |
+| dti | dti | Source debt-to-income measure | candidate | candidate | Keep extremes; investigate 999; consider a greater-than-100 flag | DOUBLE |
+| revol_util | revol_util | Revolving utilization in percentage points | candidate | candidate | Keep values above 100; consider a high-utilization flag | DOUBLE |
+| revol_bal | revol_bal | Reported revolving balance in USD | candidate | candidate | Keep zero; consider training-only log1p for linear models | DOUBLE |
+| open_acc | open_acc | Reported open credit-account count | candidate | candidate | Preserve missing; fit imputation on training only if needed | DOUBLE |
+| delinq_2yrs | delinq_2yrs | Reported delinquency count over the stated two-year window | candidate | candidate | Keep zero distinct from missing | DOUBLE |
+| pub_rec_bankruptcies | pub_rec_bankruptcies | Reported public-record bankruptcy count | candidate | candidate | Keep zero distinct from missing | DOUBLE |
+| emp_length_years | emp_length | Employment category converted to capped years | candidate | candidate | 0 is less than one year; 10 includes 10+; preserve missing | INTEGER |
+| fico_mid | fico_range_low,fico_range_high | Midpoint of the source origination FICO range | candidate | candidate | Use original FICO bounds, never last_fico fields | DOUBLE |
+| credit_history_years | earliest_cr_line,issue_d | Month-based credit-history length at issue | candidate | candidate | Derived at issue; scoring before issue needs an as-of application date | DOUBLE |
+| home_ownership | home_ownership | Reported home-ownership category | candidate | candidate | Keep categories; training-only rare grouping and unknown handling | VARCHAR |
+| purpose | purpose | Reported loan purpose | candidate | candidate | Training-only rare grouping and unknown handling | VARCHAR |
+| application_type | application_type | Individual or joint application category | candidate | candidate | Joint group is small; co-applicant financial fields are not retained | VARCHAR |
+
+#### eda_feature_decisions
+
+Source: [eda_feature_decisions.csv](results/eda_feature_decisions.csv). Records: 26. SHA-256: `a9cbf9d21570eb71888ced5c1058c2614689338dc86a49edda44282441e7bee6`.
+
+| column | initial_feature_decision | reason_or_handling |
+| --- | --- | --- |
+| loan_id | exclude | Join/audit key; never a risk predictor |
+| issue_date | exclude | Cohort assignment; no exact daily issue timestamp |
+| issue_year | exclude | Time split and monitoring |
+| loan_status | exclude | Outcome information; direct target leakage |
+| charged_off | exclude | Analysis label, never an input |
+| term_months | exclude | First benchmark fixes term to 36 months |
+| grade | exclude | Existing underwriting output; defer to a separate ablation |
+| sub_grade | exclude | Existing underwriting output; defer to a separate ablation |
+| int_rate | exclude | Pricing output; not independent borrower information |
+| installment | exclude | Depends on pricing and term |
+| verification_status | exclude | Availability depends on the scoring point in the workflow |
+| addr_state | exclude | Descriptive group review; excluding it does not prove fairness |
+| loan_amnt | candidate | Use only if requested principal is known at the chosen scoring point |
+| annual_inc | candidate | Keep missing; consider training-only log1p and missingness indicator |
+| dti | candidate | Keep extremes; investigate 999; consider a greater-than-100 flag |
+| revol_util | candidate | Keep values above 100; consider a high-utilization flag |
+| revol_bal | candidate | Keep zero; consider training-only log1p for linear models |
+| open_acc | candidate | Preserve missing; fit imputation on training only if needed |
+| delinq_2yrs | candidate | Keep zero distinct from missing |
+| pub_rec_bankruptcies | candidate | Keep zero distinct from missing |
+| emp_length_years | candidate | 0 is less than one year; 10 includes 10+; preserve missing |
+| fico_mid | candidate | Use original FICO bounds, never last_fico fields |
+| credit_history_years | candidate | Derived at issue; scoring before issue needs an as-of application date |
+| home_ownership | candidate | Keep categories; training-only rare grouping and unknown handling |
+| purpose | candidate | Training-only rare grouping and unknown handling |
+| application_type | candidate | Joint group is small; co-applicant financial fields are not retained |
+
+#### eda_source_column_audit
+
+Source: [eda_source_column_audit.csv](results/eda_source_column_audit.csv). Records: 151. SHA-256: `244b38d10e129bbf2f41ad6f282397576ddb9fc6244e8c574fdf21daea385f04`.
+
+| source_column | role | initial_decision | clean_mapping | raw_missing_count | raw_missing_pct | reason |
+| --- | --- | --- | --- | --- | --- | --- |
+| id | identifier | exclude_as_predictor | loan_id | 0 | 0 | Join/audit key; never a risk predictor |
+| member_id | identifier | exclude |  | 2,260,701 | 100 | Entirely missing identifier in this source snapshot |
+| loan_amnt | candidate_source | candidate_source | loan_amnt | 33 | 0.00146 | Use only if requested principal is known at the chosen scoring point |
+| funded_amnt | funding_or_policy_workflow | exclude |  | 33 | 0.00146 | Funding/policy workflow field; not part of independent borrower features |
+| funded_amnt_inv | funding_or_policy_workflow | exclude |  | 33 | 0.00146 | Funding/policy workflow field; not part of independent borrower features |
+| term | constant_in_benchmark | exclude_as_predictor | term_months | 33 | 0.00146 | First benchmark fixes term to 36 months |
+| int_rate | underwriting_output | exclude_as_predictor | int_rate | 33 | 0.00146 | Pricing output; not independent borrower information |
+| installment | underwriting_output | exclude_as_predictor | installment | 33 | 0.00146 | Depends on pricing and term |
+| grade | underwriting_output | exclude_as_predictor | grade | 33 | 0.00146 | Existing underwriting output; defer to a separate ablation |
+| sub_grade | underwriting_output | exclude_as_predictor | sub_grade | 33 | 0.00146 | Existing underwriting output; defer to a separate ablation |
+| emp_title | text_or_identifier | exclude |  | 167,005 | 7.38731 | Identifier, free text, or detailed geography; outside the focused numeric/category baseline |
+| emp_length | candidate_source | candidate_source | emp_length_years | 146,940 | 6.499754 | 0 is less than one year; 10 includes 10+; preserve missing |
+| home_ownership | candidate_source | candidate_source | home_ownership | 33 | 0.00146 | Keep categories; training-only rare grouping and unknown handling |
+| annual_inc | candidate_source | candidate_source | annual_inc | 37 | 0.001637 | Keep missing; consider training-only log1p and missingness indicator |
+| verification_status | workflow_review | exclude_as_predictor | verification_status | 33 | 0.00146 | Availability depends on the scoring point in the workflow |
+| issue_d | split_and_derivation | exclude_raw_predictor | issue_date, issue_year, credit_history_years | 33 | 0.00146 | Cohort assignment; no exact daily issue timestamp; Time split and monitoring; Derived at issue; scoring before issue needs an as-of application date |
+| loan_status | outcome | exclude | loan_status, charged_off | 33 | 0.00146 | Snapshot outcome; used only to define labels |
+| pymnt_plan | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| url | text_or_identifier | exclude |  | 33 | 0.00146 | Identifier, free text, or detailed geography; outside the focused numeric/category baseline |
+| desc | text_or_identifier | exclude |  | 2,134,887 | 94.434735 | Identifier, free text, or detailed geography; outside the focused numeric/category baseline |
+| purpose | candidate_source | candidate_source | purpose | 33 | 0.00146 | Training-only rare grouping and unknown handling |
+| title | text_or_identifier | exclude |  | 23,358 | 1.033219 | Identifier, free text, or detailed geography; outside the focused numeric/category baseline |
+| zip_code | text_or_identifier | exclude |  | 34 | 0.001504 | Identifier, free text, or detailed geography; outside the focused numeric/category baseline |
+| addr_state | geographic_review | exclude_as_predictor | addr_state | 33 | 0.00146 | Descriptive group review; excluding it does not prove fairness |
+| dti | candidate_source | candidate_source | dti | 1,744 | 0.077144 | Keep extremes; investigate 999; consider a greater-than-100 flag |
+| delinq_2yrs | candidate_source | candidate_source | delinq_2yrs | 62 | 0.002743 | Keep zero distinct from missing |
+| earliest_cr_line | candidate_source | candidate_source | credit_history_years | 62 | 0.002743 | Derived at issue; scoring before issue needs an as-of application date |
+| fico_range_low | candidate_source | candidate_source | fico_mid | 33 | 0.00146 | Use original FICO bounds, never last_fico fields |
+| fico_range_high | candidate_source | candidate_source | fico_mid | 33 | 0.00146 | Use original FICO bounds, never last_fico fields |
+| inq_last_6mths | not_selected_needs_source_review | exclude |  | 63 | 0.002787 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_last_delinq | not_selected_needs_source_review | exclude |  | 1,158,535 | 51.246715 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_last_record | not_selected_needs_source_review | exclude |  | 1,901,545 | 84.113069 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_acc | candidate_source | candidate_source | open_acc | 62 | 0.002743 | Preserve missing; fit imputation on training only if needed |
+| pub_rec | not_selected_needs_source_review | exclude |  | 62 | 0.002743 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| revol_bal | candidate_source | candidate_source | revol_bal | 33 | 0.00146 | Keep zero; consider training-only log1p for linear models |
+| revol_util | candidate_source | candidate_source | revol_util | 1,835 | 0.08117 | Keep values above 100; consider a high-utilization flag |
+| total_acc | not_selected_needs_source_review | exclude |  | 62 | 0.002743 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| initial_list_status | funding_or_policy_workflow | exclude |  | 33 | 0.00146 | Funding/policy workflow field; not part of independent borrower features |
+| out_prncp | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| out_prncp_inv | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| total_pymnt | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| total_pymnt_inv | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| total_rec_prncp | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| total_rec_int | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| total_rec_late_fee | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| recoveries | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| collection_recovery_fee | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| last_pymnt_d | post_origination_or_workflow | exclude |  | 2,460 | 0.108816 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| last_pymnt_amnt | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| next_pymnt_d | post_origination_or_workflow | exclude |  | 1,345,343 | 59.509993 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| last_credit_pull_d | post_origination_or_workflow | exclude |  | 105 | 0.004645 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| last_fico_range_high | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| last_fico_range_low | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| collections_12_mths_ex_med | not_selected_needs_source_review | exclude |  | 178 | 0.007874 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_last_major_derog | not_selected_needs_source_review | exclude |  | 1,679,926 | 74.30996 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| policy_code | funding_or_policy_workflow | exclude |  | 33 | 0.00146 | Funding/policy workflow field; not part of independent borrower features |
+| application_type | candidate_source | candidate_source | application_type | 33 | 0.00146 | Joint group is small; co-applicant financial fields are not retained |
+| annual_inc_joint | not_selected_needs_source_review | exclude |  | 2,139,991 | 94.660506 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| dti_joint | not_selected_needs_source_review | exclude |  | 2,139,995 | 94.660683 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| verification_status_joint | not_selected_needs_source_review | exclude |  | 2,144,971 | 94.880791 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| acc_now_delinq | not_selected_needs_source_review | exclude |  | 62 | 0.002743 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| tot_coll_amt | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| tot_cur_bal | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_acc_6m | not_selected_needs_source_review | exclude |  | 866,163 | 38.313912 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_act_il | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_il_12m | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_il_24m | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_rcnt_il | not_selected_needs_source_review | exclude |  | 909,957 | 40.251099 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| total_bal_il | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| il_util | not_selected_needs_source_review | exclude |  | 1,068,883 | 47.281042 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_rv_12m | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| open_rv_24m | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| max_bal_bc | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| all_util | not_selected_needs_source_review | exclude |  | 866,381 | 38.323555 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| total_rev_hi_lim | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| inq_fi | not_selected_needs_source_review | exclude |  | 866,162 | 38.313868 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| total_cu_tl | not_selected_needs_source_review | exclude |  | 866,163 | 38.313912 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| inq_last_12m | not_selected_needs_source_review | exclude |  | 866,163 | 38.313912 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| acc_open_past_24mths | not_selected_needs_source_review | exclude |  | 50,063 | 2.21449 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| avg_cur_bal | not_selected_needs_source_review | exclude |  | 70,379 | 3.113149 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| bc_open_to_buy | not_selected_needs_source_review | exclude |  | 74,968 | 3.31614 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| bc_util | not_selected_needs_source_review | exclude |  | 76,104 | 3.366389 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| chargeoff_within_12_mths | not_selected_needs_source_review | exclude |  | 178 | 0.007874 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| delinq_amnt | not_selected_needs_source_review | exclude |  | 62 | 0.002743 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mo_sin_old_il_acct | not_selected_needs_source_review | exclude |  | 139,104 | 6.153136 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mo_sin_old_rev_tl_op | not_selected_needs_source_review | exclude |  | 70,310 | 3.110097 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mo_sin_rcnt_rev_tl_op | not_selected_needs_source_review | exclude |  | 70,310 | 3.110097 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mo_sin_rcnt_tl | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mort_acc | not_selected_needs_source_review | exclude |  | 50,063 | 2.21449 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_recent_bc | not_selected_needs_source_review | exclude |  | 73,445 | 3.248771 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_recent_bc_dlq | not_selected_needs_source_review | exclude |  | 1,741,000 | 77.011511 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_recent_inq | not_selected_needs_source_review | exclude |  | 295,468 | 13.069751 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| mths_since_recent_revol_delinq | not_selected_needs_source_review | exclude |  | 1,520,342 | 67.25091 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_accts_ever_120_pd | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_actv_bc_tl | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_actv_rev_tl | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_bc_sats | not_selected_needs_source_review | exclude |  | 58,623 | 2.593134 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_bc_tl | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_il_tl | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_op_rev_tl | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_rev_accts | not_selected_needs_source_review | exclude |  | 70,310 | 3.110097 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_rev_tl_bal_gt_0 | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_sats | not_selected_needs_source_review | exclude |  | 58,623 | 2.593134 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_tl_120dpd_2m | not_selected_needs_source_review | exclude |  | 153,690 | 6.798334 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_tl_30dpd | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_tl_90g_dpd_24m | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| num_tl_op_past_12m | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| pct_tl_nvr_dlq | not_selected_needs_source_review | exclude |  | 70,464 | 3.116909 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| percent_bc_gt_75 | not_selected_needs_source_review | exclude |  | 75,412 | 3.335779 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| pub_rec_bankruptcies | candidate_source | candidate_source | pub_rec_bankruptcies | 1,398 | 0.061839 | Keep zero distinct from missing |
+| tax_liens | not_selected_needs_source_review | exclude |  | 138 | 0.006104 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| tot_hi_cred_lim | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| total_bal_ex_mort | not_selected_needs_source_review | exclude |  | 50,063 | 2.21449 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| total_bc_limit | not_selected_needs_source_review | exclude |  | 50,063 | 2.21449 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| total_il_high_credit_limit | not_selected_needs_source_review | exclude |  | 70,309 | 3.110053 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| revol_bal_joint | not_selected_needs_source_review | exclude |  | 2,152,681 | 95.221836 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_fico_range_low | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_fico_range_high | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_earliest_cr_line | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_inq_last_6mths | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_mort_acc | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_open_acc | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_revol_util | not_selected_needs_source_review | exclude |  | 2,154,517 | 95.30305 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_open_act_il | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_num_rev_accts | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_chargeoff_within_12_mths | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_collections_12_mths_ex_med | not_selected_needs_source_review | exclude |  | 2,152,680 | 95.221792 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| sec_app_mths_since_last_major_derog | not_selected_needs_source_review | exclude |  | 2,224,759 | 98.410139 | Not retained in the focused clean table; meaning and as-of availability have not been source-certified |
+| hardship_flag | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_type | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_reason | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_status | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| deferral_term | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_amount | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_start_date | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_end_date | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| payment_plan_start_date | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_length | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_dpd | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_loan_status | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| orig_projected_additional_accrued_interest | post_origination_or_workflow | exclude |  | 2,252,050 | 99.617331 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_payoff_balance_amount | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| hardship_last_payment_amount | post_origination_or_workflow | exclude |  | 2,249,784 | 99.517097 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| disbursement_method | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| debt_settlement_flag | post_origination_or_workflow | exclude |  | 33 | 0.00146 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| debt_settlement_flag_date | post_origination_or_workflow | exclude |  | 2,226,455 | 98.48516 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| settlement_status | post_origination_or_workflow | exclude |  | 2,226,455 | 98.48516 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| settlement_date | post_origination_or_workflow | exclude |  | 2,226,455 | 98.48516 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| settlement_amount | post_origination_or_workflow | exclude |  | 2,226,455 | 98.48516 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| settlement_percentage | post_origination_or_workflow | exclude |  | 2,226,455 | 98.48516 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+| settlement_term | post_origination_or_workflow | exclude |  | 2,226,455 | 98.48516 | Payment/performance or later workflow information; unavailable for the initial independent application-risk baseline |
+
+### Final-stage figures
+
+- [18_outcome_boxplots.png](figures/18_outcome_boxplots.png) · [18_outcome_boxplots.svg](figures/18_outcome_boxplots.svg)
+
+- [19_category_support.png](figures/19_category_support.png) · [19_category_support.svg](figures/19_category_support.svg)
+
+- [20_benchmark_coverage.png](figures/20_benchmark_coverage.png) · [20_benchmark_coverage.svg](figures/20_benchmark_coverage.svg)
+
+- [21_source_column_disposition.png](figures/21_source_column_disposition.png) · [21_source_column_disposition.svg](figures/21_source_column_disposition.svg)

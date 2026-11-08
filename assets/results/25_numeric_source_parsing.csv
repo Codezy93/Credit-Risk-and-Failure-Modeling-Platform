@@ -1,0 +1,17 @@
+feature,development_rows,nonblank_source_values,missing_source_values,parse_failures,nonfinite_values
+annual_inc,887440,887436,4,0,0
+delinq_2yrs,887440,887411,29,0,0
+dti,887440,887438,2,0,0
+earliest_cr_line,887440,887411,29,0,0
+emp_length,887440,842605,44835,0,0
+fico_range_high,887440,887440,0,0,0
+fico_range_low,887440,887440,0,0,0
+installment,887440,887440,0,0,0
+int_rate,887440,887440,0,0,0
+issue_d,887440,887440,0,0,0
+loan_amnt,887440,887440,0,0,0
+open_acc,887440,887411,29,0,0
+pub_rec_bankruptcies,887440,886075,1365,0,0
+revol_bal,887440,887440,0,0,0
+revol_util,887440,886938,502,0,0
+term,887440,887440,0,0,0

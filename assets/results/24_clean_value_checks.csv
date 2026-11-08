@@ -1,0 +1,16 @@
+check_name,affected_loans
+nonpositive_loan_amount,0
+missing_loan_amount,0
+interest_outside_0_to_100,0
+nonpositive_installment,0
+unexpected_term,0
+nonpositive_clean_income,0
+negative_clean_dti,0
+negative_clean_utilization,0
+negative_revolving_balance,0
+negative_open_accounts,0
+negative_delinquencies,0
+negative_bankruptcies,0
+employment_outside_0_to_10,0
+fico_outside_300_to_850,0
+negative_credit_history,0

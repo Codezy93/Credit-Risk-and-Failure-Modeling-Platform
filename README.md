@@ -1,7 +1,12 @@
 # Credit Risk and Failure Modeling Platform
 
-A credit-risk project using LendingClub loan data. The current step sets up the
-project folders and downloads the raw dataset.
+A credit-risk project using LendingClub loan data. EDA is complete, with SQL
+audits, three marimo notebooks, saved figures, a feature-availability review, and
+a documented retrospective benchmark. Model training has not started.
+
+Start with the [final EDA report](docs/eda_summary.md) and
+[complete statistics reference](assets/statistics.md). The
+[clean-table dictionary](docs/data_dictionary.md) records the feature decisions.
 
 ## Folder structure
 
@@ -70,9 +75,11 @@ source rows and missingness, creates a typed analysis table, and explores:
 - Outcome coverage across years and the limitations of resolved-only comparisons.
 
 Detailed feature and outcome exploration uses loans issued through 2015. Later
-cohorts are checked only for status coverage, with 2016 provisionally reserved for
-validation and 2017–2018 for testing. A prediction horizon and maturity rule still
-need to be chosen before training; these are not fixed-horizon default labels.
+cohorts are checked only for status coverage. The initial proposal to validate on
+2016 and test on 2017–2018 was superseded at EDA completion because of low outcome
+coverage. The final retrospective benchmark uses resolved 36-month loans from
+2011–2015; see the final EDA report for the split and limitations. These are not
+fixed-horizon default labels.
 
 The notebook writes:
 
@@ -124,3 +131,31 @@ Export the follow-up report with:
 ```bash
 marimo export html scripts/02_deeper_eda.py -o docs/deeper_eda.html --no-include-code
 ```
+
+## EDA completion
+
+```bash
+marimo edit scripts/03_complete_eda.py
+```
+
+The final notebook runs SQL files `20`–`25`, completes numeric/category profiles
+and parsing checks, audits all 151 source and 26 clean columns, and records 14
+candidate features. It adds four figure sets, dictionaries, benchmark eligibility
+counts, a completion manifest, and section 16 of `assets/statistics.md`.
+
+The first benchmark is charged off among ordinary resolved **36-month loans
+issued in 2011–2015**: training 2011–2013, validation 2014, exploratory evaluation
+2015. All these years were inspected during EDA. The benchmark does not represent
+a pristine holdout, a fixed-horizon default probability, or a deployment backtest.
+It has no established point-in-time outcome availability. Those limits must
+accompany future model results.
+
+```bash
+marimo export html scripts/03_complete_eda.py -o docs/eda_completion.html --no-include-code
+```
+
+Read [the final summary](docs/eda_summary.md),
+[the final HTML report](docs/eda_completion.html), and
+[the dictionary](docs/data_dictionary.md) without rerunning the notebooks.
+Raw and clean data are preserved. No model-ready split files or fitted
+preprocessing have been created yet.

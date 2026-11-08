@@ -1,0 +1,27 @@
+column,initial_feature_decision,reason_or_handling
+loan_id,exclude,Join/audit key; never a risk predictor
+issue_date,exclude,Cohort assignment; no exact daily issue timestamp
+issue_year,exclude,Time split and monitoring
+loan_status,exclude,Outcome information; direct target leakage
+charged_off,exclude,"Analysis label, never an input"
+term_months,exclude,First benchmark fixes term to 36 months
+grade,exclude,Existing underwriting output; defer to a separate ablation
+sub_grade,exclude,Existing underwriting output; defer to a separate ablation
+int_rate,exclude,Pricing output; not independent borrower information
+installment,exclude,Depends on pricing and term
+verification_status,exclude,Availability depends on the scoring point in the workflow
+addr_state,exclude,Descriptive group review; excluding it does not prove fairness
+loan_amnt,candidate,Use only if requested principal is known at the chosen scoring point
+annual_inc,candidate,Keep missing; consider training-only log1p and missingness indicator
+dti,candidate,Keep extremes; investigate 999; consider a greater-than-100 flag
+revol_util,candidate,Keep values above 100; consider a high-utilization flag
+revol_bal,candidate,Keep zero; consider training-only log1p for linear models
+open_acc,candidate,Preserve missing; fit imputation on training only if needed
+delinq_2yrs,candidate,Keep zero distinct from missing
+pub_rec_bankruptcies,candidate,Keep zero distinct from missing
+emp_length_years,candidate,0 is less than one year; 10 includes 10+; preserve missing
+fico_mid,candidate,"Use original FICO bounds, never last_fico fields"
+credit_history_years,candidate,Derived at issue; scoring before issue needs an as-of application date
+home_ownership,candidate,Keep categories; training-only rare grouping and unknown handling
+purpose,candidate,Training-only rare grouping and unknown handling
+application_type,candidate,Joint group is small; co-applicant financial fields are not retained

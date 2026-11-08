@@ -1,0 +1,74 @@
+{
+  "stage": "eda",
+  "status": "complete",
+  "completed_at_utc": "2026-11-08T15:19:48+00:00",
+  "source_columns": 151,
+  "clean_columns": 26,
+  "candidate_feature_count": 14,
+  "candidate_features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose",
+    "application_type"
+  ],
+  "target": "charged_off_among_selected_resolved_loans",
+  "fixed_horizon": false,
+  "benchmark_term_months": 36,
+  "train_years": [
+    2011,
+    2012,
+    2013
+  ],
+  "validation_years": [
+    2014
+  ],
+  "exploratory_test_years": [
+    2015
+  ],
+  "test_previously_explored": true,
+  "deployment_backtest": false,
+  "checks_passed": true,
+  "model_training_started": false,
+  "splits": [
+    {
+      "proposed_split": "train",
+      "all_loans": 157993,
+      "eligible_resolved_loans": 157993,
+      "excluded_other_status": 0,
+      "fully_paid": 138213,
+      "charged_off": 19780,
+      "resolved_pct": 100.0,
+      "charged_off_pct": 12.519542005025539
+    },
+    {
+      "proposed_split": "validation",
+      "all_loans": 162570,
+      "eligible_resolved_loans": 162570,
+      "excluded_other_status": 0,
+      "fully_paid": 140255,
+      "charged_off": 22315,
+      "resolved_pct": 100.0,
+      "charged_off_pct": 13.726394783785446
+    },
+    {
+      "proposed_split": "exploratory_test",
+      "all_loans": 283173,
+      "eligible_resolved_loans": 283026,
+      "excluded_other_status": 147,
+      "fully_paid": 240894,
+      "charged_off": 42132,
+      "resolved_pct": 99.94808827112755,
+      "charged_off_pct": 14.886264866125373
+    }
+  ]
+}
