@@ -1,0 +1,3 @@
+feature,univariate_standardized_coefficient,adjusted_standardized_coefficient,univariate_input_includes_missing_flag_if_needed
+delinq_2yrs,0.01605795269669785,-0.018984662913000657,True
+pub_rec_bankruptcies,0.012117577147107683,-0.04300571686781894,True

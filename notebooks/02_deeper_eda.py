@@ -388,7 +388,7 @@ def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_d
         _marker,
         "## 15. Follow-up EDA",
         f"Updated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}. The original statistics and artifact inventory in sections 2–14 describe the first EDA snapshot. Quick-answer artifact counts include this follow-up. No model or stress-test measurements have been added.",
-        "Source: [second marimo notebook](../scripts/02_deeper_eda.py), [HTML report](../docs/deeper_eda.html). It reads the existing clean Parquet; it does not repeat raw-data cleaning.",
+        "Source: [second marimo notebook](../notebooks/02_deeper_eda.py), [HTML report](../docs/deeper_eda.html). It reads the existing clean Parquet; it does not repeat raw-data cleaning.",
         deeper_findings.replace("# Follow-up EDA findings", "### Follow-up interpretation").replace("\n## ", "\n#### "),
         "### Complete follow-up result tables",
         "All six new CSVs are transcribed below. Counts are integers; display rounding is at most six decimal places. Percentages use the denominators stated above. No group is omitted from these tables.",
@@ -406,6 +406,43 @@ def _(affordability, composition, datetime, deeper_findings, fico_dti, figures_d
     _parts.append("### Snapshot maintenance\n\nThis follow-up section is refreshed when the second notebook runs. The original sections retain their first-stage provenance; model and stress-test sections remain Not measured. The clean data is unchanged.")
     _stats_path.write_text(_original + "\n\n" + "\n\n".join(_parts) + "\n\n" + _final_section)
     mo.md("Saved six result CSVs, six PNG/SVG figures, the follow-up findings, and the detailed tables in section 15 of `assets/statistics.md`.")
+    return
+
+
+@app.cell
+def _(mo, pd, root):
+    import json as _review_json
+
+    _review_outputs = [mo.md("""
+    ## Current modelling results
+
+    The EDA above records the original investigation. The completed validation
+    and Basel-style loss experiment below are separate later stages.
+    Open `notebooks/10_model_review.py` for SQL summaries, calibration figures,
+    loss diagnostics, and the explicit capital assumptions.
+    """)]
+    _validation_path = root / "assets/results/validation_hardening_latest.json"
+    if _validation_path.exists():
+        _validation_manifest = _review_json.loads(_validation_path.read_text())
+        _validation_results = root / _validation_manifest["result_directory"]
+        _review_outputs += [mo.md("### Exact PD validation and separate-year calibration"),
+            mo.ui.table(pd.read_csv(_validation_results / "auc_confidence_intervals.csv")),
+            mo.ui.table(pd.read_csv(_validation_results / "calibration_metrics.csv"))]
+    _loss_path = root / "assets/results/basel_loss_latest.json"
+    if _loss_path.exists():
+        _loss_manifest = _review_json.loads(_loss_path.read_text())
+        _loss_results = root / _loss_manifest["result_directory"]
+        _review_outputs += [mo.md("""
+        ### EAD, LGD, expected loss and capital scenarios
+
+        EAD/LGD are bounded snapshot proxies. Recovery fields form loss targets,
+        never PD predictors. Capital uses assumed one-year PD scenarios;
+        the classifier score remains a resolved-loan score. This is illustrative,
+        with no regulatory compliance claim. PD predictions are unchanged.
+        """), mo.ui.table(pd.read_csv(_loss_results / "component_metrics.csv")),
+            mo.ui.table(pd.read_csv(_loss_results / "portfolio_loss_metrics.csv")),
+            mo.ui.table(pd.read_csv(_loss_results / "portfolio_capital_scenarios.csv"))]
+    mo.vstack(_review_outputs)
     return
 
 

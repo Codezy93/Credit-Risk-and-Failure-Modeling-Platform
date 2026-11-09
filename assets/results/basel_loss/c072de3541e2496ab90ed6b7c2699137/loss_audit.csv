@@ -1,0 +1,3 @@
+split,rows,charged_off_rows,missing_source,invalid_funded,bad_or_missing_loss_inputs,nonpositive_default_ead,negative_lgd,lgd_above_one,eligible_defaults,eligible_portfolio_rows
+train,157993,19780.0,0,0,0,0,23,0,19757,157970
+validation,162570,22315.0,0,0,0,0,7,0,22308,162563

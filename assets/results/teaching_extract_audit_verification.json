@@ -1,0 +1,46 @@
+{
+  "completed_at_utc": "2026-11-09T01:11:12.868691+00:00",
+  "status": "passed",
+  "batch_run_id": "6191324074c14b32a83b0430e4c16078",
+  "source_csv_sha256": "fb1dd172c4a3bbc9c2db55ea0863c266e76008e937ff970af89902ba65e140fb",
+  "source_commit": "9efa1b357ab5b4c10e96e4a49aace5364c2d682d",
+  "script_sha256": "69e7c7677c6cb64e140bc3558b32bc0dd91fe054b5f652f823d26cea5b338d13",
+  "source_and_script_hashes_verified": true,
+  "download_bytes": 99561334,
+  "rows": 396030,
+  "columns": 27,
+  "postcode_values": 10,
+  "pure_paid_postcodes": [
+    "00813",
+    "05113",
+    "29597"
+  ],
+  "pure_charged_off_postcodes": [
+    "11650",
+    "86630",
+    "93700"
+  ],
+  "holdout_rows": 79206,
+  "postcode_only_auc": 0.8396448472288981,
+  "xgboost_without_postcode_auc": 0.7202387042575645,
+  "xgboost_with_postcode_auc": 0.9071220585048368,
+  "postcode_auc_gain": 0.18688335424727232,
+  "native_evaluations_finished": 2,
+  "local_logged_models_match_full_holdout_predictions": true,
+  "tests_passed": 85,
+  "test_failures": 0,
+  "incumbent_unchanged": true,
+  "project_feature_policy_unchanged": true,
+  "reviewer_file_identity_verified": false,
+  "reviewer_notebook_exactly_reproduced": false,
+  "model_sha256": {
+    "xgboost_without_postcode.joblib": "19b7ea8bd8fbfea5f3928dbdf04f5565d8dee956a5cff4ae74b5727293155b0a",
+    "xgboost_with_postcode.joblib": "5380c486a05cb66afb6ed3d36aae2558439a8b8d7c074da076bdf20ce57b6353"
+  },
+  "dataset_sha256": {
+    "xgboost_without_postcode_test.parquet": "b8064e7fb16669f17e6b2a9a92f51354923ce4b8bf9abd03599377fe63052560",
+    "xgboost_with_postcode_test.parquet": "dc12ed5235cff1cf6e4220b77b38e6abe3e63b82cef5a9a7f70bc217690d4a15",
+    "xgboost_without_postcode_train.parquet": "9dc726fe4779f1bb2b29bcd9b76b3d6a6d396ebb65a5520d26c3026a1ff7f75e",
+    "xgboost_with_postcode_train.parquet": "b5f7ab54c5a99de7ed7f1987ad2882ee1c90b1e2cfafeec8df2443d424648a51"
+  }
+}

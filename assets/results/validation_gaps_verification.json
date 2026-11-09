@@ -1,0 +1,39 @@
+{
+  "completed_at_utc": "2026-11-09T02:33:18.171062+00:00",
+  "status": "passed",
+  "xgboost_batch_id": "2d9a9d65b9004aa1ade7337465576f17",
+  "coefficient_review_batch_id": "da3c8ad1bee14f60ac5156def8b04b14",
+  "xgboost_script_sha256": "344b1f86507ede3407dffd69b5a99c69d52b222357263f21f39031a3787b9cc4",
+  "coefficient_script_sha256": "ec53b3bba0240fbc3a9ce7f76477d8a23d98ce292a6db188602166ea69f48f65",
+  "current_source_and_artifact_hashes_match_execution": true,
+  "tests_passed": 93,
+  "test_failures": 0,
+  "stopping_fit_years": [
+    2011,
+    2012
+  ],
+  "stopping_year": 2013,
+  "refit_years": [
+    2011,
+    2012,
+    2013
+  ],
+  "selection_year": 2014,
+  "refit_used_eval_set": false,
+  "frozen_tree_counts_verified": 7,
+  "xgboost_native_evaluations_finished": 7,
+  "coefficient_native_evaluations_finished": 4,
+  "full_2014_predictions_reproduced_for_logged_models": 11,
+  "validation_rows_each": 162570,
+  "bootstrap_pipeline_refits": 200,
+  "bootstrap_numeric_coefficients": 2200,
+  "bootstrap_summary_recomputed": true,
+  "incumbents_unchanged": true,
+  "test_2015_read": false,
+  "one_year_pd_estimated": false,
+  "regulatory_compliance_claim": false,
+  "model_review_export_exit_code": 0,
+  "model_review_source_sha256": "14afd05534301142a4c1db3bb49951827d186fcb15f0ff8f35915b018fa63f2c",
+  "model_review_html_sha256": "1e5d29c2d9c0e471d99d5cdaf46f97653ab0d6bc5106f503522b7d4c8e8d9592",
+  "both_new_batches_visible_in_html": true
+}

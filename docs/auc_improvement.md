@@ -1,14 +1,14 @@
 # AUC improvement experiments
 
-Completed: 2026-11-08T16:44:45+00:00. MLflow experiment:
-**lendingclub_auc_ablation**, parent run `709d47fa0d5348f391bdef42dbb6174c`.
+Completed: 2026-11-09T02:25:10+00:00. MLflow experiment:
+**lendingclub_auc_ablation**, parent run `2d9a9d65b9004aa1ade7337465576f17`.
 
 ## Result
 
-The best independent-scope candidate reached **0.684553 validation ROC-AUC**,
+The best independent-scope candidate reached **0.683258 validation ROC-AUC**,
 compared with **0.653889** for the original histogram-boosting pipeline.
 The separately scoped post-underwriting comparison reached
-**0.691254**.
+**0.690065**.
 Independent-scope target 0.80 reached: **False**.
 Post-underwriting target 0.80 reached: **False**.
 
@@ -26,11 +26,17 @@ they are not newly measured test results or deployment-approved replacements.
   rate. Those incorporate existing underwriting; their score does not represent
   an independent pre-pricing application model.
 - A bounded seven-trial search uses shallow, regularized, and deeper trees.
-  Early stopping uses validation ROC-AUC with patience 60 and at most 1,200 trees.
-  Both stopping and model comparison reuse 2014 validation, so the best validation
-  number is subject to selection optimism. It is not an untouched estimate.
+  Protocol v2 fits stopping candidates on 2011–2012 and chooses their tree counts
+  using **2013 only**, with patience 60 and at most 1,200 trees. Each encoder and
+  classifier then refits from scratch on 2011–2013 using the frozen tree budget,
+  with **no eval_set and no early stopping**. **2014 only compares candidates**.
+  The earlier protocol reused 2014 for stopping; its archived results remain
+  historical snapshots. This correction does not make the already-explored 2014
+  cohort a fresh holdout or remove candidate-selection optimism.
 - Numeric missingness is retained for XGBoost. One-hot encoders learn categories
-  only on training rows and ignore unknown labels. The fitted encoder and model
+  on 2011–2012 for stopping, then 2011–2013 for the fixed-budget refit, and ignore
+  unknown labels. Candidate/constant-column decisions use final training rows
+  only; no 2014 outcome enters those decisions. The fitted encoder and model
   are saved as one sklearn pipeline. There is no resampling, target relabeling,
   hard-loan deletion, or inclusion of payment/recovery/settlement/updated-FICO data.
 - Cohorts remain 157,993 training loans (2011–2013) and 162,570 validation loans
@@ -38,17 +44,23 @@ they are not newly measured test results or deployment-approved replacements.
   against the original split metadata. Each trial has dataset-linked metrics,
   a native classifier evaluation, plots, and a 1,000-row evaluation preview in MLflow.
 
+Inner fit: **57,571** loans (2011–2012). Stopping: **100,422** loans (2013).
+The stopping set is included in the later refit and is not an independent final
+evaluation. Full roles, every stopping iteration and the old/new protocol
+comparison are saved in `temporal_roles.csv`, `stopping_learning_curves.csv` and
+`protocol_comparison.csv`. The previous batch is `709d47fa0d5348f391bdef42dbb6174c`.
+
 ## Comparison
 
-| trial | feature_set | scoring_point | run_id | model_uri | feature_count | max_depth | min_child_weight | reg_lambda | train_roc_auc | validation_roc_auc | train_average_precision | validation_average_precision | validation_brier_score | validation_log_loss | best_iteration | fit_seconds |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| post_underwriting_regularized | post_underwriting | post_underwriting | 488c69d6d6c84b7caeaa505f2d011c34 | models:/m-dec4faa7348d402482ce8335d4de9d0b | 61 | 5 | 100 | 20 | 0.733505 | 0.691254 | 0.296785 | 0.250611 | 0.112163 | 0.373518 | 430 | 81.206909 |
-| post_underwriting_shallow | post_underwriting | post_underwriting | ed74c9ba21804b21bc46b3dcd916904b | models:/m-bb0f9341b64c46ad9b8902649a276d82 | 61 | 3 | 30 | 10 | 0.715804 | 0.690859 | 0.271854 | 0.250467 | 0.112224 | 0.373796 | 633 | 128.567778 |
-| post_underwriting_deep | post_underwriting | post_underwriting | 70187acc73f84d67a7d17303cfb0a22d | models:/m-5b79dddaa3554956a4b709793f06cb4c | 61 | 7 | 100 | 30 | 0.75078 | 0.690816 | 0.322179 | 0.250383 | 0.112186 | 0.373662 | 324 | 64.001626 |
-| expanded_bureau_deep | expanded_bureau | independent_risk_candidate | 57900240ac0240aba47094e6010aa0a3 | models:/m-db6a86fa5e74439ca0710b9bc43cca52 | 58 | 7 | 100 | 30 | 0.751578 | 0.684553 | 0.324037 | 0.244488 | 0.11245 | 0.374625 | 350 | 44.962758 |
-| expanded_bureau_shallow | expanded_bureau | independent_risk_candidate | 6a20281cbf374e1d8265b1becf0f2626 | models:/m-eed7cf1743f643048889e6d971cba8a2 | 58 | 3 | 30 | 10 | 0.721208 | 0.683984 | 0.278409 | 0.244959 | 0.112478 | 0.374822 | 829 | 86.172015 |
-| expanded_bureau_regularized | expanded_bureau | independent_risk_candidate | 2709a777e41d4fc2be69f91bbd5be0c1 | models:/m-2fcf39b1759849628e67843e707ebae3 | 58 | 5 | 100 | 20 | 0.733836 | 0.683864 | 0.296992 | 0.244796 | 0.112483 | 0.374803 | 454 | 53.83068 |
-| base13_shallow | base13 | independent_risk_candidate | 50cc37c3ddd34b9b942b112c0b644cdd | models:/m-1cee12e712864cdbb3170a73e1ff3a33 | 13 | 3 | 30 | 10 | 0.678768 | 0.655817 | 0.229416 | 0.218011 | 0.114275 | 0.3819 | 549 | 23.194086 |
+| trial | feature_set | scoring_point | run_id | model_uri | feature_count | max_depth | min_child_weight | reg_lambda | train_roc_auc | validation_roc_auc | train_average_precision | validation_average_precision | validation_brier_score | validation_log_loss | validation_gini | validation_ks | best_iteration | selected_estimators | stopping_2013_auc | fit_seconds |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| post_underwriting_shallow | post_underwriting | post_underwriting | 51f2c63878104a30a75964ee3f047c13 | models:/m-3bc4f16ab0f3460684c1b6812112a9d6 | 61 | 3 | 30 | 10 | 0.708713 | 0.690065 | 0.263211 | 0.24955 | 0.112306 | 0.374075 | 0.380131 | 0.279367 | 466 | 467 | 0.679069 | 145.740727 |
+| post_underwriting_deep | post_underwriting | post_underwriting | 569f1fa286c54bfaafc892945b31c414 | models:/m-f16b8fe5cde24831997ad9eccc8b115a | 61 | 7 | 100 | 30 | 0.727874 | 0.68996 | 0.28838 | 0.249193 | 0.11233 | 0.374088 | 0.379921 | 0.277057 | 175 | 176 | 0.679411 | 53.641419 |
+| post_underwriting_regularized | post_underwriting | post_underwriting | afc569464c7542bba6c290751ea7f06d | models:/m-2dc5b35647084769befdb002ee0425d1 | 61 | 5 | 100 | 20 | 0.71104 | 0.689326 | 0.266179 | 0.248583 | 0.112394 | 0.374325 | 0.378653 | 0.277141 | 191 | 192 | 0.679043 | 70.971681 |
+| expanded_bureau_regularized | expanded_bureau | independent_risk_candidate | 09f50de76751430aa734180f514efbcb | models:/m-c62c25f1c59044f89da4509b49bbca23 | 58 | 5 | 100 | 20 | 0.72374 | 0.683258 | 0.283063 | 0.244568 | 0.112495 | 0.374871 | 0.366515 | 0.266477 | 334 | 335 | 0.67164 | 50.699564 |
+| expanded_bureau_deep | expanded_bureau | independent_risk_candidate | 2b3a72e455e2482c8728e7fd9cfcd525 | models:/m-82d964be765a42f0be2d3fe4db452fea | 58 | 7 | 100 | 30 | 0.72878 | 0.68262 | 0.289768 | 0.243275 | 0.112548 | 0.375037 | 0.36524 | 0.267201 | 187 | 188 | 0.672002 | 33.954283 |
+| expanded_bureau_shallow | expanded_bureau | independent_risk_candidate | a52ec036c0ec41b38acaf98081d83505 | models:/m-bca2a5b9c6194f2fa70b07ff6b8b6c3d | 58 | 3 | 30 | 10 | 0.705816 | 0.682039 | 0.259148 | 0.243372 | 0.112575 | 0.375211 | 0.364077 | 0.264744 | 421 | 422 | 0.672849 | 58.740758 |
+| base13_shallow | base13 | independent_risk_candidate | 56ce404489974a1cbcbfbc0bd6e8e43f | models:/m-58dc71ca98c1494692b28bfd1b4990ba | 13 | 3 | 30 | 10 | 0.672629 | 0.654746 | 0.223609 | 0.217557 | 0.114318 | 0.382094 | 0.309492 | 0.22481 | 371 | 372 | 0.64582 | 21.435134 |
 
 Training AUC can be much higher than validation AUC. Changing a probability
 threshold affects confusion counts, not ROC-AUC; calibration also does not create
@@ -82,9 +94,9 @@ artifacts, metrics, and native evaluation records. No confidence interval or
 protected-group fairness evaluation was computed.
 
 [Latest manifest](../assets/results/auc_improvement_latest.json),
-[feature/profile and comparison CSVs](../assets/results/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/auc_comparison.csv),
-[availability audit](../assets/results/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/feature_availability.csv), and
-[figure](../assets/figures/auc_experiments/709d47fa0d5348f391bdef42dbb6174c/auc_comparison.png).
+[feature/profile and comparison CSVs](../assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.csv),
+[availability audit](../assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/feature_availability.csv), and
+[figure](../assets/figures/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.png).
 
 XGBoost API references: [CPU installation](https://xgboost.readthedocs.io/en/stable/install.html)
 and [Python API/early stopping](https://xgboost.readthedocs.io/en/stable/python/python_api.html).

@@ -1,6 +1,6 @@
 {
   "status": "complete",
-  "batch_run_id": "b55ad4d088e54ccb98600fb06dbb40b1",
+  "batch_run_id": "62955be6d71845418f95174c621c98d2",
   "experiment_id": "3",
   "experiment_name": "lendingclub_validation_hardening",
   "features": [
@@ -20,16 +20,16 @@
   ],
   "selected_model": "",
   "model_uris": {
-    "logistic_regression_raw": "models:/m-2fe7b57dbc7348afb27249c138d77c3d",
-    "logistic_regression_sigmoid": "models:/m-9b2d8c8d14ed42d79400cf05b8a4a01c",
-    "hist_gradient_boosting_raw": "models:/m-370a896af37b46b79df3d4d2eb830ce1",
-    "hist_gradient_boosting_sigmoid": "models:/m-4002b8bc39084d96ace7de8c5e4b5493"
+    "logistic_regression_raw": "models:/m-c8c7604c407a44b8b5ed4ae9f2c7340d",
+    "logistic_regression_sigmoid": "models:/m-f3b4efaaaf9849ba9749263a288cd5b7",
+    "hist_gradient_boosting_raw": "models:/m-479bb3a4dd0f4273a9b83d0317808635",
+    "hist_gradient_boosting_sigmoid": "models:/m-280e2a286248431bbdea77490a5f3968"
   },
   "run_ids": {
-    "logistic_regression_raw": "2817d66b73c84a6982437b7f027a6b86",
-    "logistic_regression_sigmoid": "49b38470d8b24b3fb72e7a966b22b6e3",
-    "hist_gradient_boosting_raw": "de8537f5330e47e08f428ba44a840258",
-    "hist_gradient_boosting_sigmoid": "a21388aa503b4f48b1c63c17f679663d"
+    "logistic_regression_raw": "f25d8631515045f7bdd9371dbb3a6851",
+    "logistic_regression_sigmoid": "47e51bdb766d4729ade1401de2e9167d",
+    "hist_gradient_boosting_raw": "6aebbe9e60dc48b68df10378149e2fcd",
+    "hist_gradient_boosting_sigmoid": "90a7a586e20c4708bbd4a1df0385d32f"
   },
   "seed": 42,
   "bootstrap_resamples": 500,
@@ -75,10 +75,10 @@
   "exploratory_2015_read": false,
   "deployment_backtest": false,
   "data_previously_explored": true,
-  "result_directory": "assets/results/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1",
-  "figure_directory": "assets/figures/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1",
-  "model_directory": "models/validation_hardening/b55ad4d088e54ccb98600fb06dbb40b1",
-  "completed_at_utc": "2026-11-08T23:15:46.264916+00:00",
+  "result_directory": "assets/results/validation_hardening/62955be6d71845418f95174c621c98d2",
+  "figure_directory": "assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2",
+  "model_directory": "models/validation_hardening/62955be6d71845418f95174c621c98d2",
+  "completed_at_utc": "2026-11-09T00:11:30.061472+00:00",
   "incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "incumbent_unchanged": true,
   "historical_model_sha256": {
@@ -88,7 +88,7 @@
     "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/hist_gradient_boosting.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078"
   },
   "source_sha256": {
-    "scripts/08_validate_models.py": "7d01ee34a5b23fdefd08d3b10ac7226b68477f8d27201cc746a6cfede5461cfa",
+    "scripts/08_validate_models.py": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25",
     "requirements.txt": "8809ba57e29aedae23094e6760d4299feb97e26dcdd13aa792c2aa007664ef7a",
     "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825",
     "util/calibration.py": "3747c86cebea481223ee6207d81305a5898fb5f65a42db6e0896334bb63abf5c",
@@ -100,7 +100,7 @@
   },
   "results_sha256": {
     "paired_auc_bootstrap.csv": "db4847c126322cb03bd9469e44be67724ee0719c5b62219d270579c8fb90809f",
-    "mlflow_native_evaluations.csv": "e4a064f352221c4290418cb1933a3c790ba8fd5b0985a60f025d5db505ae6bc0",
+    "mlflow_native_evaluations.csv": "9868e5bee5cf959dcf8b1f945918c2a6da760f0a64fa375466bde93e32f6cae9",
     "logistic_coefficients.csv": "e9cb8907cc9cc927441c27ba49240a58c8892df73ae50e155c427cbdbf5498c6",
     "historical_exact_metrics.csv": "8ec1fa554f5bd13ea99b0678f87adceaf17e721387bb6a29cdd6f8ccc2a168f1",
     "auc_confidence_intervals.csv": "a973717e07e7ee2fd3a0111b05b7a0a388c66f2e3cee0ef209ecde5e0a9be45f",
@@ -114,7 +114,5 @@
     "logistic_regression_sigmoid.joblib": "e2a684b3d5fc37f3db71045469dfac121cda1dfdd355b3f055cd3dc022a0048a",
     "hist_gradient_boosting_raw.joblib": "a2145001594bcc79fde974bb6caf4add8bd2d32694461204ab5a7e8b5fc74127"
   },
-  "execution_script_sha256": "7d01ee34a5b23fdefd08d3b10ac7226b68477f8d27201cc746a6cfede5461cfa",
-  "reporting_script_sha256": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25",
-  "reporting_revision_note": "Report formatting and reference updates only; no model retraining, metric changes, or dataset changes."
+  "execution_script_sha256": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25"
 }

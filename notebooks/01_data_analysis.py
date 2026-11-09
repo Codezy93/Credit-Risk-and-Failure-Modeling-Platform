@@ -31,9 +31,10 @@ def _(mo):
     rejected applications or justify claims about all applicants.
 
     Detailed feature and outcome exploration uses **2007–2015** originations.
-    We inspect later years only for status coverage; **2016** is reserved for
-    validation and **2017–2018** for later testing. These dates are a provisional
-    split, not a claim that the later loans have mature outcomes.
+    We inspect later years only for status coverage. The final modelling benchmark
+    uses resolved 36-month loans: **2011–2013** for training, **2014** for validation,
+    and the already-explored **2015** cohort for exploratory evaluation. Earlier
+    split proposals in historical EDA tables were superseded by that decision.
     """)
     return
 
@@ -496,6 +497,43 @@ def _(clean_dir, con, findings, mo):
     No model training has been started. The next decision is the prediction
     horizon and maturity rule for defining the training population.
     """)
+    return
+
+
+@app.cell
+def _(mo, pd, root):
+    import json as _review_json
+
+    _review_outputs = [mo.md("""
+    ## Current modelling results
+
+    The EDA above records the original investigation. The completed validation
+    and Basel-style loss experiment below are separate later stages.
+    Open `notebooks/10_model_review.py` for SQL summaries, calibration figures,
+    loss diagnostics, and the explicit capital assumptions.
+    """)]
+    _validation_path = root / "assets/results/validation_hardening_latest.json"
+    if _validation_path.exists():
+        _validation_manifest = _review_json.loads(_validation_path.read_text())
+        _validation_results = root / _validation_manifest["result_directory"]
+        _review_outputs += [mo.md("### Exact PD validation and separate-year calibration"),
+            mo.ui.table(pd.read_csv(_validation_results / "auc_confidence_intervals.csv")),
+            mo.ui.table(pd.read_csv(_validation_results / "calibration_metrics.csv"))]
+    _loss_path = root / "assets/results/basel_loss_latest.json"
+    if _loss_path.exists():
+        _loss_manifest = _review_json.loads(_loss_path.read_text())
+        _loss_results = root / _loss_manifest["result_directory"]
+        _review_outputs += [mo.md("""
+        ### EAD, LGD, expected loss and capital scenarios
+
+        EAD/LGD are bounded snapshot proxies. Recovery fields form loss targets,
+        never PD predictors. Capital uses assumed one-year PD scenarios;
+        the classifier score remains a resolved-loan score. This is illustrative,
+        with no regulatory compliance claim. PD predictions are unchanged.
+        """), mo.ui.table(pd.read_csv(_loss_results / "component_metrics.csv")),
+            mo.ui.table(pd.read_csv(_loss_results / "portfolio_loss_metrics.csv")),
+            mo.ui.table(pd.read_csv(_loss_results / "portfolio_capital_scenarios.csv"))]
+    mo.vstack(_review_outputs)
     return
 
 

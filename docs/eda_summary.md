@@ -152,6 +152,6 @@ status. Actual deployment claims need a separate point-in-time dataset design.
   [value checks](../assets/results/24_clean_value_checks.csv), and
   [source conversion checks](../assets/results/25_numeric_source_parsing.csv).
 
-Run `marimo edit scripts/03_complete_eda.py` from the project root. Export with
-`marimo export html scripts/03_complete_eda.py -o docs/eda_completion.html --no-include-code`.
+Run `marimo edit notebooks/03_complete_eda.py` from the project root. Export with
+`marimo export html notebooks/03_complete_eda.py -o docs/eda_completion.html --no-include-code`.
 The final notebook refreshes its reports/statistics and does not change clean data.

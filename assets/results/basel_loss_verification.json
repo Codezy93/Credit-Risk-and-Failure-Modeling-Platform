@@ -1,0 +1,49 @@
+{
+  "completed_at_utc": "2026-11-09T00:28:23.314614+00:00",
+  "status": "passed",
+  "batch_run_id": "30cfdd9eb8ef4720b9e4606c094c5c47",
+  "experiment_name": "lendingclub_basel_loss_proxies",
+  "execution_script_sha256": "0d1c398bc30dfae4c2254911f0b969cd65b44b9920c1b06fde6f7b95a839994b",
+  "current_script_hash_matches_execution": true,
+  "tests_passed": 82,
+  "test_failures": 0,
+  "saved_component_models": 4,
+  "native_regression_evaluations": 4,
+  "native_evaluation_rows_each": 22308,
+  "parent_dataset_inputs": 4,
+  "model_bundle_full_validation_rows_verified": 162563,
+  "pd_predictions_identical": true,
+  "pd_validation_roc_auc": 0.65388949401906,
+  "incumbent_unchanged": true,
+  "model_and_dataset_hashes_verified": true,
+  "native_mae_matches_full_custom_raw_mae": true,
+  "regulatory_compliance_claim": false,
+  "one_year_pd_estimated": false,
+  "notebooks": {
+    "01_data_analysis.py": {
+      "source_sha256": "6829f0d3629db262c20017e727667f1d06a4b43c821c6fb0f5a15f0cff50e301",
+      "html_sha256": "ab752e5b0099905fc4bffb4a4014a0c63c66adf604e78c682b8e55f6e8a21b30",
+      "html_bytes": 4463059,
+      "export_exit_code": 0
+    },
+    "02_deeper_eda.py": {
+      "source_sha256": "c05c37f964ae799608f65e2ddc8f4bb0f1cbb33c95611ca0b186456bab5b61c7",
+      "html_sha256": "630ee4bb64c0b7b93a0ad4f98a8bcdc6cf8e479061a8f9899f95b420eaff867a",
+      "html_bytes": 1415553,
+      "export_exit_code": 0
+    },
+    "03_complete_eda.py": {
+      "source_sha256": "be5f4e37b8f5d71164ae23b4ddbb55a8be5154dafcf0bf9c6ada211181f1640b",
+      "html_sha256": "44e473fb1b37e1c92e0d185bed4a258ce4047071b66431b2a5a3836eacb19f5b",
+      "html_bytes": 858044,
+      "export_exit_code": 0
+    },
+    "10_model_review.py": {
+      "source_sha256": "1eedf3dfca6794488856383a1b6d87d7e5377fd4bc65d747e7e04cd49b5817a4",
+      "html_sha256": "acdc54529ba675219b3577ab07b5cefe41c57b9f35443de6d019979b46f5d398",
+      "html_bytes": 478181,
+      "export_exit_code": 0
+    }
+  },
+  "eda_export_note": "EDA exports executed in the isolated workspace from identical notebook sources and the same raw CSV, with the final saved validation/loss results copied in. The model-review notebook exported directly in the project."
+}

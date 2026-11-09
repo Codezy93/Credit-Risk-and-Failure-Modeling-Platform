@@ -11,6 +11,12 @@ Start with the [final EDA report](docs/eda_summary.md) and
 The [model experiment report](docs/model_experiments.md) contains measured results.
 The [validation report](docs/validation_hardening.md) adds exact KS/Gini, paired
 AUC intervals, and a separate-year calibration experiment.
+The [Basel-style loss experiment](docs/basel_loss_experiment.md) adds separate
+EAD/LGD snapshot-proxy models, expected loss, and illustrative capital scenarios.
+The [model review notebook](notebooks/10_model_review.py) displays these stages
+together; its [HTML export](docs/model_review.html) opens without running training.
+The [ANN experiment report](docs/ann_experiments.md) compares neural-network PD,
+EAD and LGD challengers with the original models.
 
 ## Reproduce the core workflow
 
@@ -24,7 +30,8 @@ make all
 This creates an isolated `.venv-locked`, installs `requirements.lock` with SHA-256
 verification, runs the tests, downloads/unpacks the data, exports all three marimo
 notebooks headlessly, prepares temporal splits, trains the four baseline models,
-logs native MLflow evaluations, and runs validation hardening. Close notebook
+logs native MLflow evaluations, runs validation hardening and the loss experiment,
+and exports the model-review notebook. Close notebook
 kernels holding the DuckDB database before rerunning the complete workflow.
 
 If Kaggle is blocked, obtain the accepted-loans CSV separately and supply it:
@@ -41,7 +48,10 @@ an existing different file. On later runs the existing CSV is reused.
 ```bash
 make test       # Fixture, feature-policy, temporal split, preprocessing and metric tests
 make validate   # Recompute validation diagnostics using existing prepared data/models
-make full       # Also rerun the seven optional XGBoost AUC research trials
+make review     # Temporal XGBoost search, coefficient stability/ablations, and notebook export
+make loss       # Fit EAD/LGD proxies and export the model-review notebook
+make ann        # Fit ANN PD/EAD/LGD challengers and export the model-review notebook
+make full       # Also rerun the optional XGBoost and ANN research trials
 ```
 
 Use `BOOTSTRAP_PYTHON=/path/to/python3.14` if `python3` points to another version.
@@ -49,10 +59,11 @@ The environment is checked for dependency conflicts after synchronization. Direc
 pins live in `requirements.txt`; all transitive pins and hashes live in
 `requirements.lock`. Rebuild the lock deliberately when changing dependencies.
 
-Verification: **72 tests pass** in the isolated environment. A separate complete
-core run on the real CSV exported all three notebooks and reproduced the prepared
+Verification: the current suite has **93 passing tests** in the isolated environment.
+An earlier complete core run on the real CSV exported all three EDA notebooks and reproduced the prepared
 dataset hashes, exact historical diagnostics, all 500 bootstrap resamples, and
-calibration metrics. See the [verification record](assets/results/validation_hardening_verification.json).
+calibration metrics. See the [workflow verification](assets/results/validation_hardening_verification.json)
+and the [fresh committed-script verification](assets/results/validation_hardening_fresh_verification.json).
 
 The original boosting validation AUC is **0.653889**, Gini **0.307779**, and exact
 KS **0.222796**. Its AUC advantage over logistic regression is **0.007659**
@@ -67,6 +78,88 @@ feature names, while exact source availability still needs timestamp evidence.
 MLflow experiment `lendingclub_validation_hardening` contains the separate role
 datasets, four raw/calibrated model versions, and four native evaluation runs.
 
+## EAD, LGD, expected loss and capital scenarios
+
+Run `make loss` after preparing data and training the incumbent. The experiment
+fits mean and gradient-boosting regressors on eligible charged-off loans from
+2011–2013, selecting each loss component by 2014 bounded MAE. It uses the same
+13 origination predictors. Payment and recovery fields are targets/audit fields
+and never enter predictor matrices.
+
+Snapshot EAD is funded principal minus principal received. LGD uses net recoveries
+over that residual exposure. These are retrospective proxies: recovery timing,
+discounting, indirect costs and default-event exposure are unavailable. Values
+outside the bounded target scope are audited and quarantined.
+
+In the measured run, EAD boosting won narrowly (validation ratio MAE **0.202030**)
+and the LGD mean baseline won (MAE **0.075857**). Their combined expected-loss proxy
+was **$132.52 million**, against **$136.95 million** observed snapshot loss on
+162,563 eligible validation loans (**−3.23%** aggregate error). The mean/mean
+baseline had a smaller aggregate error (**−2.44%**); component selection does not
+guarantee the best portfolio-total calibration. PD validation AUC stayed **0.653889**.
+
+MLflow experiment `lendingclub_basel_loss_proxies` contains four component models,
+four native regression evaluations, full train/validation datasets, the selected
+bundle, loss diagnostics and figures. Saved models live under
+`models/basel_loss/<batch>/`. Use `util.basel.score_loss_bundle` with exactly the
+bundle's ordered predictor columns and a separate funded-amount array.
+
+The CRE31.16 other-retail capital function takes explicitly **assumed one-year
+PDs**. It does not treat the classifier's resolved-loan score as a regulatory PD.
+Capital/RWA outputs are illustrative scenarios, with the assumptions and missing
+regulatory requirements documented in the [loss report](docs/basel_loss_experiment.md).
+The three original EDA notebooks now display stored validation/loss summaries;
+the model-review notebook refreshes after each new experiment in `make all`.
+The [loss and notebook verification record](assets/results/basel_loss_verification.json)
+checks all four exports, saved-model hashes, native regression metrics, the
+complete bundle-scoring output, and the unchanged PD predictions.
+
+## ANN challengers
+
+Run `make ann` after the baseline and loss experiments. Scikit-learn multilayer
+perceptrons add no new dependencies. Two PD networks (32 and 64→32 hidden units)
+and 32→16 EAD/LGD regressors use the original 13 predictors. Stopping fits on
+2011–2012 and uses 2013 only; each network then refits on all 2011–2013 loans for
+the frozen epoch budget before the 2014 comparison. 2015 is never loaded.
+
+The larger PD ANN reached **0.651546 validation AUC**, versus **0.653889** for the
+incumbent boosting model. ANN EAD MAE was **0.203635**, versus **0.202030** for
+boosting; ANN LGD MAE was **0.081999**, versus **0.075857** for the mean baseline.
+Neither selected loss component was improved. Both loss ANNs reached the
+60-epoch experiment limit; this is a bounded, single-seed trial rather than an
+exhaustive ANN search or proof that neural networks cannot improve the models.
+
+The all-ANN bundle's portfolio-total loss error was **+0.50%**, compared with
+**−3.23%** for the reference, but its per-loan dollar MAE was worse (**$1,407.90**
+versus **$1,389.34**). Aggregate agreement alone is not sufficient to promote it.
+All incumbents remain unchanged. 2014 remains selection-influenced research data.
+
+MLflow experiment `lendingclub_ann_challengers` stores four networks, temporal
+learning curves, role-specific datasets, and four native evaluations. Models and
+the ANN loss bundle live under `models/ann_experiments/<batch>/`. The
+[report](docs/ann_experiments.md), model-review notebook, and statistics section 23
+contain the complete comparison, including raw regression errors and clipping.
+The [ANN verification record](assets/results/ann_experiments_verification.json)
+checks source/model hashes, full validation predictions, epoch counts, native
+metrics, the model-review HTML export, and the unchanged reference artifacts.
+
+## Why teaching-notebook AUCs are not a comparable benchmark
+
+A separate [teaching-extract audit](docs/teaching_extract_audit.md) measured a public,
+hashed copy of `lending_club_loan_two.csv` (396,030 rows, 27 columns). Its added
+address/postcode feature has ten values: three occur only with Fully Paid loans,
+and three only with Charged Off loans. A postcode-only score learned on training
+rows achieved **0.8396 held-out AUC**. In a fixed XGBoost ablation on identical
+random-split holdout rows, AUC was **0.7202 without postcode** and **0.9071 with it**.
+
+This quantifies the feature's influence in that public copy. It does not establish
+byte identity with another uploaded CSV, the address-generation mechanism, or an
+exact reproduction of another notebook. The audit also includes grade/rate and
+uses a random split, so its numbers should not be compared directly with this
+project's temporal origination-feature benchmark. It is isolated from the core
+workflow; no project predictors or incumbents changed. MLflow stores the two
+native evaluations under `lendingclub_teaching_extract_audit`.
+
 ## Folder structure
 
 ```text
@@ -74,7 +167,8 @@ sql/                SQL cleaning, validation, and EDA queries
 data/raw/           Original downloaded data
 data/clean/         Cleaned modeling data
 models/             Saved models and metadata
-scripts/            Download, EDA, preparation, training, and validation scripts
+scripts/            Download, preparation, training, validation, and experiment scripts
+notebooks/          Marimo EDA and model-review notebooks
 util/               Shared helpers and logging
 util/elk/           Placeholder for planned ELK setup
 docs/               GitHub Pages website and project documentation
@@ -119,7 +213,7 @@ After downloading the CSV, install the updated dependencies and open the noteboo
 ```bash
 make setup
 source .venv-locked/bin/activate
-marimo edit scripts/01_data_analysis.py
+marimo edit notebooks/01_data_analysis.py
 ```
 
 Run all cells in order. The notebook executes the numbered files in `sql/` using
@@ -156,7 +250,7 @@ preserves missing values; preprocessing will be fitted on training data later.
 To run every cell and export a standalone report without opening the editor:
 
 ```bash
-marimo export html scripts/01_data_analysis.py -o docs/data_analysis.html --no-include-code
+marimo export html notebooks/01_data_analysis.py -o docs/data_analysis.html --no-include-code
 ```
 
 This command executes the notebook before exporting, as described in the
@@ -171,7 +265,7 @@ before running a separate export against the same local database.
 The second notebook investigates questions raised by the first pass:
 
 ```bash
-marimo edit scripts/02_deeper_eda.py
+marimo edit notebooks/02_deeper_eda.py
 ```
 
 It reads `data/clean/loans.parquet` and runs SQL files `14`–`19` to inspect extreme
@@ -188,13 +282,13 @@ Sections 2–14 retain their original EDA snapshot and provenance.
 Export the follow-up report with:
 
 ```bash
-marimo export html scripts/02_deeper_eda.py -o docs/deeper_eda.html --no-include-code
+marimo export html notebooks/02_deeper_eda.py -o docs/deeper_eda.html --no-include-code
 ```
 
 ## EDA completion
 
 ```bash
-marimo edit scripts/03_complete_eda.py
+marimo edit notebooks/03_complete_eda.py
 ```
 
 The final notebook runs SQL files `20`–`25`, completes numeric/category profiles
@@ -210,7 +304,7 @@ It has no established point-in-time outcome availability. Those limits must
 accompany future model results.
 
 ```bash
-marimo export html scripts/03_complete_eda.py -o docs/eda_completion.html --no-include-code
+marimo export html notebooks/03_complete_eda.py -o docs/eda_completion.html --no-include-code
 ```
 
 Read [the final summary](docs/eda_summary.md),
@@ -343,8 +437,10 @@ This runs a bounded seven-trial XGBoost comparison in the separate MLflow
 experiment **`lendingclub_auc_ablation`**. It compares the original 13 predictors,
 expanded bureau candidates/derived ratios, and a separately labeled
 post-underwriting set that also uses grade, subgrade, and interest rate.
-Training and validation rows/targets remain unchanged. Preprocessing uses training
-rows, while early stopping and candidate ranking both use 2014 validation.
+Training and validation rows/targets remain unchanged. Protocol v2 fits on
+2011–2012 and chooses tree counts using 2013 only. Each model and encoder then
+refits on 2011–2013 using that frozen count, with no eval_set or early stopping.
+2014 compares candidates only. It remains previously explored selection data.
 
 The experiment does not load or score 2015, and does not replace the original
 selected model. New bureau fields still require exact as-of availability review;
@@ -358,9 +454,9 @@ and [statistics section 20](assets/statistics.md#20-auc-improvement-experiments)
 | Validation comparison | ROC-AUC |
 | --- | --- |
 | Original histogram boosting, 13 predictors | 0.6539 |
-| XGBoost, same 13 predictors | 0.6558 |
-| XGBoost with expanded bureau candidates, 58 predictors | 0.6846 |
-| XGBoost with underwriting outputs, 61 predictors | 0.6913 |
+| XGBoost, same 13 predictors | 0.6547 |
+| XGBoost with expanded bureau candidates, 58 predictors | 0.6833 |
+| XGBoost with underwriting outputs, 61 predictors | 0.6901 |
 
 The seven trials did **not** reach 0.80. The last row uses grade, subgrade, and
 interest rate and therefore represents scoring after underwriting. Added bureau
@@ -371,3 +467,31 @@ selected model or constitute new test results.
 resolved-loan benchmark does not estimate fixed-horizon default risk or reproduce
 historical deployment. InterpretML, bias evaluation, Kafka stress testing, and
 ELK monitoring have not been implemented yet.
+
+## Validation review
+
+The [validation gap review](docs/validation_gaps.md) records the corrected XGBoost
+protocol, [logistic sign investigation](docs/coefficient_validation.md), and the
+remaining data limitations. Reproduce with `make review` after the core datasets
+and baseline/loss models exist. `make all` also runs the coefficient review;
+`make full` includes the corrected optional XGBoost search.
+
+The two questioned logistic features have positive univariate coefficients but
+negative pooled adjusted coefficients. Both change adjusted sign across training
+years. Across 200 year/outcome-stratified pipeline refits, delinquency was negative
+98.5% of the time and bankruptcies 100%. These are conditional associations in a
+selected population, not evidence that adverse events protect against default.
+
+Dropping both raised logistic validation AUC from **0.646231 to 0.646776**; the
+paired bootstrap interval for the difference was **0.000061–0.000995**. The gain
+is small, conditional on fitted models, and comes from an exploratory comparison.
+The incumbent remains unchanged. No monotonic scorecard interpretation is claimed.
+
+The earlier XGBoost results (**0.6846 / 0.6913**) remain historical snapshots from
+the protocol that reused 2014 for stopping. Current research values are
+**0.6833 / 0.6901**. Fixed-horizon default labels, point-in-time availability,
+source-certified bureau timestamps, event-time EAD/economic LGD and a fresh holdout
+are still unavailable. Capital remains explicitly assumed-PD sensitivity analysis.
+The [verification record](assets/results/validation_gaps_verification.json) checks
+all seven frozen XGBoost tree budgets, eleven logged-model validation predictions,
+native metrics, bootstrap summaries, source hashes, and the notebook export.
