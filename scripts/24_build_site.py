@@ -253,7 +253,8 @@ def main():
     if re.search(r"\{\{[^}]+\}\}", template):
         raise ValueError("Unresolved website template value.")
     (output / "index.html").write_text(template)
-    for filename in ["styles.css", "app.js", "favicon.svg"]:
+    (output / "favicon.svg").unlink(missing_ok=True)
+    for filename in ["styles.css", "app.js"]:
         shutil.copyfile(ROOT / "site" / filename, output / filename)
     (output / ".nojekyll").touch()
     (output / "assets/results.json").write_text(json.dumps(snapshot, indent=2, allow_nan=False) + "\n")

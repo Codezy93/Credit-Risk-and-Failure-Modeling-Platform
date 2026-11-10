@@ -1,16 +1,16 @@
 {
   "status": "passed",
   "scope": "Local static build, browser interactions and accessibility; remote deployment is reported by GitHub Actions.",
-  "verified_at_utc": "2026-11-10T16:51:33.857533+00:00",
-  "style": "marimo-inspired long-form case study",
+  "verified_at_utc": "2026-11-10T17:20:33.955778+00:00",
+  "style": "monochrome marimo-inspired long-form case study",
   "chapters": 18,
   "recorded_figures": 17,
   "source_excerpt_cells": 12,
   "hosting": "GitHub Pages",
   "publishing_source": "workflow",
   "url": "https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/",
-  "public_file_count": 24,
-  "artifact_bytes": 2395025,
+  "public_file_count": 23,
+  "artifact_bytes": 2394279,
   "evidence_source_files": 54,
   "site_links_and_publication_allowlist": "passed",
   "javascript_syntax": "passed",
@@ -49,13 +49,12 @@
     "all_source_cells_expanded": true
   },
   "source_sha256": {
-    "scripts/24_build_site.py": "dac2025f774b9063006ededa6c023467eb5a1823420def35d07fb4493ec1e1ce",
-    "scripts/25_check_site.py": "d2f356205c7bc0905a8002494d9e056a112f9076f06d6eee42e075ec19bda84e",
+    "scripts/24_build_site.py": "7ee76b45e33360b0065806b9d9a121e2ca2196d014410d32db3625d991c11011",
+    "scripts/25_check_site.py": "bee069db2fddc4f5ef4bae67b0e15cc1ee5cd925e37f2e067916a20f5d77b5e4",
     ".github/workflows/pages.yml": "2908521545342b964f20db237f3d90ac9678b69cd6188eb8c27bca8711b867ef",
-    "site/index.html": "887c20a1593fc59dfff8e0e00626947108619e12230c7ebbcf09d2ebcbc066e6",
-    "site/styles.css": "f98a726c460cbbecc7e6a1e9e51907dee27e819f78860cd7f94cdd95142af1fb",
-    "site/app.js": "fc9746538b9eb1b690cf7f697537b2232b1a60cd9fff5b6e0cb8cf22586952ea",
-    "site/favicon.svg": "71de37cbc171b27688481df803004089f877dd1e28f95cf18879ad232da20e5a"
+    "site/index.html": "044d7d1b474e30816d48f872865a9f4905dba2a7cd5f229d5542091eaabab545",
+    "site/styles.css": "56ad837d51e2a255ce7f7545b36a51cf28c406197eb8c8ca9ce1c84843a6b8fd",
+    "site/app.js": "fc9746538b9eb1b690cf7f697537b2232b1a60cd9fff5b6e0cb8cf22586952ea"
   },
   "artifact_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -72,15 +71,20 @@
     "assets/loss.png": "b62e76498f2ad3ef6d316bf202b95a2d58b5b36eae17f80f1eacdb29fdb92b43",
     "assets/numeric-outcomes.png": "ba774d7c021a9ea2ad14760f56843d3fea432997a417ff69a43720cb9e280023",
     "assets/partial-dependence.png": "09f6962121c36dcf68e80b08a81018b4d633631e88fd7778986eec115da362fa",
-    "assets/provenance.json": "80d0dcbd1c77b35bacc88b628e962881ff7783970dd8a1a7a42dcceb2f083be3",
+    "assets/provenance.json": "dbd6667ea2d3fd0a1a2615c0ae4cb8b1411a3b0c971bea55c3bcfadb88cd55c6",
     "assets/raw-missingness.png": "d14de5beb652205216818808bf4e7cda46eefde17d76bc6a88d7e321e618809f",
     "assets/recovery.png": "5d3bb7a41fa2759299949a8c1b41b42c993ebc7ec4df928b3f38fda7f6fe5578",
     "assets/results.json": "408b3f0f81e142edd0b02f66e0cd4a8ae8885ba4a03798c2f6ed0dad10de11ad",
     "assets/segments.png": "1658f7e951e413208a24dee43e5bf078b205039b5c5bab54bf21c7f1efd09461",
     "assets/status-coverage.png": "e3df345101d7700e8b30a5a3d58b0c2887f33c643c68d2a9322be6f72aed9b24",
     "assets/tail-review.png": "baefecf7ebd16a69b264675f260f5139d528825de4eb6710d7442c8743aa952b",
-    "favicon.svg": "71de37cbc171b27688481df803004089f877dd1e28f95cf18879ad232da20e5a",
-    "index.html": "85669ea4ebe174e44df59228ff159027dade28399cafb52475b6bf92b56972b9",
-    "styles.css": "f98a726c460cbbecc7e6a1e9e51907dee27e819f78860cd7f94cdd95142af1fb"
-  }
+    "index.html": "265130c98eea972894460c1fc80ef1ae158dbf99fefe7e82031e8220b4267185",
+    "styles.css": "56ad837d51e2a255ce7f7545b36a51cf28c406197eb8c8ca9ce1c84843a6b8fd"
+  },
+  "body_font": "Helvetica Neue",
+  "code_font": "Menlo",
+  "font_fallbacks": "local system fonts when requested fonts are unavailable",
+  "logo": false,
+  "favicon": false,
+  "recorded_figures_displayed_grayscale": true
 }

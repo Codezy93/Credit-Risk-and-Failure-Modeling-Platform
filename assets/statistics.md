@@ -8,10 +8,13 @@
 The showcase is a **marimo-inspired static HTML/CSS/JS notebook** covering the
 project from data download to recovery and monitoring. It contains **18 chapters**,
 **17 recorded figures** and **12 foldable source excerpts**. It is not a live
-Python kernel. Project models and measured experiment outputs were not rerun.
+Python kernel. Styling is black and white, without a logo or favicon. Text uses
+Helvetica Neue and code uses Menlo, with system font fallbacks. Recorded figures
+display in grayscale through CSS; original plot files are preserved.
+Project models and measured experiment outputs were not rerun.
 
-The generated artifact has **24 public files**,
-**2395025 bytes**, and **54 fingerprinted evidence/source inputs**.
+The generated artifact has **23 public files**,
+**2394279 bytes**, and **54 fingerprinted evidence/source inputs**.
 Raw loans, borrower-level predictions, binaries, databases and service logs remain
 outside the published artifact. Figures reserve their actual PNG aspect ratios
 and lazy-load. Code excerpts quote the checked-in implementation; original stage

@@ -3,6 +3,7 @@
 from html.parser import HTMLParser
 import json
 from pathlib import Path
+import re
 import sys
 from urllib.parse import unquote, urlsplit
 
@@ -35,7 +36,7 @@ class Page(HTMLParser):
 
 def main():
     directory = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "_site"
-    expected = {"index.html", "styles.css", "app.js", "favicon.svg", ".nojekyll", "assets/results.json",
+    expected = {"index.html", "styles.css", "app.js", ".nojekyll", "assets/results.json",
         "assets/provenance.json", "assets/eda.png", "assets/interpret.png", "assets/recovery.png",
         "assets/raw-missingness.png", "assets/status-coverage.png", "assets/tail-review.png",
         "assets/category-outcomes.png", "assets/numeric-outcomes.png", "assets/correlations.png",
@@ -46,6 +47,15 @@ def main():
     assert not any(path.is_symlink() for path in directory.rglob("*")), "Pages artifact must not contain symlinks."
     document = (directory / "index.html").read_text()
     assert "{{" not in document and "localhost" not in document
+    assert 'rel="icon"' not in document and 'notebook-brand' not in document
+    stylesheet = (directory / "styles.css").read_text()
+    assert "--mono: Menlo," in stylesheet and "--body: 'Helvetica Neue'," in stylesheet
+    for color in re.findall(r"#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b", stylesheet):
+        value = color[1:]
+        if len(value) == 3:
+            value = "".join(character * 2 for character in value)
+        assert value[:2] == value[2:4] == value[4:6], f"Non-monochrome CSS color: {color}"
+    assert "filter: grayscale(1)" in stylesheet, "Recorded figures should display in monochrome."
     parser = Page();parser.feed(document)
     assert parser.headings == 1 and parser.has_language and parser.has_viewport
     chapters = {"question", "download", "audit", "clean", "univariate", "relationships", "population",

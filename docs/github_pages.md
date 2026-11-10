@@ -7,6 +7,10 @@ XGBoost and ANN research, loss proxies, InterpretML, streaming, load tests,
 recovery, deduplication, ELK, reproduction and limitations. It uses recorded
 project results; it is not an exported live marimo application or Python kernel.
 
+The presentation is black and white, with no logo or favicon. Text uses Helvetica
+Neue and code uses Menlo, with local system fallbacks when those fonts are absent.
+Recorded figures display in grayscale through CSS; their original files are preserved.
+
 ## Preview locally
 
 ```bash
@@ -35,7 +39,7 @@ cohort-and-ROC switching, an enlarged-figure dialog and a print shortcut.
 
 `scripts/25_check_site.py` checks local links, anchor IDs, image alternatives,
 relative project URLs, strict JSON, all 18 chapter anchors and the exact public-file
-allowlist. Only 24 files are published, including 17 figures. Raw loans, borrower-level predictions, model binaries,
+allowlist. Only 23 files are published, including 17 figures. Raw loans, borrower-level predictions, model binaries,
 SQLite databases, service logs and local service URLs are excluded. The build
 artifact is ignored as `_site/`; commit the source and referenced results instead.
 
