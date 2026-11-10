@@ -9,7 +9,7 @@ project results; it is not an exported live marimo application or Python kernel.
 
 The presentation is black and white, with no logo or favicon. Text uses Helvetica
 Neue and code uses Menlo, with local system fallbacks when those fonts are absent.
-Recorded figures display in grayscale through CSS; their original files are preserved.
+Charts retain their original colors; the surrounding interface stays black and white.
 
 ## Preview locally
 

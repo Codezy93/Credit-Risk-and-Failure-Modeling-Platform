@@ -55,7 +55,7 @@ def main():
         if len(value) == 3:
             value = "".join(character * 2 for character in value)
         assert value[:2] == value[2:4] == value[4:6], f"Non-monochrome CSS color: {color}"
-    assert "filter: grayscale(1)" in stylesheet, "Recorded figures should display in monochrome."
+    assert "grayscale(" not in stylesheet, "Preserve recorded figures in their original colors."
     parser = Page();parser.feed(document)
     assert parser.headings == 1 and parser.has_language and parser.has_viewport
     chapters = {"question", "download", "audit", "clean", "univariate", "relationships", "population",

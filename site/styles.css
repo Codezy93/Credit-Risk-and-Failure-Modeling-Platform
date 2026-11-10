@@ -23,7 +23,6 @@ button { cursor: pointer; color: inherit; }
 button, a, summary { -webkit-tap-highlight-color: transparent; }
 a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 img, svg { max-width: 100%; display: block; }
-img { filter: grayscale(1); }
 ::selection { background: #e8e8e8; color: #333333; }
 h1, h2, h3, p, figure, dl { margin: 0; }
 h1, h2, h3 { text-wrap: balance; }

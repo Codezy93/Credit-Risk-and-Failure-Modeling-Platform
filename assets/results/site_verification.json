@@ -1,8 +1,8 @@
 {
   "status": "passed",
   "scope": "Local static build, browser interactions and accessibility; remote deployment is reported by GitHub Actions.",
-  "verified_at_utc": "2026-11-10T17:20:33.955778+00:00",
-  "style": "monochrome marimo-inspired long-form case study",
+  "verified_at_utc": "2026-11-10T17:25:20.889065+00:00",
+  "style": "black-and-white notebook interface with original-color charts",
   "chapters": 18,
   "recorded_figures": 17,
   "source_excerpt_cells": 12,
@@ -10,7 +10,7 @@
   "publishing_source": "workflow",
   "url": "https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/",
   "public_file_count": 23,
-  "artifact_bytes": 2394279,
+  "artifact_bytes": 2394249,
   "evidence_source_files": 54,
   "site_links_and_publication_allowlist": "passed",
   "javascript_syntax": "passed",
@@ -50,10 +50,10 @@
   },
   "source_sha256": {
     "scripts/24_build_site.py": "7ee76b45e33360b0065806b9d9a121e2ca2196d014410d32db3625d991c11011",
-    "scripts/25_check_site.py": "bee069db2fddc4f5ef4bae67b0e15cc1ee5cd925e37f2e067916a20f5d77b5e4",
+    "scripts/25_check_site.py": "28b9667b8ef909b3a4f4633fb164a509547b5756fd5642b7d306603146650b52",
     ".github/workflows/pages.yml": "2908521545342b964f20db237f3d90ac9678b69cd6188eb8c27bca8711b867ef",
     "site/index.html": "044d7d1b474e30816d48f872865a9f4905dba2a7cd5f229d5542091eaabab545",
-    "site/styles.css": "56ad837d51e2a255ce7f7545b36a51cf28c406197eb8c8ca9ce1c84843a6b8fd",
+    "site/styles.css": "f7c0e44189b879c740f1e30617f9be9d4d78f8e30c69003659e83f4d55d1230a",
     "site/app.js": "fc9746538b9eb1b690cf7f697537b2232b1a60cd9fff5b6e0cb8cf22586952ea"
   },
   "artifact_sha256": {
@@ -79,12 +79,12 @@
     "assets/status-coverage.png": "e3df345101d7700e8b30a5a3d58b0c2887f33c643c68d2a9322be6f72aed9b24",
     "assets/tail-review.png": "baefecf7ebd16a69b264675f260f5139d528825de4eb6710d7442c8743aa952b",
     "index.html": "265130c98eea972894460c1fc80ef1ae158dbf99fefe7e82031e8220b4267185",
-    "styles.css": "56ad837d51e2a255ce7f7545b36a51cf28c406197eb8c8ca9ce1c84843a6b8fd"
+    "styles.css": "f7c0e44189b879c740f1e30617f9be9d4d78f8e30c69003659e83f4d55d1230a"
   },
   "body_font": "Helvetica Neue",
   "code_font": "Menlo",
   "font_fallbacks": "local system fonts when requested fonts are unavailable",
   "logo": false,
   "favicon": false,
-  "recorded_figures_displayed_grayscale": true
+  "recorded_figures_displayed_grayscale": false
 }
