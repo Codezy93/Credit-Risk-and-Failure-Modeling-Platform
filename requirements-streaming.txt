@@ -1,0 +1,5 @@
+# Optional streaming environment; preserve the exact modelling dependency versions.
+-r requirements.txt
+-c requirements.lock
+pyspark==4.1.4
+confluent-kafka==2.16.1

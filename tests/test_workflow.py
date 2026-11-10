@@ -54,14 +54,16 @@ def test_runner_exports_notebooks_and_runs_validation():
         notebook = next(value for value in command if value.endswith(".py"))
         assert notebook.startswith("notebooks/")
         assert (ROOT / notebook).is_file()
-    assert commands[-4][-1] == "scripts/08_validate_models.py"
-    assert commands[-3][-1] == "scripts/09_basel_loss_experiment.py"
-    assert commands[-2][-1] == "scripts/13_review_validation.py"
+    assert commands[-5][-1] == "scripts/08_validate_models.py"
+    assert commands[-4][-1] == "scripts/09_basel_loss_experiment.py"
+    assert commands[-3][-1] == "scripts/13_review_validation.py"
+    assert commands[-2][-1] == "scripts/14_interpret_bias.py"
     assert "notebooks/10_model_review.py" in commands[-1]
     assert not any("scripts/07_improve_auc.py" in command for command in commands)
     assert any("scripts/07_improve_auc.py" in command for command in runner.commands(include_auc=True))
     assert not any("scripts/11_ann_experiments.py" in command for command in commands)
     ann_steps = runner.commands(include_ann=True)
-    assert ann_steps[-3][-1] == "scripts/11_ann_experiments.py"
-    assert ann_steps[-2][-1] == "scripts/13_review_validation.py"
+    assert ann_steps[-4][-1] == "scripts/11_ann_experiments.py"
+    assert ann_steps[-3][-1] == "scripts/13_review_validation.py"
+    assert ann_steps[-2][-1] == "scripts/14_interpret_bias.py"
     assert "notebooks/10_model_review.py" in ann_steps[-1]

@@ -1,5 +1,14 @@
 # Credit Risk and Failure Modeling Platform
 
+A plain HTML/CSS/JavaScript project showcase is in `site/`, with an automated
+GitHub Pages build and deployment workflow. [Preview and publishing instructions](docs/github_pages.md).
+Pages is configured for GitHub Actions. After the first successful workflow deployment,
+the showcase will be at [codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform](https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/).
+
+```bash
+make site-serve   # local preview at http://127.0.0.1:8000
+```
+
 A credit-risk project using LendingClub loan data. EDA is complete, with SQL
 audits, three marimo notebooks, saved figures, a feature-availability review, and
 a documented retrospective benchmark. The first MLflow comparison has trained a
@@ -9,6 +18,8 @@ Start with the [final EDA report](docs/eda_summary.md) and
 [complete statistics reference](assets/statistics.md). The
 [clean-table dictionary](docs/data_dictionary.md) records the feature decisions.
 The [model experiment report](docs/model_experiments.md) contains measured results.
+The [Kafka/PySpark guide](docs/streaming.md) explains the streaming replay and
+distributed scoring stage, including checkpoint and delivery semantics.
 The [validation report](docs/validation_hardening.md) adds exact KS/Gini, paired
 AUC intervals, and a separate-year calibration experiment.
 The [Basel-style loss experiment](docs/basel_loss_experiment.md) adds separate
@@ -17,6 +28,9 @@ The [model review notebook](notebooks/10_model_review.py) displays these stages
 together; its [HTML export](docs/model_review.html) opens without running training.
 The [ANN experiment report](docs/ann_experiments.md) compares neural-network PD,
 EAD and LGD challengers with the original models.
+The [InterpretML and segment-bias report](docs/interpret_bias.md) explains the
+incumbent and audits observed borrower-segment disparities without claiming
+protected-group fairness.
 
 ## Reproduce the core workflow
 
@@ -51,6 +65,7 @@ make validate   # Recompute validation diagnostics using existing prepared data/
 make review     # Temporal XGBoost search, coefficient stability/ablations, and notebook export
 make loss       # Fit EAD/LGD proxies and export the model-review notebook
 make ann        # Fit ANN PD/EAD/LGD challengers and export the model-review notebook
+make interpret  # Explain the incumbent, audit borrower segments, and export the notebook
 make full       # Also rerun the optional XGBoost and ANN research trials
 ```
 
@@ -59,7 +74,7 @@ The environment is checked for dependency conflicts after synchronization. Direc
 pins live in `requirements.txt`; all transitive pins and hashes live in
 `requirements.lock`. Rebuild the lock deliberately when changing dependencies.
 
-Verification: the current suite has **93 passing tests** in the isolated environment.
+Verification: the current suite has **101 passing tests** in the isolated environment.
 An earlier complete core run on the real CSV exported all three EDA notebooks and reproduced the prepared
 dataset hashes, exact historical diagnostics, all 500 bootstrap resamples, and
 calibration metrics. See the [workflow verification](assets/results/validation_hardening_verification.json)
@@ -465,8 +480,12 @@ selected model or constitute new test results.
 
 2015 remains exploratory because EDA inspected it. This accepted-only,
 resolved-loan benchmark does not estimate fixed-horizon default risk or reproduce
-historical deployment. InterpretML, bias evaluation, Kafka stress testing, and
-ELK monitoring have not been implemented yet.
+historical deployment. InterpretML explanations and a descriptive borrower-segment
+audit are implemented. Protected-group fairness remains unassessed because the
+required structured attributes are absent. Kafka/PySpark scoring, short local
+load tests, durable score deduplication, recovery testing and ELK monitoring are
+implemented. See the [load-test report](docs/load_testing.md) and
+[recovery and monitoring report](docs/recovery_monitoring.md).
 
 ## Validation review
 
@@ -495,3 +514,198 @@ are still unavailable. Capital remains explicitly assumed-PD sensitivity analysi
 The [verification record](assets/results/validation_gaps_verification.json) checks
 all seven frozen XGBoost tree budgets, eleven logged-model validation predictions,
 native metrics, bootstrap summaries, source hashes, and the notebook export.
+
+## InterpretML and borrower-segment bias analysis
+
+`make interpret` explains the frozen incumbent without retraining it. InterpretML
+Kernel SHAP uses 64 complete training-background rows, 128 random eligible 2014
+cases and eight curated error examples. Global contribution rankings exclude the
+curated cases. Partial dependence uses 1,000 training rows; permutation importance
+cross-checks 10,000 stratified validation rows, including missing values.
+
+FICO, annual income and loan amount rank highest by both importance methods.
+Global absolute SHAP values rank magnitude; mean signed contributions describe
+the sampled cases relative to the chosen background, not linear coefficients or
+the effect of increasing a feature. Contributions are not causal effects. Explanations
+exclude incomplete/training-unseen cases because the numeric black-box interface
+cannot represent them; full population and segment metrics retain every loan.
+
+The audit covers both 2014 and previously explored 2015, 12 business-segment
+dimensions, missing categories and two intersections. It uses the original frozen
+0.147853 threshold for every group, with 0.5 as a degenerate zero-flag comparison.
+Supported groups require 500 rows and 50 examples of each outcome. Smaller groups
+remain visible with support flags; rate intervals are descriptive Wilson intervals.
+
+For 2015, the lowest/highest training income quartiles (at most $42,000 / above
+$85,000) had false-positive rates **67.06% / 9.22%**, default-capture rates
+**81.31% / 22.45%**, and observed charged-off rates **19.26% / 11.14%**. These are
+material segment differences at a common risk threshold. They are not observed
+denial rates or proof of discrimination; case mix, accepted-only selection,
+retrospective labels and decision context limit interpretation.
+
+Race, sex/gender, ethnicity, age/birth date and disability fields are absent from
+the verified source schema. They are not inferred from names, text, income,
+geography or credit history. The project makes no protected-group fairness pass
+or legal/compliance claim. No model or threshold was changed, and validation AUC
+remains 0.653889; exploratory 2015 AUC remains 0.654350.
+
+MLflow experiment `lendingclub_interpretability_bias` stores source datasets,
+segment tables, explanation backgrounds/cases, native InterpretML output, plots,
+scope notes and hashes. The [report](docs/interpret_bias.md), model-review notebook
+and statistics section 26 contain the measured results. Native interactive HTML
+uses Plotly's CDN; PNG/SVG figures and tables are available offline.
+
+## Kafka and PySpark streaming
+
+PySpark Structured Streaming now validates Kafka messages and scores them in
+batches with the frozen incumbent. A finite replay verified **100 valid scores**
+against direct predictions with **zero probability difference**, routed **3 invalid
+fixtures** to `loan-invalid`, and produced **zero duplicate records** in this run.
+A clean checkpoint restart consumed zero additional rows and left output offsets
+unchanged. This historical correctness check is supplemented by the measured
+load tests and recovery experiment below. Kafka output remains at least once.
+
+```bash
+make streaming-setup   # separate Python environment; requires Java 17 or 21
+make kafka-up
+make replay ARGS="--rows 1000 --rate 100 --run-id demo-001"
+make stream ARGS="--available-now"
+make stream-check ARGS="--run-id demo-001 --rows 1000"
+```
+
+At the initial smoke-test stage, the streaming environment passed **102 tests**, including the Spark validation
+test. MLflow experiment: `lendingclub_streaming_smoke`; run
+`fe86cfd3742d47ec8ad81f248e623566`. No model was retrained.
+
+See [setup, processing and checkpoint semantics](docs/streaming.md),
+[the current manifest](assets/results/streaming_latest.json), and
+[the correctness verification](assets/results/streaming/spark-verified-20261110/verification.json).
+
+## Measured Kafka/PySpark load tests
+
+A warmed query processed **78,000 events** across three 30-second stages. Every
+score matched direct model predictions; no missing outputs, duplicates, invalid
+outputs or delivery errors were observed.
+
+| Target input | Events | p95 end-to-end latency | Completed rows/s, including drain |
+| --- | --- | --- | --- |
+| 100 messages/s | 3,000 | 2.52 s | 92.4 |
+| 500 messages/s | 15,000 | 2.40 s | 463.2 |
+| 2,000 messages/s | 60,000 | 2.70 s | 1,830.7 |
+
+These are short local runs, not production capacity or SLA guarantees. End-to-end
+latency includes Spark scheduling, Kafka transport and collector polling.
+At the highest rate, sampled checkpoint lag peaked at 8,604 records and drained
+to zero. Final outputs arrived 2.775 seconds after the last producer acknowledgement.
+
+```bash
+make kafka-up
+make load-test
+```
+
+The streaming environment passed **105 tests**. MLflow experiment:
+`lendingclub_streaming_load_tests`, with one parent and three stage runs.
+See [the measured report](docs/load_testing.md),
+[full stage metrics](assets/results/load_test/load-20261110T120328-fcb2dc/stage_metrics.csv),
+and [verification](assets/results/load_test_verification.json).
+
+The next section adds recovery testing, downstream deduplication and ELK dashboards.
+Longer repeated runs and broker failover remain future work.
+
+## Recovery, deduplication and ELK monitoring
+
+The pipeline now stores results in SQLite with `event_id` as a unique key.
+Repeated scores are suppressed; conflicting results are recorded without
+overwriting the original. A transactional outbox feeds monitoring logs before
+the consumer commits its Kafka offsets. Kafka transport remains at least once.
+
+```mermaid
+flowchart LR
+    A[Application replay] --> B[Kafka input]
+    B --> C[PySpark validation and frozen-model scoring]
+    C --> D[Kafka scores and invalid records]
+    D --> E[SQLite score store and delivery ledger]
+    E --> F[Durable log outbox]
+    C --> G[Structured progress logs]
+    F --> H[Logstash persistent queue]
+    G --> H
+    H --> I[Elasticsearch]
+    I --> J[Kibana dashboard]
+```
+
+Start the local services:
+
+```bash
+make streaming-setup
+make kafka-up
+make elk-up
+```
+
+Create a replay, then run scoring and storage in separate terminals:
+
+```bash
+make replay ARGS="--rows 10000 --rate 200 --run-id demo-new-id"
+```
+
+```bash
+# Scoring terminal
+make stream
+```
+
+```bash
+# Storage terminal
+make store-scores
+```
+
+The Spark Makefile targets select installed Java 21. On another machine, pass
+`STREAM_JAVA_HOME=/your/java-21`. No separate Python environment activation is
+needed; Make uses `.venv-streaming`. The optional runtime and matching Kafka
+connector are pinned to **Spark 4.1.4**, which fixes the mid-batch restart bug
+encountered on 4.1.2. Historical load measurements retain their original version.
+
+Run both fault injections and verify deduplication and live monitoring:
+
+```bash
+make recovery-test
+make monitor-check
+```
+
+The automated test uses isolated topics, checkpoint, consumer group and database.
+It kills its own Spark process group while replay continues, resumes from the
+same checkpoint, injects repeated events and a conflicting result, then crashes
+the store between database and Kafka offset commits. Saved evidence is in
+`assets/results/recovery/` and MLflow experiment `lendingclub_streaming_recovery`.
+
+Open [Kibana](http://127.0.0.1:15601/app/dashboards#/view/credit-risk-streaming).
+Its eight panels show stored-result counts, duplicates, conflicts, latency,
+throughput, checkpoint lag, mean risk scores over time and operational errors.
+Elasticsearch is at http://127.0.0.1:19200. The local Elastic 8.17.3 services bind
+to loopback and use reduced heaps; Elasticsearch security is disabled for this demo.
+The alert checker emits JSON on demand; no external notifications are configured.
+
+Scores and broker data live under ignored `models/streaming/`; Elasticsearch and
+Logstash use persistent Docker volumes. Keep the checkpoint and score database
+when restarting. To stop the services without clearing their data:
+
+```bash
+make elk-down
+make kafka-down
+```
+
+See [the recovery and monitoring report](docs/recovery_monitoring.md) and
+[project statistics](assets/statistics.md) for measured results and limitations.
+
+### Measured recovery result
+
+- **6,000 main events** recovered after Spark was killed during an uncommitted batch.
+- **Zero missing scores**; all probabilities and flags matched direct model scoring.
+- First result for an event emitted during the outage arrived **22.31 seconds after restart launch**.
+- **110 deliberately injected duplicate deliveries** were suppressed; one conflicting result was flagged without overwriting the original.
+- The store survived a crash after SQLite commit and before Kafka commit; every output partition's committed group lag reached **zero** after restart.
+- **6,295 monitoring records** were indexed and reconciled against local logs.
+- **110 regression tests passed** in the patched streaming environment.
+
+This is one local failure experiment, not a production availability guarantee.
+The operational checker correctly reports warnings for the deliberate conflict
+and outage-related latency. See [the full report](docs/recovery_monitoring.md) and
+[independent verification](assets/results/recovery_verification.json).

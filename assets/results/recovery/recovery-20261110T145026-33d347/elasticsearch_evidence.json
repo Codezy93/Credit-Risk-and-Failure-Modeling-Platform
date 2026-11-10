@@ -1,0 +1,471 @@
+{
+  "total": {
+    "value": 6295,
+    "relation": "eq"
+  },
+  "sample_documents": [
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "05f642f360674126a64ceaa36620c3f6",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-spark.jsonl",
+        "log_id": "05f642f360674126a64ceaa36620c3f6",
+        "model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:36.461445Z",
+        "query_id": "c09f0210-a0fd-4aa2-af49-f3bff47b7847",
+        "host": "31c18f799618",
+        "event_type": "query_started",
+        "process_id": 114332,
+        "component": "spark"
+      },
+      "sort": [
+        "05f642f360674126a64ceaa36620c3f6"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "11274ce95c644eafb85c937120f4119d",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "11274ce95c644eafb85c937120f4119d",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:26.412068Z",
+        "source_log_end": 0,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322226411,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "11274ce95c644eafb85c937120f4119d"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "1385843cb203479bb2021bd761958ac5",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "1385843cb203479bb2021bd761958ac5",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:36.253553Z",
+        "source_log_end": 6150,
+        "stored_unique_results": 6100,
+        "host": "31c18f799618",
+        "stored_main_results": 6000,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 6150,
+        "sampled_at_ms": 1794322296251,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "1385843cb203479bb2021bd761958ac5"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "16da109a0d504f939d66bb814ca559b3",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "16da109a0d504f939d66bb814ca559b3",
+        "checkpoint_lag": 4274,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:08.026354Z",
+        "source_log_end": 4374,
+        "stored_unique_results": 372,
+        "host": "31c18f799618",
+        "stored_main_results": 272,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 100,
+        "sampled_at_ms": 1794322268026,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "16da109a0d504f939d66bb814ca559b3"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "1833bd5d18d54759967ee974b69a8074",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-spark.jsonl",
+        "log_id": "1833bd5d18d54759967ee974b69a8074",
+        "model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:07.737347Z",
+        "query_id": "c09f0210-a0fd-4aa2-af49-f3bff47b7847",
+        "host": "31c18f799618",
+        "event_type": "query_started",
+        "process_id": 114925,
+        "component": "spark"
+      },
+      "sort": [
+        "1833bd5d18d54759967ee974b69a8074"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "196bd56703ed42e49fc37eb3a5c12384",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "196bd56703ed42e49fc37eb3a5c12384",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:35.470281Z",
+        "source_log_end": 0,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322235470,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "196bd56703ed42e49fc37eb3a5c12384"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "197b4838fde647a4b672ea1b3099fe17",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "197b4838fde647a4b672ea1b3099fe17",
+        "checkpoint_lag": 100,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:42.535660Z",
+        "source_log_end": 100,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322242535,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "197b4838fde647a4b672ea1b3099fe17"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "19c4569f6e984f9b94958b92a532ad41",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "19c4569f6e984f9b94958b92a532ad41",
+        "checkpoint_lag": 5081,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:12.058356Z",
+        "source_log_end": 5181,
+        "stored_unique_results": 372,
+        "host": "31c18f799618",
+        "stored_main_results": 272,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 100,
+        "sampled_at_ms": 1794322272058,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "19c4569f6e984f9b94958b92a532ad41"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2131ec3e9a7b44ceaf4a5fae838c8ddc",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "2131ec3e9a7b44ceaf4a5fae838c8ddc",
+        "checkpoint_lag": 100,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:38.497972Z",
+        "source_log_end": 100,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322238497,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "2131ec3e9a7b44ceaf4a5fae838c8ddc"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "213c0f44ae454a1fa776142faeb4b0c3",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "213c0f44ae454a1fa776142faeb4b0c3",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:36.475925Z",
+        "source_log_end": 0,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322236475,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "213c0f44ae454a1fa776142faeb4b0c3"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "216f33dfb61046e1a14d1b3aa7c79210",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "216f33dfb61046e1a14d1b3aa7c79210",
+        "checkpoint_lag": 5322,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:18.152814Z",
+        "source_log_end": 6100,
+        "stored_unique_results": 2326,
+        "host": "31c18f799618",
+        "stored_main_results": 2226,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 778,
+        "sampled_at_ms": 1794322278150,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "216f33dfb61046e1a14d1b3aa7c79210"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2c5830d520a94d28972a2b16c16fb22a",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "2c5830d520a94d28972a2b16c16fb22a",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:28.424912Z",
+        "source_log_end": 0,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322228424,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "2c5830d520a94d28972a2b16c16fb22a"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2c90066516194a0b9429661dc8ac7640",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "2c90066516194a0b9429661dc8ac7640",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:45.553701Z",
+        "source_log_end": 100,
+        "stored_unique_results": 100,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 100,
+        "sampled_at_ms": 1794322245553,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "2c90066516194a0b9429661dc8ac7640"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2cc85fe9ff7c4751ba9c8ce0e45eb2f4",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "2cc85fe9ff7c4751ba9c8ce0e45eb2f4",
+        "checkpoint_lag": 2246,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:57.946744Z",
+        "source_log_end": 2346,
+        "stored_unique_results": 372,
+        "host": "31c18f799618",
+        "stored_main_results": 272,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 100,
+        "sampled_at_ms": 1794322257944,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "2cc85fe9ff7c4751ba9c8ce0e45eb2f4"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2d4f6a19edf94f8786f36a153f1a0560",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "2d4f6a19edf94f8786f36a153f1a0560",
+        "checkpoint_lag": 3268,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:02.997924Z",
+        "source_log_end": 3368,
+        "stored_unique_results": 372,
+        "host": "31c18f799618",
+        "stored_main_results": 272,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 100,
+        "sampled_at_ms": 1794322262997,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "2d4f6a19edf94f8786f36a153f1a0560"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2d90e90c64164e1fb566ac8bebcbf196",
+      "_score": null,
+      "_source": {
+        "@timestamp": "2026-11-10T14:50:26.514221Z",
+        "host": "31c18f799618",
+        "path": "/logs/recovery-20261110T145026-33d347-sink.jsonl",
+        "log_id": "2d90e90c64164e1fb566ac8bebcbf196",
+        "event_type": "sink_started",
+        "group_id": "recovery-20261110T145026-33d347-store",
+        "@version": "1",
+        "component": "score_store"
+      },
+      "sort": [
+        "2d90e90c64164e1fb566ac8bebcbf196"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "2e65de6473004535ab8c6ae2cb4486fc",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "2e65de6473004535ab8c6ae2cb4486fc",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:32.152430Z",
+        "source_log_end": 6150,
+        "stored_unique_results": 6100,
+        "host": "31c18f799618",
+        "stored_main_results": 6000,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 6150,
+        "sampled_at_ms": 1794322292149,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "2e65de6473004535ab8c6ae2cb4486fc"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "3b157568a2dc4384b8449da4271f2469",
+      "_score": null,
+      "_source": {
+        "@timestamp": "2026-11-10T14:51:42.968220Z",
+        "host": "31c18f799618",
+        "path": "/logs/recovery-20261110T145026-33d347-spark.jsonl",
+        "component": "spark",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "log_id": "3b157568a2dc4384b8449da4271f2469",
+        "event_type": "query_stopped",
+        "@version": "1",
+        "query_id": "c09f0210-a0fd-4aa2-af49-f3bff47b7847"
+      },
+      "sort": [
+        "3b157568a2dc4384b8449da4271f2469"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "44536a70851341c0abfb87b83c44df28",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "44536a70851341c0abfb87b83c44df28",
+        "checkpoint_lag": 100,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:50:43.541157Z",
+        "source_log_end": 100,
+        "stored_unique_results": 0,
+        "host": "31c18f799618",
+        "stored_main_results": 0,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 0,
+        "sampled_at_ms": 1794322243541,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "44536a70851341c0abfb87b83c44df28"
+      ]
+    },
+    {
+      "_index": "credit-risk-monitoring-2026.11.10",
+      "_id": "48a742f3ce344e71ba6db07dea6dc7e4",
+      "_score": null,
+      "_source": {
+        "path": "/logs/recovery-20261110T145026-33d347-test.jsonl",
+        "log_id": "48a742f3ce344e71ba6db07dea6dc7e4",
+        "checkpoint_lag": 0,
+        "@version": "1",
+        "pipeline_id": "recovery-20261110T145026-33d347",
+        "@timestamp": "2026-11-10T14:51:20.204913Z",
+        "source_log_end": 6100,
+        "stored_unique_results": 6100,
+        "host": "31c18f799618",
+        "stored_main_results": 6000,
+        "event_type": "recovery_sample",
+        "spark_completed_end": 6100,
+        "sampled_at_ms": 1794322280198,
+        "component": "recovery_test"
+      },
+      "sort": [
+        "48a742f3ce344e71ba6db07dea6dc7e4"
+      ]
+    }
+  ]
+}

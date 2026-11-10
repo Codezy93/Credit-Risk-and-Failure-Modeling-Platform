@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "batch_id": "recovery-20261110T145026-33d347",
+  "source_input_and_result_hashes_verified": true,
+  "model_unchanged": true,
+  "all_core_dependency_versions_unchanged": true,
+  "patched_spark_version": "4.1.4",
+  "regression_tests_passed": 110,
+  "committed_sink_group_lag_total": 0,
+  "sqlite_unique_main_results": 6000,
+  "injected_duplicates_suppressed": 110,
+  "elasticsearch_indexed_log_count": 6295,
+  "notebook_latest_batch_visible": true,
+  "notebook_sha256": "a9e836438c098a1555b04bc186a08a341e125890ea52733df3191a79bc9e1797",
+  "html_sha256": "ea6aedae789551c46db4e3c0c4fa94b720d203ad1a0e55d30524fd5e65d5fc16",
+  "mlflow_finished_with_replay_dataset": true,
+  "external_notifications_configured": false
+}

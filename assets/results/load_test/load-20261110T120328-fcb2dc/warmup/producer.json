@@ -1,0 +1,11 @@
+{
+  "run_id": "load-20261110T120328-fcb2dc-warmup",
+  "delivered": 100,
+  "valid_rows": 100,
+  "invalid_fixtures": 0,
+  "delivery_errors": 0,
+  "first_emitted_at_ms": 1794312217822,
+  "last_emitted_at_ms": 1794312218812,
+  "last_acknowledged_at_ms": 1794312218853,
+  "elapsed_seconds": 1.0310566859999426
+}

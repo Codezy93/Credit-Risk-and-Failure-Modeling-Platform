@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "source_input_rows_after_restart": 0,
+  "same_checkpoint_query_id": true,
+  "output_offsets_unchanged": true,
+  "before_output_offsets": {
+    "loan-scores:0": 63,
+    "loan-scores:1": 77,
+    "loan-scores:2": 60,
+    "loan-invalid:0": 2,
+    "loan-invalid:1": 2,
+    "loan-invalid:2": 2
+  },
+  "after_output_offsets": {
+    "loan-scores:0": 63,
+    "loan-scores:1": 77,
+    "loan-scores:2": 60,
+    "loan-invalid:0": 2,
+    "loan-invalid:1": 2,
+    "loan-invalid:2": 2
+  },
+  "failure_injection_tested": false
+}

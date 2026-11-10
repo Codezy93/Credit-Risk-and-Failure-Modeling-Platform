@@ -1,0 +1,11 @@
+{
+  "run_id": "recovery-20261110T145026-33d347-main",
+  "delivered": 6000,
+  "valid_rows": 6000,
+  "invalid_fixtures": 0,
+  "delivery_errors": 0,
+  "first_emitted_at_ms": 1794322246653,
+  "last_emitted_at_ms": 1794322276648,
+  "last_acknowledged_at_ms": 1794322276653,
+  "elapsed_seconds": 30.000205306998396
+}

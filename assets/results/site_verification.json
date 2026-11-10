@@ -1,0 +1,57 @@
+{
+  "status": "ready_for_commit_and_deploy",
+  "verified_at_utc": "2026-11-10T15:19:55.000264+00:00",
+  "hosting": "GitHub Pages",
+  "pages_enabled": true,
+  "publishing_source": "workflow",
+  "expected_url": "https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/",
+  "remote_workflow_deployment_run": false,
+  "reason": "New source and workflow files have not been committed or pushed in this task.",
+  "public_file_count": 10,
+  "artifact_bytes": 471400,
+  "evidence_source_files": 20,
+  "site_link_and_allowlist_check": "passed",
+  "javascript_syntax_check": "passed",
+  "workflow_actionlint": "passed (1.7.7)",
+  "browser": {
+    "status": "passed",
+    "viewports": [
+      375,
+      390,
+      768,
+      1024,
+      1440
+    ],
+    "cohort_switching": true,
+    "figure_dialog_keyboard_close": true,
+    "project_path_prefix": true,
+    "no_javascript_content": true,
+    "browser_errors": []
+  },
+  "accessibility": {
+    "status": "passed",
+    "violations": [],
+    "passes": 28
+  },
+  "source_sha256": {
+    "scripts/24_build_site.py": "966cf5bf5860e6dd539500a3109319b157264d58bbf82e90f7d31bb3ba14327f",
+    "scripts/25_check_site.py": "8560b9639a877063ed47f8aa1a3cfb18dd0ac61bd69157695378a2b9a32c76e2",
+    ".github/workflows/pages.yml": "4c2a1dfd36af2dc95f58a14fb5866fbe29e1befc245708cac887fa61a00bf50d",
+    "site/index.html": "62fb9414134294e1f332dfef172578353673cc0b259f78f96b2269e2babde780",
+    "site/styles.css": "b5022794e2d2d5c2a689f3d2763bc711e7b1e95fe0dbe39080a0cfc662244099",
+    "site/app.js": "600de25c04e385b06f14c55db5ee5d2258f19aa405044b126b19a5d7f50e5da9",
+    "site/favicon.svg": "71de37cbc171b27688481df803004089f877dd1e28f95cf18879ad232da20e5a"
+  },
+  "artifact_sha256": {
+    ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app.js": "600de25c04e385b06f14c55db5ee5d2258f19aa405044b126b19a5d7f50e5da9",
+    "assets/eda.png": "a7d09829cc86758ae0a6f4399640f9547f990e2aff5bc7d3a9b4ac73ab7238cc",
+    "assets/interpret.png": "11539debec8100cb44198e18db3258d9309f84ba7d88a0807845f6d4b6cfaa06",
+    "assets/provenance.json": "c47682e9a71bc9fae24fa1506f20a284f2db32ce85e6f530c4d2a5155d7cc21e",
+    "assets/recovery.png": "5d3bb7a41fa2759299949a8c1b41b42c993ebc7ec4df928b3f38fda7f6fe5578",
+    "assets/results.json": "408b3f0f81e142edd0b02f66e0cd4a8ae8885ba4a03798c2f6ed0dad10de11ad",
+    "favicon.svg": "71de37cbc171b27688481df803004089f877dd1e28f95cf18879ad232da20e5a",
+    "index.html": "4a2079d4bf7c0b2f5013c1332f3ff864d115e7f7e0766a44a8619d296b51eafe",
+    "styles.css": "b5022794e2d2d5c2a689f3d2763bc711e7b1e95fe0dbe39080a0cfc662244099"
+  }
+}

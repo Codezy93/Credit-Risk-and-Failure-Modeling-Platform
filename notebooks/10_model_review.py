@@ -209,5 +209,111 @@ def _(json, mo, pd, root):
     return
 
 
+@app.cell
+def _(json, mo, pd, root):
+    _interpret_path = root / "assets/results/interpret_bias_latest.json"
+    if _interpret_path.exists():
+        _interpret_manifest = json.loads(_interpret_path.read_text())
+        _interpret_results = root / _interpret_manifest["result_directory"]
+        _segment_metrics = pd.read_csv(_interpret_results / "segment_metrics.csv")
+        _spreads = pd.read_csv(_interpret_results / "segment_spreads.csv")
+        _interpret_output = mo.vstack([mo.md(f"""## InterpretML and borrower-segment disparities
+
+        Batch `{_interpret_manifest['batch_run_id']}` explains the frozen incumbent
+        probability and audits all 2014/2015 evaluation loans. Global SHAP summaries
+        use random complete/training-known 2014 cases; curated error examples are
+        excluded from that ranking. Training-only backgrounds support Kernel SHAP
+        and partial dependence. Missing/unseen cases remain in all population and
+        segment metrics. PDP bands show background-row spread, not confidence intervals.
+
+        Every group uses the same frozen threshold {_interpret_manifest['frozen_threshold']:.9f}.
+        Flags are risk-screening proxies, not observed denials. Supported segments
+        need 500 rows and 50 examples of each outcome; smaller groups remain visible
+        with support flags. Wilson intervals are descriptive; dependence, overlapping
+        slices and case mix limit inference. The zero-flag 0.5 policy is not a fairness pass.
+
+        Race, sex/gender, ethnicity, age/birth date and disability fields are absent.
+        We do not infer protected attributes from names, text, credit history or
+        geography. Business segments cannot establish protected-group fairness.
+        Accepted-only, resolved outcomes also cannot assess rejected-applicant
+        outcomes or approval/denial disparities. No model or threshold is changed.
+        """), mo.ui.table(pd.read_csv(_interpret_results / "overall_metrics.csv")),
+            mo.ui.table(pd.read_csv(_interpret_results / "protected_attribute_coverage.csv")),
+            mo.ui.table(pd.read_csv(_interpret_results / "shap_global_importance.csv")),
+            mo.ui.table(pd.read_csv(_interpret_results / "permutation_importance.csv")),
+            mo.image(root / _interpret_manifest["figure_directory"] / "feature_importance.png"),
+            mo.image(root / _interpret_manifest["figure_directory"] / "partial_dependence.png"),
+            mo.image(root / _interpret_manifest["figure_directory"] / "local_examples.png"),
+            mo.ui.table(_segment_metrics[_segment_metrics.policy == "frozen_validation_f1"]),
+            mo.ui.table(_spreads),
+            mo.image(root / _interpret_manifest["figure_directory"] / "segment_disparities.png"),
+            mo.ui.table(pd.read_csv(_interpret_results / "segment_temporal_drift.csv"))])
+    else:
+        _interpret_output = mo.md("## InterpretML and segment disparities\n\nRun `make interpret` after training the incumbent.")
+    _interpret_output
+    return
+
+
+@app.cell
+def _(json, mo, pd, root):
+    _load_path = root / "assets/results/load_test_latest.json"
+    if _load_path.exists():
+        _load_manifest = json.loads(_load_path.read_text())
+        _load_directory = root / _load_manifest["result_directory"]
+        _load_output = mo.vstack([mo.md(f"""## Kafka and PySpark load testing
+
+        Batch `{_load_manifest['batch_id']}` used a warmed Spark query and isolated
+        Kafka topics. Each traffic rate ran for {_load_manifest['duration_seconds_per_stage']}
+        seconds, then drained before the next stage. The table includes every
+        measured stage; warmup is excluded. Probabilities and flags were checked
+        against the frozen model without retraining.
+
+        End-to-end latency runs from producer emission to receipt of the Kafka
+        result, including scheduling and collector overhead. Completed rows/s
+        includes final drain. Checkpoint lag includes the in-flight batch.
+        These short, single-run local measurements do not establish a production
+        capacity limit or SLA. Failure injection and ELK monitoring remain pending.
+        """), mo.ui.table(pd.read_csv(_load_directory / "stage_metrics.csv")),
+            mo.image(_load_directory / "load_results.png"),
+            mo.image(_load_directory / "checkpoint_lag.png")])
+    else:
+        _load_output = mo.md("## Kafka and PySpark load testing\n\nRun `make load-test` for measured results.")
+    _load_output
+    return
+
+
+@app.cell
+def _(json, mo, pd, root):
+    _recovery_path = root / "assets/results/recovery_latest.json"
+    if _recovery_path.exists():
+        _recovery = json.loads(_recovery_path.read_text())
+        _recovery_keys = ["rows", "rate", "restart_to_first_outage_event_result_seconds",
+            "missing_main_scores", "peak_checkpoint_lag", "end_checkpoint_lag",
+            "suppressed_duplicate_deliveries", "deliberately_injected_duplicate_deliveries",
+            "conflicts_flagged_without_overwrite", "maximum_probability_error", "elk_verified"]
+        _recovery_output = mo.vstack([mo.md(f"""## Recovery, deduplication and ELK monitoring
+
+        Batch `{_recovery['batch_id']}` killed Spark during an uncommitted batch
+        while the producer kept running, then resumed the same checkpoint.
+        The store was also crashed after its SQLite commit and before Kafka offset
+        commit. Restart retries did not create extra stored scores or ledger rows.
+
+        SQLite keeps one logical result per event ID. The deliberate duplicate
+        fixtures are reported separately from natural retries. One conflicting
+        model fingerprint was injected to check that the first score is preserved
+        and monitoring flags the conflict. This is not a real model change.
+
+        Structured logs were checked against Elasticsearch; the local Kibana
+        dashboard is at http://127.0.0.1:15601/app/dashboards#/view/credit-risk-streaming.
+        Kafka remains at least once. This single local test does not certify
+        broker failover or production availability. The model was not retrained.
+        """), mo.ui.table(pd.DataFrame([{"measurement": key, "value": str(_recovery[key])} for key in _recovery_keys])),
+            mo.image(root / _recovery["result_directory"] / "recovery_lag.png")])
+    else:
+        _recovery_output = mo.md("## Recovery and monitoring\n\nRun `make recovery-test` for measured evidence.")
+    _recovery_output
+    return
+
+
 if __name__ == "__main__":
     app.run()

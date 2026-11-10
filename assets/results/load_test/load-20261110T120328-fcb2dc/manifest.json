@@ -1,0 +1,60 @@
+{
+  "batch_id": "load-20261110T120328-fcb2dc",
+  "completed_at_utc": "2026-11-10T12:05:46.211203+00:00",
+  "status": "complete",
+  "rates": [
+    100,
+    500,
+    2000
+  ],
+  "duration_seconds_per_stage": 30,
+  "warmup_rows": 100,
+  "topics": [
+    "load-20261110T120328-fcb2dc-input",
+    "load-20261110T120328-fcb2dc-scores",
+    "load-20261110T120328-fcb2dc-invalid"
+  ],
+  "result_directory": "assets/results/load_test/load-20261110T120328-fcb2dc",
+  "model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "python": "3.14.9",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "logical_cpus": 12,
+  "docker_resources": {
+    "cpus": 12,
+    "memory_bytes": 3804389376
+  },
+  "java": "openjdk version \"21.0.13\" 2026-10-20 LTS\nOpenJDK Runtime Environment Temurin-21.0.13+9 (build 21.0.13+9-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.13+9 (build 21.0.13+9-LTS, mixed mode, sharing)\n",
+  "host_memory_kib": 15607160,
+  "cpu_model": "Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz",
+  "versions": {
+    "pyspark": "4.1.2",
+    "confluent-kafka": "2.16.1",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "scikit-learn": "1.9.1"
+  },
+  "spark": {
+    "master": "local[2]",
+    "trigger_seconds": 2,
+    "max_offsets_per_trigger": 10000,
+    "arrow_batch_rows": 1000,
+    "topic_partitions": 3,
+    "model_threads_per_worker": 1
+  },
+  "source_sha256": {
+    "scripts/15_replay_loans.py": "cbd2cc8cec35cc4a777f186f7b7f95e12f144acf115a2d86fe27271079525d04",
+    "scripts/16_stream_score.py": "f1cc7f2c688b226c26c4f8add560b65feafd64effbf30222f21c9dacc28a0228",
+    "scripts/18_run_load_test.py": "84f1f6982723d8bf2cbb2676cb74c3776e8bf4bb9ad21d1d970763fff1a9af6c",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "util/load_test.py": "645b9dd8ddeef4770165870bef11fe48744543b930e3823ef083985509342f74",
+    "docker-compose.yml": "d027bc64bf341f81b154adc1d6c498f34f3f1d49a8de0f46b85d63edabd8be00",
+    "requirements-streaming.lock": "bcf3ef9777a243de87655cec81d03ac83847746e4af8be410779407c7eb70c19"
+  },
+  "validation_parquet_sha256": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+  "failure_injection_tested": false,
+  "elk_monitoring_implemented": false,
+  "latency_boundary": "producer emission to collector receipt of Kafka output; same-host wall clocks",
+  "lag_definition": "sampled Kafka input end offsets minus Spark completed progress end offsets; includes in-flight batch",
+  "limits": "One warmed run per rate, 30-second defaults, shared local machine, repeated validation cohort across stages; not a production capacity guarantee.",
+  "mlflow_run_id": "8db7a44359d44df691e82e202376a461"
+}

@@ -1,0 +1,11 @@
+{
+  "run_id": "recovery-20261110T145026-33d347-warmup",
+  "delivered": 100,
+  "valid_rows": 100,
+  "invalid_fixtures": 0,
+  "delivery_errors": 0,
+  "first_emitted_at_ms": 1794322237226,
+  "last_emitted_at_ms": 1794322237229,
+  "last_acknowledged_at_ms": 1794322237349,
+  "elapsed_seconds": 0.12274268900000607
+}

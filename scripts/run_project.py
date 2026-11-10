@@ -39,6 +39,7 @@ def commands(include_auc=False, include_ann=False):
     if include_ann:
         steps.append([sys.executable, "scripts/11_ann_experiments.py"])
     steps.append([sys.executable, "scripts/13_review_validation.py"])
+    steps.append([sys.executable, "scripts/14_interpret_bias.py"])
     steps.append([sys.executable, "-m", "marimo", "export", "html", "notebooks/10_model_review.py",
                   "-o", "docs/model_review.html", "--no-include-code"])
     return steps

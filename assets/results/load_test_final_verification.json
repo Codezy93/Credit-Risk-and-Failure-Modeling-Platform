@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "batch_id": "load-20261110T120328-fcb2dc",
+  "source_model_input_and_result_hashes_match": true,
+  "saved_csv_probabilities_rechecked_rows": 78000,
+  "maximum_csv_probability_roundtrip_error": 0,
+  "all_saved_risk_flags_match": true,
+  "regression_tests_passed": 105,
+  "regression_tests_ended_before_first_measured_stage": true,
+  "latest_batch_in_notebook_export": true,
+  "notebook_sha256": "26cae2a7dfa9a9f1357f79a18876fdba6a86892430b77e5228bd807f3693f637",
+  "html_sha256": "e032b084c436f8271e4b8ee7de721dcf84ea0b264bfb6a60065aec6d0982a810",
+  "mlflow_finished_parent_and_three_finished_children": true,
+  "mlflow_replay_dataset_inputs": 4,
+  "failure_injection_tested": false,
+  "elk_monitoring_implemented": false
+}

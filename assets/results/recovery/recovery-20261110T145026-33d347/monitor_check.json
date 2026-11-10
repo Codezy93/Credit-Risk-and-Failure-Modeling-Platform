@@ -1,0 +1,10 @@
+{
+  "status": "warning",
+  "window": "5 minutes",
+  "alerts": [
+    "conflicting_event_ids",
+    "p95_latency_above_10_seconds"
+  ],
+  "checks_are_on_demand": true,
+  "external_notifications_sent": false
+}

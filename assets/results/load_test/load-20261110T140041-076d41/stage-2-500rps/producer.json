@@ -1,0 +1,11 @@
+{
+  "run_id": "load-20261110T140041-076d41-stage-2-500rps",
+  "delivered": 15000,
+  "valid_rows": 15000,
+  "invalid_fixtures": 0,
+  "delivery_errors": 0,
+  "first_emitted_at_ms": 1794319299990,
+  "last_emitted_at_ms": 1794319329988,
+  "last_acknowledged_at_ms": 1794319329989,
+  "elapsed_seconds": 29.99916052899971
+}

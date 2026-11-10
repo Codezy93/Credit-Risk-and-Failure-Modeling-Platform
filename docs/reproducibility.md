@@ -37,7 +37,8 @@ CSV hashes and the unchanged incumbent hash were checked.
 
 The optional seven-trial XGBoost search was not rerun during this verification.
 `make full` includes it. Its previously measured results remain historical research
-snapshots. Kafka, ELK, InterpretML, and bias evaluation remain future stages.
+snapshots. At that verification, Kafka, ELK, InterpretML and bias evaluation were
+still future stages. The completed interpretation and segment audit is recorded below.
 
 The first validation-hardening logging attempt failed under MLflow's default model
 serializer. It remains recorded as a failed run. The completed workflow uses the
@@ -123,10 +124,105 @@ bootstrap samples, records yearly and univariate associations, and compares four
 feature-removal variants on 2014. Its paired interval concerns two fixed fitted
 models and does not include model-selection or training uncertainty.
 
-The current suite has **93 passing tests**. Current script/source hashes match
+At completion of the validation review, the suite had **93 passing tests**. Current script/source hashes match
 both executions. The updated model-review notebook includes both batch IDs and
 the remaining model-use limitations. No incumbent artifact or 2015 evaluation
 result was changed. Reproduce these review stages using `make review`.
 
 See the [validation gap review](validation_gaps.md) and
 [verification record](../assets/results/validation_gaps_verification.json).
+
+## InterpretML and descriptive segment audit
+
+The incumbent is explained using InterpretML 0.7.8 and its SHAP backend. Direct
+dependencies and the complete hash lock were updated and checked for conflicts
+in the isolated Python 3.14 environment. Existing scikit-learn and NumPy versions
+were retained. Historical training records keep their original dependency hashes;
+the interpretation run records the new lock and actual runtime versions.
+
+The current suite has **101 passing tests**, including reversible category-code
+checks, a real InterpretML SHAP reconstruction test, Wilson interval checks,
+single-class/undefined-rate handling, zero-flag policy warnings and SQL group
+boundary/missingness checks. The explanation adapter decodes training-defined
+category codes before every prediction; it does not change model inputs.
+
+`make interpret` uses the existing hashed train/validation/exploratory datasets,
+unchanged incumbent, clean state metadata and canonical source header. Training
+income quartiles and explanation backgrounds use training data only. All 2014
+and 2015 loans remain in the segment metrics; complete/training-known cases form
+the separately labelled explanation sample. No model or threshold is refitted.
+
+Use the [interpretation/bias report](interpret_bias.md) and
+[verification record](../assets/results/interpret_bias_verification.json). The
+model-review notebook displays both explanations and disparity tables. Protected
+attributes are not inferred, and absent structured attributes prevent a
+protected-group fairness assessment or legal/compliance conclusion.
+
+## Kafka/PySpark correctness check
+
+The optional streaming environment preserves every core dependency version and
+adds PySpark 4.1.2, Py4J and confluent-kafka 2.16.1. All 102 tests passed there,
+including the optional Spark validation test; the core environment remains
+separate. Java 21.0.13+9 was used for Spark. Dependency conflict checks passed.
+
+A real Kafka broker accepted 100 application replays and three invalid fixtures.
+All valid scores exactly matched direct frozen-model predictions. The invalid
+fixtures were rejected, and a clean checkpoint restart read no additional input
+and wrote no additional output. Sources and the prepared input file are hashed
+in [the streaming manifest](../assets/results/streaming_latest.json).
+This finite correctness check is not a stress test or a failure-injection test.
+
+MLflow run: `fe86cfd3742d47ec8ad81f248e623566` in `lendingclub_streaming_smoke`.
+See [the streaming guide](streaming.md) for repeatable commands and at-least-once
+delivery limitations.
+
+## Paced Kafka/PySpark load measurements
+
+The current streaming environment passed 105 tests, including three new tests
+for latency/throughput denominators, duplicate accounting, incomplete results and
+Spark checkpoint offsets across idle batches. Regression tests finished before
+the first measured traffic stage. A separate 100-row warmup precedes the stages.
+
+The recorded 100/500/2,000 messages/s stages processed 78,000 events. Every score
+and flag matched direct model predictions. All stages drained their checkpoint
+lag to zero. Source files, model and prepared data fingerprints are recorded; the
+report checks them and recomputes output counts, latency percentiles and peak lag
+from saved evidence. Historical smoke-test fingerprints retain their execution
+versions; the current streaming scripts add isolated output topics and continuous
+progress/controlled-stop support. No model metrics or model binary were changed.
+
+See [the load report](load_testing.md), [current manifest](../assets/results/load_test_latest.json)
+and [verification](../assets/results/load_test_verification.json). One MLflow
+parent and three stage children finished in `lendingclub_streaming_load_tests`.
+Only finite local loads were measured; no failure-injection or ELK claim is made.
+
+## Recovery, durable deduplication and ELK
+
+The current optional streaming runtime is pinned to Spark 4.1.4 with the matching
+Kafka connector. The 4.1.2 runtime used for the historical smoke/load benchmarks
+crashed in Kafka progress reporting when restarting an uncommitted batch, matching
+[SPARK-55271](https://issues.apache.org/jira/browse/SPARK-55271). The patch changes
+only the streaming runtime; core dependency versions and the model are unchanged.
+Historical fingerprints remain snapshots of their actual execution versions.
+
+The complete suite passed **110 tests** in the patched streaming environment.
+New checks cover persisted event deduplication, same-offset retries, conflicting
+results, transactional rollback, invalid records with missing run IDs and stable
+monitoring document IDs across outbox re-exports. The real failure experiment
+additionally checks the storage-consumer group offsets after restart, not just
+the database and outbox.
+
+The independent [recovery verification](../assets/results/recovery_verification.json)
+reconciles SQLite outcomes, model preservation, Spark checkpoint offsets, every
+output partition's committed group lag, indexed delivery counts and the eight
+Kibana dashboard references. Source/input/result hashes and the latest MLflow
+replay dataset are recorded. The experiment uses isolated topics, group,
+checkpoint and database. Earlier failed startup attempts remain diagnostic
+artifacts, and the run rejected by the post-run offset audit is marked FAILED
+in local MLflow. Only the successful latest batch is used for reported metrics.
+
+See [the recovery and monitoring report](recovery_monitoring.md) and
+[current manifest](../assets/results/recovery_latest.json). Kafka data was
+preserved when introducing the persistent broker mount. Elastic 8.17.3 is a
+local demo with loopback ports and disabled Elasticsearch security; external
+notifications and broker failover are not implemented.

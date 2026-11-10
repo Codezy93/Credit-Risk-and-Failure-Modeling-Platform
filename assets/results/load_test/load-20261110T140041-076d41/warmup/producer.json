@@ -1,0 +1,11 @@
+{
+  "run_id": "load-20261110T140041-076d41-warmup",
+  "delivered": 100,
+  "valid_rows": 100,
+  "invalid_fixtures": 0,
+  "delivery_errors": 0,
+  "first_emitted_at_ms": 1794319250628,
+  "last_emitted_at_ms": 1794319251618,
+  "last_acknowledged_at_ms": 1794319251620,
+  "elapsed_seconds": 0.9914167429997178
+}

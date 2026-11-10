@@ -1,0 +1,11 @@
+{
+  "run_id": "load-20261110T120328-fcb2dc-stage-2-500rps",
+  "delivered": 15000,
+  "valid_rows": 15000,
+  "invalid_fixtures": 0,
+  "delivery_errors": 0,
+  "first_emitted_at_ms": 1794312267074,
+  "last_emitted_at_ms": 1794312297072,
+  "last_acknowledged_at_ms": 1794312297073,
+  "elapsed_seconds": 29.999278263000065
+}

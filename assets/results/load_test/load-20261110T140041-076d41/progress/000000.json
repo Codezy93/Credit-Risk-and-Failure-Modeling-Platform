@@ -1,0 +1,53 @@
+{
+  "id": "c53dad85-4b73-4fbf-b304-007dc5f684e5",
+  "runId": "d76e81ca-a79b-4e54-9fda-e7f8ff2c5dbb",
+  "name": null,
+  "timestamp": "2026-11-10T14:00:50.082Z",
+  "batchId": 0,
+  "batchDuration": 2489,
+  "numInputRows": 0,
+  "inputRowsPerSecond": 0.0,
+  "processedRowsPerSecond": 0.0,
+  "durationMs": {
+    "addBatch": 1150,
+    "commitOffsets": 133,
+    "getBatch": 12,
+    "latestOffset": 633,
+    "queryPlanning": 490,
+    "triggerExecution": 2486,
+    "walCommit": 55
+  },
+  "stateOperators": [],
+  "sources": [
+    {
+      "description": "KafkaV2[Subscribe[load-20261110T140041-076d41-input]]",
+      "startOffset": null,
+      "endOffset": {
+        "load-20261110T140041-076d41-input": {
+          "0": 0,
+          "1": 0,
+          "2": 0
+        }
+      },
+      "latestOffset": {
+        "load-20261110T140041-076d41-input": {
+          "0": 0,
+          "1": 0,
+          "2": 0
+        }
+      },
+      "numInputRows": 0,
+      "inputRowsPerSecond": 0.0,
+      "processedRowsPerSecond": 0.0,
+      "metrics": {
+        "avgOffsetsBehindLatest": "0.0",
+        "maxOffsetsBehindLatest": "0",
+        "minOffsetsBehindLatest": "0"
+      }
+    }
+  ],
+  "sink": {
+    "description": "org.apache.spark.sql.kafka010.KafkaSourceProvider$KafkaTable@66cb06d5",
+    "numOutputRows": 0
+  }
+}

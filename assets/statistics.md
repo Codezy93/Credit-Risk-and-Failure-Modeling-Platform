@@ -1,6 +1,622 @@
 # Project statistics reference
 
-> Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21; separate loss models and illustrative capital scenarios are in section 22. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. Kafka stress tests, InterpretML, and bias evaluations have not run.
+> Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21; separate loss models and illustrative capital scenarios are in section 22. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. InterpretML and descriptive segment-disparity results are in section 26; protected-group fairness is unassessed. Short local load tests, recovery under active load, persistent deduplication and ELK monitoring are measured in the latest sections below.
+
+<!-- pages-statistics -->
+## GitHub Pages showcase verification
+
+The plain HTML/CSS/JavaScript showcase is built from committed aggregate evidence.
+The Pages artifact contains **10 public files**, **20 fingerprinted evidence inputs**
+and **471400 bytes**. Raw loan files, borrower-level
+predictions, model binaries, SQLite databases and service logs are not published.
+The site build needs Python's standard library only; Node is used for syntax checking.
+
+Browser checks passed at **375, 390, 768, 1024 and 1440 px**, including a GitHub
+project URL prefix, cohort switching, enlarged figures, Escape closing, no whole-page
+horizontal overflow, no browser errors and useful content without JavaScript.
+Axe found **0 WCAG A/AA violations** across 28 passing rule checks. This is an
+automated audit, not a complete accessibility certification. Workflow actionlint passed.
+
+GitHub Pages is enabled with **GitHub Actions** as the publishing source. The
+expected URL is `https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/`.
+No remote deployment has been run: the new website and workflow still need to be
+committed and pushed to main. This status is separate from the locally verified build.
+
+[Verification record](results/site_verification.json),
+[desktop preview](figures/showcase/desktop.png),
+[mobile preview](figures/showcase/mobile.png), and
+[publishing guide](../docs/github_pages.md).
+
+<!-- end-pages-statistics -->
+
+<!-- recovery-statistics -->
+## Latest recovery, deduplication and ELK statistics
+
+Batch `recovery-20261110T145026-33d347` completed 2026-11-10T14:51:43.960186+00:00. Status: **passed**.
+Regression transcript: `110 passed in 17.24s`.
+
+| Measurement | Value |
+| --- | --- |
+| Main replay events | 6,000 |
+| Unique stored results including 100 warmup events | 6,100 |
+| Main event rate / second | 200 |
+| Missing main scores | 0 |
+| Restart to first outage-event result (seconds) | 22.311 |
+| Crash to first outage-event result (seconds) | 27.429 |
+| Peak sampled checkpoint lag | 5,685 |
+| Final checkpoint lag | 0 |
+| Suppressed duplicate deliveries | 110 |
+| Deliberately injected duplicate deliveries | 110 |
+| Conflicts flagged, first score preserved | 1 |
+| Maximum probability difference | 0 |
+| End-to-end p95, including outage (ms) | 27,040 |
+| Sink restart to outbox drained (seconds) | 0.426964 |
+| Sink restart to committed Kafka offsets caught up (seconds) | 9.871471 |
+| Monitoring documents indexed | 6,295 |
+
+## Failure experiment
+
+A warmed Spark query processes historical validation events while a producer
+continues at 200 events/second. The test waits for a source offset
+file without its matching batch commit, then sends SIGKILL to that test's own
+Spark process group. After 5 seconds,
+Spark restarts from the same checkpoint. The producer was still active throughout
+the injected downtime. The checkpoint query ID is preserved; no new checkpoint
+or offset reset is used. Every main event's final probability and risk flag is
+compared with direct predictions from the unchanged model.
+
+First-result recovery measures the earliest stored result for an event emitted
+during the outage, so already-buffered pre-crash results do not count. The
+restart measurement includes JVM/connector startup. End-to-end latency uses the
+first durable score's reception time and includes the outage. Peak checkpoint
+lag is sampled, includes in-flight records and is not a latency SLA.
+
+The test then injects 50 repeated application events, 50 repeated Kafka scores,
+and one deliberately conflicting model fingerprint for an existing event ID.
+Finally, it stops the store, injects 10 more duplicate scores, and crashes a new
+store process with exit 73 immediately after its SQLite commit but before Kafka
+offset commit. Restarting the same group/database retries those offsets and
+drains the durable log outbox without adding score or delivery-ledger rows twice.
+The test then waits for the restarted consumer's committed offsets to reach all
+output partition ends. Outbox drainage alone is not treated as consumer recovery.
+
+These are 110 deliberately repeated deliveries, separate from any natural Spark
+retry duplicates observed before injection. The intentional conflict is retained
+as evidence and triggers monitoring; it does not replace the original score.
+This single local experiment does not establish broker failover, disk-loss
+recovery, multi-host clock accuracy or distributed database availability.
+
+## Durable deduplication
+
+`scripts/20_store_scores.py` stores scores in SQLite with `event_id` as primary
+key and a separate delivery ledger keyed by Kafka topic/partition/offset.
+Logical equality includes run ID, original emission time, model fingerprint,
+status, probability, flag, validation reason and threshold. Source output offsets
+and scoring timestamps may change on retry. An ID reused for a different logical
+result is a conflict: the first result stays intact and the conflict is recorded.
+Use a new event ID for a changed application/model-scoring request.
+
+The database uses WAL and FULL synchronization. Scores, delivery records and the
+monitoring outbox commit in one transaction before Kafka offsets advance. Logs
+are flushed from the outbox before it is marked exported. A repeated log export
+keeps the same document ID, so Elasticsearch replaces that monitoring document.
+SQLite is the authoritative score store. Kafka transport remains at least once;
+this is persistent local idempotent storage, not an end-to-end exactly-once claim.
+The ledger grows with deliveries and has no automatic retention policy.
+
+## ELK
+
+JSON-lines logs under ignored `models/streaming/logs/` feed Logstash's persistent
+file reader and persistent queue. Elasticsearch stores `credit-risk-monitoring-*` with explicit field
+types and stable `log_id` document IDs. Kibana has eight panels: stored results,
+suppressed duplicates, conflicts, p95 score latency, stored results/minute,
+checkpoint lag, average risk score and errors/invalid outputs. Counts of inserted
+results exclude suppressed duplicates. Logs omit application features and loan IDs.
+
+Dashboard: **http://127.0.0.1:15601/app/dashboards#/view/credit-risk-streaming**.
+The default view includes all retained test batches. To isolate this batch, use:
+
+```text
+pipeline_id:"recovery-20261110T145026-33d347" or run_id:"recovery-20261110T145026-33d347-main" or run_id:"recovery-20261110T145026-33d347-warmup" or group_id:"recovery-20261110T145026-33d347-store"
+```
+
+The stored-result count includes 100 warmup events in addition to the main replay.
+Elasticsearch: **http://127.0.0.1:19200**. These local services bind to loopback;
+Elasticsearch security is disabled for this local demo. The monitoring services
+use pinned Elastic 8.17.3 images, persistent data volumes and reduced heaps for
+this machine. Kafka uses persistent ignored `models/streaming/kafka-data/`.
+Existing broker data was preserved when adding that mount.
+
+`make monitor-check` runs on-demand checks for conflicts/monitor errors, invalid
+outputs, p95 above 10 seconds and latest checkpoint lag above 10,000. Add
+`--expect-running` to the script to check for progress older than 30 seconds.
+It emits JSON locally; no scheduled alerting, external messages or notifications
+are configured. The deliberately injected conflict can produce a warning.
+Score distributions are visible; this is not a statistical drift detector.
+
+## Run
+
+```bash
+make streaming-setup
+make kafka-up
+make elk-up
+
+# Separate terminals for normal operation; replay creates the topics.
+make replay ARGS="--rows 10000 --rate 200 --run-id demo-unique-id"
+make stream
+make store-scores
+
+# Automated isolated failure/retry experiment, including ELK verification.
+make recovery-test
+make monitor-check
+
+# Stop services when finished; data, topics and checkpoints are retained.
+make elk-down
+make kafka-down
+```
+
+Spark Makefile targets select Java 21 at `/usr/lib/jvm/java-21-openjdk-amd64`.
+Override `STREAM_JAVA_HOME=/your/java-21` on other machines. The optional runtime
+and matching Kafka connector now use Spark 4.1.4. Fault injection reproduced
+[SPARK-55271](https://issues.apache.org/jira/browse/SPARK-55271) on 4.1.2;
+the patched release was installed before this successful test. Historical smoke
+and load measurements retain their 4.1.2 fingerprints and are not restated as
+4.1.4 measurements. Core modelling dependencies and the model are unchanged.
+
+![Recovery checkpoint lag](results/recovery/recovery-20261110T145026-33d347/recovery_lag.png)
+
+MLflow experiment: `lendingclub_streaming_recovery`; run `15ab49ecbc804015bc132ec18990485a`.
+The replay dataset, metrics, logs and source snapshots are attached.
+[Manifest](results/recovery_latest.json),
+[verification](results/recovery_verification.json), and
+[delivery ledger](results/recovery/recovery-20261110T145026-33d347/deliveries.csv.gz).
+
+<details><summary>All recovery statistics and source fingerprints</summary>
+
+```json
+{
+  "batch_id": "recovery-20261110T145026-33d347",
+  "rows": 6000,
+  "rate": 200,
+  "configured_downtime_seconds": 5,
+  "spark_killed_at_ms": 1794322250348,
+  "main_results_before_crash": 272,
+  "crashed_with_uncommitted_batch": true,
+  "spark_exit_code": -9,
+  "producer_active_after_downtime": true,
+  "spark_restart_launched_at_ms": 1794322255466,
+  "natural_duplicate_deliveries_before_injection": 0,
+  "restart_to_first_outage_event_result_seconds": 22.311,
+  "crash_to_first_outage_event_result_seconds": 27.429,
+  "maximum_probability_error": 0.0,
+  "checkpoint_query_id_preserved": true,
+  "sink_crashed_after_sqlite_commit_before_kafka_commit": true,
+  "sink_restart_to_outbox_drained_seconds": 0.42696363699906215,
+  "sink_restart_to_kafka_offsets_caught_up_seconds": 9.871471237998776,
+  "stored_main_unique_rows": 6000,
+  "stored_total_unique_rows_including_warmup": 6100,
+  "stored_delivery_rows": 6211,
+  "suppressed_duplicate_deliveries": 110,
+  "deliberately_injected_duplicate_deliveries": 110,
+  "conflicts_flagged_without_overwrite": 1,
+  "sqlite_outbox_pending_after_restart": 0,
+  "sink_retry_did_not_duplicate_delivery_ledger": true,
+  "missing_main_scores": 0,
+  "end_checkpoint_lag": 0,
+  "peak_checkpoint_lag": 5685,
+  "end_to_end_p50_ms": 15478.5,
+  "end_to_end_p95_ms": 27040.0,
+  "end_to_end_p99_ms": 28090.390000000007,
+  "drain_after_last_producer_ack_seconds": 3.138,
+  "elk_verified": true,
+  "expected_unique_monitoring_logs": 6295,
+  "indexed_monitoring_logs": 6295,
+  "status": "passed",
+  "completed_at_utc": "2026-11-10T14:51:43.960186+00:00",
+  "result_directory": "assets/results/recovery/recovery-20261110T145026-33d347",
+  "database": "models/streaming/recovery/recovery-20261110T145026-33d347/scores.sqlite",
+  "model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "validation_parquet_sha256": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+  "versions": {
+    "pyspark": "4.1.4",
+    "confluent-kafka": "2.16.1",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0"
+  },
+  "source_sha256": {
+    "scripts/15_replay_loans.py": "cbd2cc8cec35cc4a777f186f7b7f95e12f144acf115a2d86fe27271079525d04",
+    "scripts/16_stream_score.py": "e36879233f995196c39199c7628fb5e29bcff40b4e2f75778530ceefc1f15e5e",
+    "scripts/20_store_scores.py": "2d57d4a39345e945acfc86c12c90628cef4643e21e01ff77d45fad1a90b8ace0",
+    "scripts/21_test_recovery.py": "625b54084e9c1f466915390424b1c2aa93a8428d5513665452ae45ce517291db",
+    "scripts/22_setup_elk.py": "75af106c023aafcf30e135bb53e0380ffd420dd0d3237c6e11334a9d5aeeafbc",
+    "util/score_store.py": "9a1092113b7058156b54e529986b007d141a7726e0198213f51bc69a7e70a7f5",
+    "util/logging.py": "44153f54a69ecb62d6c9ba710a7c11807300afa7da30ad4a6d8cf5a782c84eec",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "util/elk/logstash.conf": "ed38c5b7ded505dd5a7430c34522dda7241e80644dd7d477b44a8f70446e1350",
+    "util/elk/dashboard.ndjson": "bae90061a5c50bb0273082594e53e8c9f07283852cad6f1926fdc6bb21604621",
+    "docker-compose.yml": "59e2beb699f9443d8a098cb34bcb7989b9a25d6a7944961b7f574b1eb43b87c5",
+    "requirements-streaming.lock": "5e7a469b549961385edfa5ff935add14886adbd1e361becda3549a482f5e12a6"
+  },
+  "mlflow_run_id": "15ab49ecbc804015bc132ec18990485a"
+}
+```
+
+</details>
+
+Configuration follows the official [Logstash file input](https://www.elastic.co/guide/en/logstash/8.17/plugins-inputs-file.html)
+and [Elasticsearch output](https://www.elastic.co/guide/en/logstash/8.17/plugins-outputs-elasticsearch.html) documentation.
+
+<!-- end-recovery-statistics -->
+
+<!-- load-test-statistics -->
+## Latest Kafka–PySpark load-test statistics
+
+Batch `load-20261110T140041-076d41`, completed 2026-11-10T14:02:57.964473+00:00.
+Status: **complete**. The frozen model and threshold were unchanged.
+Regression test transcript: `No test transcript attached to this batch.`.
+
+| target_rows_per_second | expected_rows | actual_emission_rows_per_second | completed_rows_per_second | end_to_end_p50_ms | end_to_end_p95_ms | end_to_end_p99_ms | peak_sampled_checkpoint_lag | drain_after_last_ack_seconds | missing_rows | duplicate_records |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 100 | 3000 | 100 | 89.922667 | 1,482.5 | 2,452 | 2,946.16 | 388 | 3.368 | 0 | 0 |
+| 500 | 15000 | 500 | 476.493011 | 1,512.5 | 2,491 | 2,979 | 2064 | 1.481 | 0 | 0 |
+| 2000 | 60000 | 2,000.033334 | 1,895.135818 | 1,693 | 2,650 | 2,993 | 8519 | 1.66 | 0 | 0 |
+
+<details><summary>Complete per-stage metrics</summary>
+
+```json
+[
+  {
+    "expected_rows": 3000,
+    "delivered_rows": 3000,
+    "received_records": 3000,
+    "unique_outputs": 3000,
+    "scored_rows": 3000,
+    "invalid_rows": 0,
+    "missing_rows": 0,
+    "duplicate_records": 0,
+    "delivery_errors": 0,
+    "emission_seconds": 29.99,
+    "emit_to_last_receive_seconds": 33.362,
+    "actual_emission_rows_per_second": 100.0,
+    "completed_rows_per_second": 89.92266650680415,
+    "drain_after_last_ack_seconds": 3.368,
+    "pending_at_last_emission": 95,
+    "peak_sampled_checkpoint_lag": 388,
+    "end_to_end_negative_latency_count": 0,
+    "end_to_end_p50_ms": 1482.5,
+    "end_to_end_p95_ms": 2452.0,
+    "end_to_end_p99_ms": 2946.159999999996,
+    "emit_to_worker_score_negative_latency_count": 0,
+    "emit_to_worker_score_p50_ms": 1308.5,
+    "emit_to_worker_score_p95_ms": 2244.0499999999997,
+    "emit_to_worker_score_p99_ms": 2479.0599999999986,
+    "counts_reconciled": true,
+    "stage": "stage-1-100rps",
+    "run_id": "load-20261110T140041-076d41-stage-1-100rps",
+    "target_rows_per_second": 100,
+    "configured_duration_seconds": 30,
+    "end_checkpoint_lag": 0,
+    "maximum_probability_error": 0.0,
+    "probabilities_match": true,
+    "risk_flags_match": true,
+    "model_hashes_match": true,
+    "expected_output_topics": true
+  },
+  {
+    "expected_rows": 15000,
+    "delivered_rows": 15000,
+    "received_records": 15000,
+    "unique_outputs": 15000,
+    "scored_rows": 15000,
+    "invalid_rows": 0,
+    "missing_rows": 0,
+    "duplicate_records": 0,
+    "delivery_errors": 0,
+    "emission_seconds": 29.998,
+    "emit_to_last_receive_seconds": 31.48,
+    "actual_emission_rows_per_second": 500.0,
+    "completed_rows_per_second": 476.4930114358323,
+    "drain_after_last_ack_seconds": 1.481,
+    "pending_at_last_emission": 992,
+    "peak_sampled_checkpoint_lag": 2064,
+    "end_to_end_negative_latency_count": 0,
+    "end_to_end_p50_ms": 1512.5,
+    "end_to_end_p95_ms": 2491.0,
+    "end_to_end_p99_ms": 2979.0,
+    "emit_to_worker_score_negative_latency_count": 0,
+    "emit_to_worker_score_p50_ms": 1305.0,
+    "emit_to_worker_score_p95_ms": 2213.0,
+    "emit_to_worker_score_p99_ms": 2556.0200000000004,
+    "counts_reconciled": true,
+    "stage": "stage-2-500rps",
+    "run_id": "load-20261110T140041-076d41-stage-2-500rps",
+    "target_rows_per_second": 500,
+    "configured_duration_seconds": 30,
+    "end_checkpoint_lag": 0,
+    "maximum_probability_error": 0.0,
+    "probabilities_match": true,
+    "risk_flags_match": true,
+    "model_hashes_match": true,
+    "expected_output_topics": true
+  },
+  {
+    "expected_rows": 60000,
+    "delivered_rows": 60000,
+    "received_records": 60000,
+    "unique_outputs": 60000,
+    "scored_rows": 60000,
+    "invalid_rows": 0,
+    "missing_rows": 0,
+    "duplicate_records": 0,
+    "delivery_errors": 0,
+    "emission_seconds": 29.999,
+    "emit_to_last_receive_seconds": 31.66,
+    "actual_emission_rows_per_second": 2000.0333344444816,
+    "completed_rows_per_second": 1895.1358180669615,
+    "drain_after_last_ack_seconds": 1.66,
+    "pending_at_last_emission": 3739,
+    "peak_sampled_checkpoint_lag": 8519,
+    "end_to_end_negative_latency_count": 0,
+    "end_to_end_p50_ms": 1693.0,
+    "end_to_end_p95_ms": 2650.0,
+    "end_to_end_p99_ms": 2993.0,
+    "emit_to_worker_score_negative_latency_count": 0,
+    "emit_to_worker_score_p50_ms": 1365.0,
+    "emit_to_worker_score_p95_ms": 2316.0,
+    "emit_to_worker_score_p99_ms": 2565.0,
+    "counts_reconciled": true,
+    "stage": "stage-3-2000rps",
+    "run_id": "load-20261110T140041-076d41-stage-3-2000rps",
+    "target_rows_per_second": 2000,
+    "configured_duration_seconds": 30,
+    "end_checkpoint_lag": 0,
+    "maximum_probability_error": 0.0,
+    "probabilities_match": true,
+    "risk_flags_match": true,
+    "model_hashes_match": true,
+    "expected_output_topics": true
+  }
+]
+```
+
+</details>
+
+## What was measured
+
+One continuous Spark query was warmed with 100 records, then given one
+30-second paced stage per target rate. Each
+stage drained before the next began. Topics and checkpoint were unique to the
+test. Each stage reuses the first N historical validation applications; they are
+distinct events within a stage, not new borrowers across stages. No invalid
+fixtures were injected during the load test. Raw output and producer logs are
+retained separately for warmup and every stage.
+
+Actual emission rate is (N−1)/(last emission−first emission). Completed rows/s is
+unique valid scores/(last collector receipt−first emission), including drain.
+Latency percentiles use the first output per event and measure producer emission
+to collector receipt from the output Kafka topic. They include micro-batch
+scheduling, scoring, Kafka transport and collector polling/buffering; they are
+not pure model inference times. Emit-to-worker-score percentiles are also saved.
+Clocks share this local host; negative latency counts are recorded explicitly.
+
+Lag is sampled about once per second: Kafka input log-end offsets minus the end
+offsets in completed Spark progress. It includes the in-flight micro-batch and is
+not Kafka consumer-group committed lag. Peak values can miss subsecond peaks.
+`pending_at_last_emission` in the full metrics counts expected events without a
+collected output at the final producer timestamp. Drain time ends at the last
+unique receipt and starts at the last producer acknowledgement.
+
+Every received valid probability and risk flag was compared with direct model
+scoring. Stage metrics also count missing outputs, unexpected invalid outputs,
+duplicates and delivery errors. Raw output IDs, model SHA and source offsets are
+retained. A two-second quiet collection period follows each drain; duplicates
+arriving later would require longer observation. Kafka delivery remains at least
+once; no failure-injection or exactly-once claim is made.
+
+## Machine and configuration
+
+CPU: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz; 12 logical host CPUs.
+Host memory: 14.88 GiB.
+Docker VM: 12 CPUs,
+3.54 GiB RAM.
+Spark: local[2], 2-second trigger, 10,000 maximum offsets/trigger, 1,000-row Arrow
+batches, three partitions per topic and one model thread per worker. Python
+3.14.9; PySpark 4.1.2. Exact Java,
+dependency versions, source hashes and input fingerprint are in the manifest.
+The collector, producer and Spark share the host; the Kafka broker runs in Docker.
+
+<details><summary>Complete environment, source fingerprints and manifest</summary>
+
+```json
+{
+  "batch_id": "load-20261110T140041-076d41",
+  "completed_at_utc": "2026-11-10T14:02:57.964473+00:00",
+  "status": "complete",
+  "rates": [
+    100,
+    500,
+    2000
+  ],
+  "duration_seconds_per_stage": 30,
+  "warmup_rows": 100,
+  "topics": [
+    "load-20261110T140041-076d41-input",
+    "load-20261110T140041-076d41-scores",
+    "load-20261110T140041-076d41-invalid"
+  ],
+  "result_directory": "assets/results/load_test/load-20261110T140041-076d41",
+  "model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "python": "3.14.9",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "logical_cpus": 12,
+  "docker_resources": {
+    "cpus": 12,
+    "memory_bytes": 3804389376
+  },
+  "java": "openjdk version \"21.0.13.0.3\" 2026-10-24\nOpenJDK Runtime Environment (build 21.0.13.0.3+1-1-26.04.1-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.13.0.3+1-1-26.04.1-Ubuntu, mixed mode, sharing)\n",
+  "host_memory_kib": 15607160,
+  "cpu_model": "Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz",
+  "versions": {
+    "pyspark": "4.1.2",
+    "confluent-kafka": "2.16.1",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "scikit-learn": "1.9.1"
+  },
+  "spark": {
+    "master": "local[2]",
+    "trigger_seconds": 2,
+    "max_offsets_per_trigger": 10000,
+    "arrow_batch_rows": 1000,
+    "topic_partitions": 3,
+    "model_threads_per_worker": 1
+  },
+  "source_sha256": {
+    "scripts/15_replay_loans.py": "cbd2cc8cec35cc4a777f186f7b7f95e12f144acf115a2d86fe27271079525d04",
+    "scripts/16_stream_score.py": "f1cc7f2c688b226c26c4f8add560b65feafd64effbf30222f21c9dacc28a0228",
+    "scripts/18_run_load_test.py": "84f1f6982723d8bf2cbb2676cb74c3776e8bf4bb9ad21d1d970763fff1a9af6c",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "util/load_test.py": "645b9dd8ddeef4770165870bef11fe48744543b930e3823ef083985509342f74",
+    "docker-compose.yml": "d027bc64bf341f81b154adc1d6c498f34f3f1d49a8de0f46b85d63edabd8be00",
+    "requirements-streaming.lock": "bcf3ef9777a243de87655cec81d03ac83847746e4af8be410779407c7eb70c19"
+  },
+  "validation_parquet_sha256": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+  "failure_injection_tested": false,
+  "elk_monitoring_implemented": false,
+  "latency_boundary": "producer emission to collector receipt of Kafka output; same-host wall clocks",
+  "lag_definition": "sampled Kafka input end offsets minus Spark completed progress end offsets; includes in-flight batch",
+  "limits": "One warmed run per rate, 30-second defaults, shared local machine, repeated validation cohort across stages; not a production capacity guarantee.",
+  "mlflow_run_id": "eeef60a516fe4ab8a503eff7bbbcc256"
+}
+```
+
+</details>
+
+These are short local runs with one measurement per rate. They do not establish
+long-duration stability, a production capacity limit or a latency SLA. JVM startup
+was warmed, but stage-specific batch/model-loading costs remain part of the run.
+Broker failure, worker failure, restart under active load and downstream
+deduplication remain untested in this benchmark. ELK monitoring is still pending.
+
+![Emission, completion and latency](results/load_test/load-20261110T140041-076d41/load_results.png)
+
+![Checkpoint lag](results/load_test/load-20261110T140041-076d41/checkpoint_lag.png)
+
+## Reproduce
+
+With Java 17/21 and the optional streaming environment installed:
+
+```bash
+make kafka-up
+make load-test
+# Change the stage rates/duration; each stage must fit within 162,570 rows.
+make load-test ARGS="--rates 100 500 2000 --duration 30 --drain-timeout 120"
+```
+
+Results are saved by batch ID. MLflow experiment:
+`lendingclub_streaming_load_tests`; parent `eeef60a516fe4ab8a503eff7bbbcc256`, with one
+child per measured stage. The query is stopped after drain. Kafka stays available
+until `make kafka-down`. No source messages, topics or checkpoints are deleted.
+
+[Full metrics](results/load_test/load-20261110T140041-076d41/stage_metrics.csv),
+[manifest](results/load_test/load-20261110T140041-076d41/manifest.json), and
+[verification](results/load_test_verification.json).
+See the [Spark Kafka guide](https://spark.apache.org/docs/4.1.2/streaming/structured-streaming-kafka-integration.html)
+for source/sink and offset semantics.
+
+<!-- end-load-test-statistics -->
+
+## Latest streaming verification: Kafka and PySpark
+
+Completed **2026-11-10T00:56:18.394502+00:00**. This adds application replay, Spark JSON
+validation, distributed scoring, score/invalid output topics and checkpoint
+resume. The original model, feature list and threshold are unchanged.
+
+| Check | Measured result |
+| --- | --- |
+| Real validation applications replayed | 100 |
+| Deliberately invalid fixtures | 3 |
+| Verified valid scores | 100 |
+| Maximum absolute probability difference from direct scoring | 0.0 |
+| Threshold flags matching direct scoring | 100/100 |
+| Invalid records routed to loan-invalid | 3/3 |
+| Duplicate output records in this replay | 0 |
+| Source records after clean checkpoint restart | 0 |
+| Output offsets changed after restart | 0 partitions |
+| Streaming-environment tests passed | 102 |
+| Spark micro-batch input records | 103 |
+| Spark trigger execution time for this small batch | 6474 ms |
+| Spark reported processed rows/second for this batch | 15.9 |
+
+The last two values describe one startup-affected correctness batch, not sustained
+throughput or end-to-end latency. No stress benchmark, failure injection or ELK
+monitoring result is claimed. Output has at-least-once semantics; the absence of
+duplicates in this run does not establish exactly-once delivery.
+
+Environment: Python 3.14.9, Temurin Java 21.0.13+9, PySpark 4.1.2, Kafka 4.1.2.
+Frozen risk threshold: 0.147852896338396. Replay source: first 100 rows of the
+2014 prepared validation cohort; the messages omit outcomes and loan IDs.
+
+MLflow experiment: `lendingclub_streaming_smoke`; run `fe86cfd3742d47ec8ad81f248e623566`.
+
+[Complete manifest](results/streaming_latest.json),
+[score parity verification](results/streaming/spark-verified-20261110/verification.json),
+[restart verification](results/streaming/spark-verified-20261110/restart_verification.json),
+[all output records](results/streaming/spark-verified-20261110/output_records.csv),
+[original query progress](results/streaming/spark-verified-20261110/query_progress.json),
+and [restart query progress](results/streaming/spark-verified-20261110/restart_progress.json).
+
+<details><summary>Complete streaming manifest and source fingerprints</summary>
+
+```json
+{
+  "status": "complete",
+  "scope": "Kafka/PySpark correctness smoke test; not a stress benchmark",
+  "completed_at_utc": "2026-11-10T00:56:18.394502+00:00",
+  "replay_run_id": "spark-verified-20261110",
+  "result_directory": "assets/results/streaming/spark-verified-20261110",
+  "valid_rows": 100,
+  "invalid_rows": 3,
+  "maximum_probability_error": 0.0,
+  "duplicate_output_records": 0,
+  "restart_input_rows": 0,
+  "restart_output_offsets_unchanged": true,
+  "tests_passed": 102,
+  "python": "3.14.9",
+  "java": "Temurin 21.0.13+9",
+  "kafka_image": "apache/kafka:4.1.2",
+  "kafka_image_digest": "sha256:5cc2a2fd93fa2687b44015eee04fb2c3edd9e526bd64bf8bec5ff1e268772e0e",
+  "spark_kafka_connector": "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.2",
+  "versions": {
+    "pyspark": "4.1.2",
+    "confluent-kafka": "2.16.1",
+    "pyarrow": "26.0.1",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "scikit-learn": "1.9.1"
+  },
+  "source_sha256": {
+    "scripts/15_replay_loans.py": "0fcee87408f778a5bec28e502b27c66fe887dea9ab4337ee282868823c682117",
+    "scripts/16_stream_score.py": "ed1f39578e1251b6fd924195ef4f5a7317a9f04544ac1f68eb3c9b89d92e9416",
+    "scripts/17_check_stream_scores.py": "43c15d77bd163fe7567f6b555ca3fa914f397de4517621d92c2a0bacf1bfb5cb",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "docker-compose.yml": "d027bc64bf341f81b154adc1d6c498f34f3f1d49a8de0f46b85d63edabd8be00",
+    "requirements-streaming.txt": "74e2ed1abc76800550bad829eb7af96de0d2df56af783d73599d78be456d35c8",
+    "requirements-streaming.lock": "bcf3ef9777a243de87655cec81d03ac83847746e4af8be410779407c7eb70c19"
+  },
+  "incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "replay_source_sha256": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+  "delivery_semantics": "at least once; stable event ID for downstream deduplication",
+  "stress_testing_completed": false,
+  "failure_injection_completed": false,
+  "elk_monitoring_completed": false,
+  "mlflow_experiment": "lendingclub_streaming_smoke",
+  "mlflow_run_id": "fe86cfd3742d47ec8ad81f248e623566"
+}
+```
+
+</details>
 
 Snapshot assembled: **2026-11-08T14:17:16+00:00**. This is a static record of the completed data-analysis stage, assembled from existing result CSVs, local file metadata, and the clean Parquet schema. The download, cleaning, and EDA pipeline was **not rerun** to create this document.
 
@@ -33,12 +649,13 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 23. [ANN challengers](#23-ann-challengers)
 24. [External teaching extract audit](#24-external-teaching-extract-audit)
 25. [Logistic coefficient validation](#25-logistic-coefficient-validation)
+26. [InterpretML and segment bias analysis](#26-interpretml-and-segment-bias-analysis)
 
 ## 1. Quick answers
 
 | Statistic | Value |
 | --- | --- |
-| Completed stage | Temporal stopping and coefficient validation review complete (section 25); incumbent unchanged |
+| Completed stage | InterpretML and descriptive segment bias analysis complete (section 26); incumbent unchanged |
 | Dataset | LendingClub accepted loans, June 2007–December 2018 |
 | Raw rows | 2,260,701 |
 | Raw columns | 151 |
@@ -60,9 +677,9 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Other / unresolved loans, all years | 915,358 |
 | Charged off among resolved loans, all years (%) | 19.962611 |
 | Entirely missing source columns | 1 |
-| Saved figure sets | 39 |
-| Saved image files | 78 |
-| Saved result CSVs | 117 |
+| Saved figure sets | 51 |
+| Saved image files | 102 |
+| Saved result CSVs | 159 |
 | Deterministic scatterplot sample | 20,000 |
 | Models trained / MLflow evaluation metrics | Baselines, current seven-trial temporal XGBoost search, ANN/loss challengers, and coefficient review; see sections 18–25 |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
@@ -10925,3 +11542,5765 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
   "both_new_batches_visible_in_html": true
 }
 ```
+
+<!-- interpret-bias-statistics -->
+
+## 26. InterpretML and segment bias analysis
+
+
+This stage explains the unchanged histogram-gradient-boosting incumbent and measures descriptive disparities on 2014 validation and previously explored 2015 loans. It does not retrain a model, adjust thresholds or establish protected-group fairness.
+
+## Main findings
+
+The top three sampled SHAP features are **fico_mid, annual_inc, loan_amnt**; permutation importance provides a separate ranking cross-check. On 2015 loans, the lowest/highest training-defined income quartiles have false-positive rates **67.06% / 9.22%**, default-capture rates **81.31% / 22.45%**, and observed charged-off rates **19.26% / 11.14%**. These are material descriptive segment differences at a common risk threshold; they are not measured denial rates or proof of discrimination. Case mix, selection, label quality and decision context remain unresolved.
+
+## InterpretML methods and sampling
+
+InterpretML ShapKernel explains the positive-class probability using 64 uniformly sampled complete training rows and 512 coalition samples per case. Global mean absolute contributions use only 128 uniformly sampled eligible 2014 cases. The 8 additional TP/TN/FP/FN examples are diagnostic and excluded from that ranking. Numeric category codes are reversed before calling the original pipeline; no coded categories are added to model predictors. The scalar explained output is probability, not a hard decision or a new regression model.
+
+InterpretML PartialDependence uses 1000 complete training rows. Bands show between-background-row spread, not confidence intervals. PDP/SHAP can combine correlated features into unusual profiles; contributions are background-dependent model diagnostics, not causal effects or validated adverse-action reasons. Counts in the training support table contextualize rare event levels. Permutation importance uses 10,000 stratified 2014 rows, including missing values, with five repeats. Its error bars are repeat standard deviations, not uncertainty about the population importance.
+
+Eligible complete/training-known rows: training 150,615/157,993; validation 152,852/162,570. Missing/unseen rows are excluded only from InterpretML explanations, not the population metrics, permutation sample or segment audit. Maximum SHAP reconstruction residual: 2.78e-17.
+
+## What 'bias analysis' can establish here
+
+Structured race, ethnicity, sex/gender, age/birth date, disability, marital status, religion and national-origin fields are unavailable in the current source schema. We do not infer them from names, free text, credit history, income or geography. Income, FICO, home ownership, state, purpose, employment, adverse history, missingness, application type and two intersections are observed business segments, not substitutes for protected attributes. No legal/compliance or fairness-pass determination is made.
+
+The data contains accepted loans only. It cannot measure rejected-applicant outcomes, actual approval/denial disparities, or the selection and measurement biases in the original lending process. Labels are resolved-loan outcomes, not fixed-horizon regulatory defaults. Cohort comparisons remain retrospective; 2014 influenced the original model and threshold selection, and 2015 was previously explored.
+
+## Segment protocol
+
+The same frozen threshold 0.147852896 applies to every group. A risk flag is an audit decision proxy, not an observed rejection. False-positive rate means the fraction of Fully Paid loans flagged; TPR/recall means the fraction of Charged Off loans flagged. Income cut points come from training only: $42,000.00, $60,000.00, $85,000.00. Missing groups are retained. Supported groups require at least 500 rows, 50 charged-off and 50 fully-paid loans. Unsupported groups stay in the tables and are excluded only from spread summaries. Undefined precision/AUC/error rates are missing, not falsely set to zero.
+
+Wilson 95% intervals are descriptive and assume independent Bernoulli observations; repeated-borrower and macroeconomic dependence are not modelled. Groups overlap and many slices are screened, so worst-group spreads are selection-influenced diagnostics without multiple-testing or causal claims. Case mix and base-rate differences must be considered. No group-specific threshold is fitted and no four-fifths or other automatic fairness acceptance rule is applied.
+
+The 0.5 comparison threshold can produce no flags at all. Zero flag/TPR/FPR spreads in that degenerate policy are not evidence of fairness: default capture is also zero.
+
+## overall metrics
+
+| split | policy | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| validation | frozen_validation_f1 | 162570 | 0.137264 | 0.131767 | 0.147853 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93740 | 46515 | 10110 | 12205 |
+| validation | default_0_5 | 162570 | 0.137264 | 0.131767 | 0.5 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+| exploratory_test | frozen_validation_f1 | 283026 | 0.148863 | 0.132223 | 0.147853 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161141 | 79753 | 19174 | 22958 |
+| exploratory_test | default_0_5 | 283026 | 0.148863 | 0.132223 | 0.5 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240894 | 0 | 42132 | 0 |
+
+## protected attribute coverage
+
+| attribute | matching_structured_source_fields | available_as_structured_source_field | protected_group_audit_performed | scope_note |
+| --- | --- | --- | --- | --- |
+| race |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| ethnicity |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| sex_or_gender |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| age_or_birth_date |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| disability |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| marital_status |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| religion |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| national_origin |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+
+## shap global importance
+
+| feature | mean_absolute_contribution | mean_signed_contribution |
+| --- | --- | --- |
+| fico_mid | 0.026985 | -0.006466 |
+| annual_inc | 0.025498 | 0.002061 |
+| loan_amnt | 0.015857 | 0.005336 |
+| dti | 0.011521 | 0.000126 |
+| purpose | 0.011187 | 0.002039 |
+| home_ownership | 0.007845 | -0.000214 |
+| open_acc | 0.006766 | 0.001771 |
+| revol_util | 0.006104 | 0.00009 |
+| revol_bal | 0.006062 | 0.000856 |
+| credit_history_years | 0.004488 | -0.001024 |
+| emp_length_years | 0.002332 | -0.000191 |
+| delinq_2yrs | 0.002065 | -0.000024 |
+| pub_rec_bankruptcies | 0.001514 | -0.000758 |
+
+## permutation importance
+
+| feature | roc_auc_drop_mean | repeat_standard_deviation |
+| --- | --- | --- |
+| fico_mid | 0.067718 | 0.001706 |
+| annual_inc | 0.041381 | 0.003713 |
+| loan_amnt | 0.023106 | 0.00177 |
+| dti | 0.012239 | 0.003012 |
+| purpose | 0.012039 | 0.000548 |
+| revol_bal | 0.009967 | 0.001351 |
+| open_acc | 0.006038 | 0.000807 |
+| home_ownership | 0.005806 | 0.001284 |
+| credit_history_years | 0.004716 | 0.001172 |
+| emp_length_years | 0.004137 | 0.000633 |
+| pub_rec_bankruptcies | 0.001106 | 0.000585 |
+| delinq_2yrs | 0.000354 | 0.000187 |
+| revol_util | 0.000187 | 0.001557 |
+
+## Supported-segment spreads
+
+| split | policy | dimension | observed_groups | supported_groups | supported_rows | all_groups_zero_flags | flag_rate_spread | tpr_spread | fpr_spread | roc_auc_spread | calibration_bias_spread | brier_score_spread |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| exploratory_test | frozen_validation_f1 | application | 2 | 1 | 282787 | False | — | — | — | — | — | — |
+| exploratory_test | frozen_validation_f1 | bankruptcy | 2 | 2 | 283026 | False | 0.100718 | 0.057041 | 0.100511 | 0.037262 | 0.020352 | 0.026932 |
+| exploratory_test | frozen_validation_f1 | delinquency | 2 | 2 | 283026 | False | 0.028599 | 0.013453 | 0.032891 | 0.03488 | 0.007287 | 0.011308 |
+| exploratory_test | frozen_validation_f1 | employment | 5 | 5 | 283026 | False | 0.368267 | 0.3223 | 0.359186 | 0.032054 | 0.021673 | 0.05301 |
+| exploratory_test | frozen_validation_f1 | fico | 4 | 4 | 283026 | False | 0.588681 | 0.68421 | 0.5607 | 0.089174 | 0.022876 | 0.108675 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 8 | 7 | 282691 | False | 0.61551 | 0.712046 | 0.586668 | 0.097425 | 0.024153 | 0.110914 |
+| exploratory_test | frozen_validation_f1 | home | 4 | 3 | 283025 | False | 0.24216 | 0.226533 | 0.232343 | 0.028272 | 0.016726 | 0.038872 |
+| exploratory_test | frozen_validation_f1 | income | 5 | 4 | 283024 | False | 0.591101 | 0.588579 | 0.578394 | 0.055472 | 0.009624 | 0.055748 |
+| exploratory_test | frozen_validation_f1 | income_home | 14 | 12 | 283023 | False | 0.671143 | 0.674103 | 0.656163 | 0.066167 | 0.035317 | 0.075136 |
+| exploratory_test | frozen_validation_f1 | missingness | 2 | 2 | 283026 | False | 0.312408 | 0.269034 | 0.305467 | 0.023741 | 0.019231 | 0.045242 |
+| exploratory_test | frozen_validation_f1 | purpose | 14 | 11 | 282837 | False | 0.607692 | 0.540128 | 0.60189 | 0.056758 | 0.060049 | 0.068225 |
+| exploratory_test | frozen_validation_f1 | state | 49 | 47 | 282381 | False | 0.180963 | 0.149599 | 0.189541 | 0.106503 | 0.095503 | 0.073945 |
+| validation | frozen_validation_f1 | application | 1 | 1 | 162570 | False | — | — | — | — | — | — |
+| validation | frozen_validation_f1 | bankruptcy | 2 | 2 | 162570 | False | 0.069117 | 0.038297 | 0.069791 | 0.031572 | 0.005843 | 0.014532 |
+| validation | frozen_validation_f1 | delinquency | 2 | 2 | 162570 | False | 0.024572 | 0.026828 | 0.030216 | 0.037002 | 0.005289 | 0.010096 |
+| validation | frozen_validation_f1 | employment | 5 | 5 | 162570 | False | 0.392735 | 0.342425 | 0.386965 | 0.04966 | 0.015741 | 0.053798 |
+| validation | frozen_validation_f1 | fico | 4 | 4 | 162570 | False | 0.580186 | 0.681101 | 0.554563 | 0.065805 | 0.010285 | 0.096905 |
+| validation | frozen_validation_f1 | fico_delinquency | 8 | 7 | 162363 | False | 0.608985 | 0.709724 | 0.582606 | 0.074832 | 0.013844 | 0.099037 |
+| validation | frozen_validation_f1 | home | 4 | 3 | 162569 | False | 0.250469 | 0.255273 | 0.238374 | 0.021192 | 0.011311 | 0.035931 |
+| validation | frozen_validation_f1 | income | 4 | 4 | 162570 | False | 0.603912 | 0.61737 | 0.5885 | 0.051709 | 0.004491 | 0.063524 |
+| validation | frozen_validation_f1 | income_home | 13 | 12 | 162569 | False | 0.687403 | 0.704888 | 0.670481 | 0.063873 | 0.018607 | 0.080869 |
+| validation | frozen_validation_f1 | missingness | 2 | 2 | 162570 | False | 0.338131 | 0.268087 | 0.337818 | 0.044084 | 0.01201 | 0.04583 |
+| validation | frozen_validation_f1 | purpose | 13 | 11 | 162460 | False | 0.621048 | 0.510895 | 0.625718 | 0.092768 | 0.063285 | 0.074711 |
+| validation | frozen_validation_f1 | state | 49 | 39 | 159646 | False | 0.173694 | 0.171105 | 0.184987 | 0.077947 | 0.079854 | 0.061338 |
+
+## Key segment metrics
+
+| split | policy | dimension | group | rows | positives | negatives | flagged | tp | fp | fn | tn | observed_rate | mean_probability | calibration_bias | brier_score | roc_auc | average_precision | flag_rate | tpr | fpr | fnr | precision | supported | support_reason | threshold | observed_rate_lower_95 | observed_rate_upper_95 | flag_rate_lower_95 | flag_rate_upper_95 | tpr_lower_95 | tpr_upper_95 | fpr_lower_95 | fpr_upper_95 | ece_10_uniform_bins |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| exploratory_test | frozen_validation_f1 | home | ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.081994 | 0.081994 | 0.006723 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.081994 |
+| exploratory_test | frozen_validation_f1 | home | MORTGAGE | 129762 | 15653 | 114109 | 31186 | 6431 | 24755 | 9222 | 89354 | 0.120629 | 0.112623 | -0.008005 | 0.102573 | 0.660152 | 0.198213 | 0.240332 | 0.410848 | 0.216942 | 0.589152 | 0.206214 | True | supported | 0.147853 | 0.118868 | 0.122412 | 0.238015 | 0.242665 | 0.403163 | 0.418576 | 0.21456 | 0.219343 | 0.008005 |
+| exploratory_test | frozen_validation_f1 | home | OWN | 31800 | 5035 | 26765 | 12920 | 2859 | 10061 | 2176 | 16704 | 0.158333 | 0.13736 | -0.020973 | 0.129488 | 0.637941 | 0.237045 | 0.406289 | 0.567825 | 0.375901 | 0.432175 | 0.221285 | True | supported | 0.147853 | 0.154362 | 0.162387 | 0.400903 | 0.411698 | 0.554096 | 0.581452 | 0.370117 | 0.381721 | 0.020973 |
+| exploratory_test | frozen_validation_f1 | home | RENT | 121463 | 21444 | 100019 | 58605 | 13668 | 44937 | 7776 | 55082 | 0.176548 | 0.151816 | -0.024731 | 0.141445 | 0.63188 | 0.255964 | 0.482493 | 0.637381 | 0.449285 | 0.362619 | 0.233222 | True | supported | 0.147853 | 0.174414 | 0.178702 | 0.479683 | 0.485303 | 0.630922 | 0.643791 | 0.446204 | 0.452369 | 0.024753 |
+| validation | frozen_validation_f1 | home | ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.136564 | 0.136564 | 0.01865 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.136564 |
+| validation | frozen_validation_f1 | home | MORTGAGE | 76326 | 8550 | 67776 | 17923 | 3392 | 14531 | 5158 | 53245 | 0.112019 | 0.111926 | -0.000094 | 0.096551 | 0.653415 | 0.181544 | 0.234822 | 0.396725 | 0.214397 | 0.603275 | 0.189254 | True | supported | 0.147853 | 0.109802 | 0.114277 | 0.231828 | 0.237842 | 0.386404 | 0.407139 | 0.211324 | 0.217503 | 0.002442 |
+| validation | frozen_validation_f1 | home | OWN | 16493 | 2380 | 14113 | 6948 | 1390 | 5558 | 990 | 8555 | 0.144304 | 0.13877 | -0.005533 | 0.120293 | 0.632223 | 0.208901 | 0.42127 | 0.584034 | 0.393821 | 0.415966 | 0.200058 | True | supported | 0.147853 | 0.139024 | 0.149749 | 0.413753 | 0.428823 | 0.564112 | 0.603685 | 0.38579 | 0.40191 | 0.007533 |
+| validation | frozen_validation_f1 | home | RENT | 69750 | 11385 | 58365 | 33849 | 7423 | 26426 | 3962 | 31939 | 0.163226 | 0.151822 | -0.011404 | 0.132482 | 0.637307 | 0.238345 | 0.48529 | 0.651998 | 0.452771 | 0.348002 | 0.219297 | True | supported | 0.147853 | 0.160502 | 0.165987 | 0.481582 | 0.489 | 0.643199 | 0.660695 | 0.448736 | 0.456813 | 0.011959 |
+| exploratory_test | frozen_validation_f1 | income | Missing | 2 | 1 | 1 | 1 | 0 | 1 | 1 | 0 | 0.5 | 0.1404 | -0.3596 | 0.41253 | 0 | 0.5 | 0.5 | 0 | 1 | 1 | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0.094531 | 0.905469 | 0.094531 | 0.905469 | 0 | 0.793451 | 0.206549 | 1 | 0.3596 |
+| exploratory_test | frozen_validation_f1 | income | Q1_lowest | 67112 | 12928 | 54184 | 46848 | 10512 | 36336 | 2416 | 17848 | 0.192633 | 0.180782 | -0.011851 | 0.151744 | 0.614135 | 0.263611 | 0.698057 | 0.813119 | 0.670604 | 0.186881 | 0.224385 | True | supported | 0.147853 | 0.189667 | 0.195634 | 0.694572 | 0.701519 | 0.806307 | 0.819745 | 0.666635 | 0.674549 | 0.011851 |
+| exploratory_test | frozen_validation_f1 | income | Q2 | 72286 | 11329 | 60957 | 30957 | 6680 | 24277 | 4649 | 36680 | 0.156725 | 0.143077 | -0.013648 | 0.128376 | 0.636348 | 0.233044 | 0.428257 | 0.589637 | 0.398264 | 0.410363 | 0.215783 | True | supported | 0.147853 | 0.154093 | 0.159393 | 0.424654 | 0.431868 | 0.58055 | 0.598663 | 0.394385 | 0.402157 | 0.013826 |
+| exploratory_test | frozen_validation_f1 | income | Q3 | 67492 | 9390 | 58102 | 16762 | 3861 | 12901 | 5529 | 45201 | 0.139128 | 0.117652 | -0.021475 | 0.11609 | 0.65285 | 0.225775 | 0.248355 | 0.411182 | 0.222041 | 0.588818 | 0.230342 | True | supported | 0.147853 | 0.136537 | 0.141759 | 0.24511 | 0.251629 | 0.401268 | 0.421169 | 0.21868 | 0.225438 | 0.021506 |
+| exploratory_test | frozen_validation_f1 | income | Q4_highest | 76134 | 8484 | 67650 | 8143 | 1905 | 6238 | 6579 | 61412 | 0.111435 | 0.092028 | -0.019407 | 0.095996 | 0.669607 | 0.195552 | 0.106956 | 0.22454 | 0.09221 | 0.77546 | 0.233943 | True | supported | 0.147853 | 0.109219 | 0.11369 | 0.104781 | 0.109171 | 0.215787 | 0.233543 | 0.090053 | 0.094413 | 0.019414 |
+| validation | frozen_validation_f1 | income | Q1_lowest | 39538 | 7391 | 32147 | 27795 | 6039 | 21756 | 1352 | 10391 | 0.186934 | 0.180538 | -0.006396 | 0.148744 | 0.608908 | 0.24772 | 0.702995 | 0.817075 | 0.676766 | 0.182925 | 0.217269 | True | supported | 0.147853 | 0.183122 | 0.190807 | 0.698471 | 0.707479 | 0.808097 | 0.825723 | 0.671632 | 0.681857 | 0.007366 |
+| validation | frozen_validation_f1 | income | Q2 | 42082 | 6086 | 35996 | 17682 | 3529 | 14153 | 2557 | 21843 | 0.144622 | 0.142305 | -0.002317 | 0.120406 | 0.632055 | 0.214162 | 0.42018 | 0.579855 | 0.393183 | 0.420145 | 0.199581 | True | supported | 0.147853 | 0.141294 | 0.148015 | 0.415471 | 0.424903 | 0.567408 | 0.592202 | 0.388148 | 0.39824 | 0.005528 |
+| validation | frozen_validation_f1 | income | Q3 | 39005 | 4767 | 34238 | 9087 | 1824 | 7263 | 2943 | 26975 | 0.122215 | 0.115608 | -0.006608 | 0.104383 | 0.642672 | 0.191734 | 0.23297 | 0.382631 | 0.212133 | 0.617369 | 0.200726 | True | supported | 0.147853 | 0.119002 | 0.125503 | 0.228801 | 0.237191 | 0.368933 | 0.396517 | 0.207835 | 0.216495 | 0.006972 |
+| validation | frozen_validation_f1 | income | Q4_highest | 41945 | 4071 | 37874 | 4156 | 813 | 3343 | 3258 | 34531 | 0.097056 | 0.090247 | -0.006808 | 0.085221 | 0.660618 | 0.165079 | 0.099082 | 0.199705 | 0.088266 | 0.800295 | 0.195621 | True | supported | 0.147853 | 0.094259 | 0.099926 | 0.09626 | 0.101978 | 0.18771 | 0.212266 | 0.085451 | 0.091165 | 0.00681 |
+| exploratory_test | frozen_validation_f1 | fico | 680_to_719 | 125033 | 17743 | 107290 | 37238 | 7780 | 29458 | 9963 | 77832 | 0.141907 | 0.127254 | -0.014653 | 0.119124 | 0.623679 | 0.208022 | 0.297825 | 0.438483 | 0.274564 | 0.561517 | 0.208926 | True | supported | 0.147853 | 0.139983 | 0.143852 | 0.295297 | 0.300366 | 0.431196 | 0.445796 | 0.271902 | 0.277243 | 0.014653 |
+| exploratory_test | frozen_validation_f1 | fico | 720_to_759 | 37723 | 3153 | 34570 | 1963 | 383 | 1580 | 2770 | 32990 | 0.083583 | 0.079515 | -0.004068 | 0.074917 | 0.64754 | 0.141997 | 0.052037 | 0.121472 | 0.045704 | 0.878528 | 0.19511 | True | supported | 0.147853 | 0.080832 | 0.086418 | 0.049841 | 0.054324 | 0.110527 | 0.133337 | 0.043553 | 0.047957 | 0.004226 |
+| exploratory_test | frozen_validation_f1 | fico | 760_plus | 13738 | 655 | 13083 | 91 | 22 | 69 | 633 | 13014 | 0.047678 | 0.045292 | -0.002386 | 0.044154 | 0.698891 | 0.119705 | 0.006624 | 0.033588 | 0.005274 | 0.966412 | 0.241758 | True | supported | 0.147853 | 0.044239 | 0.051369 | 0.005399 | 0.008125 | 0.022284 | 0.050331 | 0.00417 | 0.006669 | 0.002386 |
+| exploratory_test | frozen_validation_f1 | fico | Below_680 | 106532 | 20581 | 85951 | 63419 | 14773 | 48646 | 5808 | 37305 | 0.193191 | 0.167928 | -0.025263 | 0.152829 | 0.609717 | 0.263623 | 0.595305 | 0.717798 | 0.565974 | 0.282202 | 0.232943 | True | supported | 0.147853 | 0.190831 | 0.195573 | 0.592354 | 0.598249 | 0.711609 | 0.723906 | 0.562657 | 0.569284 | 0.025263 |
+| validation | frozen_validation_f1 | fico | 680_to_719 | 71403 | 9335 | 62068 | 20561 | 4110 | 16451 | 5225 | 45617 | 0.130737 | 0.125896 | -0.004841 | 0.110902 | 0.631237 | 0.196149 | 0.287957 | 0.440279 | 0.265048 | 0.559721 | 0.199893 | True | supported | 0.147853 | 0.128284 | 0.133229 | 0.284647 | 0.29129 | 0.430235 | 0.450371 | 0.26159 | 0.268535 | 0.005145 |
+| validation | frozen_validation_f1 | fico | 720_to_759 | 20760 | 1565 | 19195 | 880 | 160 | 720 | 1405 | 18475 | 0.075385 | 0.0768 | 0.001414 | 0.068333 | 0.642517 | 0.128662 | 0.042389 | 0.102236 | 0.03751 | 0.897764 | 0.181818 | True | supported | 0.147853 | 0.071872 | 0.079056 | 0.039732 | 0.045216 | 0.088187 | 0.118233 | 0.034913 | 0.040292 | 0.002069 |
+| validation | frozen_validation_f1 | fico | 760_plus | 7228 | 346 | 6882 | 64 | 12 | 52 | 334 | 6830 | 0.047869 | 0.045527 | -0.002343 | 0.044517 | 0.677239 | 0.112233 | 0.008854 | 0.034682 | 0.007556 | 0.965318 | 0.1875 | True | supported | 0.147853 | 0.043183 | 0.053036 | 0.006941 | 0.01129 | 0.019949 | 0.059634 | 0.005767 | 0.009894 | 0.002343 |
+| validation | frozen_validation_f1 | fico | Below_680 | 63179 | 11069 | 52110 | 37215 | 7923 | 29292 | 3146 | 22818 | 0.175201 | 0.16633 | -0.008871 | 0.141422 | 0.611434 | 0.238965 | 0.589041 | 0.715783 | 0.562119 | 0.284217 | 0.212898 | True | supported | 0.147853 | 0.172256 | 0.178185 | 0.585199 | 0.592872 | 0.707307 | 0.724109 | 0.557854 | 0.566374 | 0.009505 |
+| exploratory_test | frozen_validation_f1 | missingness | Any_missing | 19083 | 4116 | 14967 | 12485 | 3242 | 9243 | 874 | 5724 | 0.215689 | 0.181115 | -0.034574 | 0.164471 | 0.628297 | 0.302675 | 0.654247 | 0.787658 | 0.617559 | 0.212342 | 0.259672 | True | supported | 0.147853 | 0.209911 | 0.221582 | 0.647469 | 0.660964 | 0.774899 | 0.799881 | 0.609744 | 0.625313 | 0.034574 |
+| exploratory_test | frozen_validation_f1 | missingness | Complete | 263943 | 38016 | 225927 | 90226 | 19716 | 70510 | 18300 | 155417 | 0.144031 | 0.128688 | -0.015343 | 0.119229 | 0.652037 | 0.225223 | 0.341839 | 0.518624 | 0.312092 | 0.481376 | 0.218518 | True | supported | 0.147853 | 0.142697 | 0.145376 | 0.340032 | 0.343651 | 0.513599 | 0.523644 | 0.310185 | 0.314006 | 0.015367 |
+| validation | frozen_validation_f1 | missingness | Any_missing | 9717 | 1957 | 7760 | 6599 | 1549 | 5050 | 408 | 2710 | 0.2014 | 0.18461 | -0.016789 | 0.157466 | 0.60904 | 0.266703 | 0.679119 | 0.791518 | 0.650773 | 0.208482 | 0.234733 | True | supported | 0.147853 | 0.193544 | 0.209491 | 0.669768 | 0.688328 | 0.772957 | 0.808936 | 0.640094 | 0.661303 | 0.017751 |
+| validation | frozen_validation_f1 | missingness | Complete | 152853 | 20358 | 132495 | 52121 | 10656 | 41465 | 9702 | 91030 | 0.133187 | 0.128407 | -0.00478 | 0.111636 | 0.653124 | 0.21003 | 0.340988 | 0.523431 | 0.312955 | 0.476569 | 0.204447 | True | supported | 0.147853 | 0.131493 | 0.134899 | 0.338615 | 0.343368 | 0.516566 | 0.530286 | 0.310464 | 0.315457 | 0.005497 |
+
+![feature importance](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/feature_importance.png)
+
+![partial dependence](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/partial_dependence.png)
+
+![local examples](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/local_examples.png)
+
+![segment disparities](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/segment_disparities.png)
+
+Native InterpretML interactive plots are saved beside the PNG/SVG figures. Their category values are display codes; readable values and the codebook are in the CSV/manifest. Interactive HTML uses a Plotly CDN; static images and tables work offline.
+
+MLflow experiment `lendingclub_interpretability_bias`, batch `86fe262241464da48d8c126660801e05`. [Manifest and complete CSVs](../assets/results/interpret_bias/86fe262241464da48d8c126660801e05/manifest.json). The main model-review notebook displays these results without refitting.
+
+References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKernel.html), [InterpretML PartialDependence](https://interpret.ml/docs/python/api/PartialDependence.html), [Fairlearn fairness-assessment guidance](https://fairlearn.org/v0.15/user_guide/assessment/perform_fairness_assessment.html).
+
+
+### overall_metrics
+
+| split | policy | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| validation | frozen_validation_f1 | 162570 | 0.137264 | 0.131767 | 0.147853 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93740 | 46515 | 10110 | 12205 |
+| validation | default_0_5 | 162570 | 0.137264 | 0.131767 | 0.5 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140255 | 0 | 22315 | 0 |
+| exploratory_test | frozen_validation_f1 | 283026 | 0.148863 | 0.132223 | 0.147853 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161141 | 79753 | 19174 | 22958 |
+| exploratory_test | default_0_5 | 283026 | 0.148863 | 0.132223 | 0.5 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240894 | 0 | 42132 | 0 |
+
+### protected_attribute_coverage
+
+| attribute | matching_structured_source_fields | available_as_structured_source_field | protected_group_audit_performed | scope_note |
+| --- | --- | --- | --- | --- |
+| race |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| ethnicity |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| sex_or_gender |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| age_or_birth_date |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| disability |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| marital_status |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| religion |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+| national_origin |  | False | False | Not inferred from names, text, state, income, or credit history; unavailable in current model inputs. |
+
+### segment_metrics
+
+| split | policy | dimension | group | rows | positives | negatives | flagged | tp | fp | fn | tn | observed_rate | mean_probability | calibration_bias | brier_score | roc_auc | average_precision | flag_rate | tpr | fpr | fnr | precision | supported | support_reason | threshold | observed_rate_lower_95 | observed_rate_upper_95 | flag_rate_lower_95 | flag_rate_upper_95 | tpr_lower_95 | tpr_upper_95 | fpr_lower_95 | fpr_upper_95 | ece_10_uniform_bins |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| exploratory_test | frozen_validation_f1 | home | ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.081994 | 0.081994 | 0.006723 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.081994 |
+| exploratory_test | default_0_5 | home | ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.081994 | 0.081994 | 0.006723 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.081994 |
+| exploratory_test | frozen_validation_f1 | home | MORTGAGE | 129762 | 15653 | 114109 | 31186 | 6431 | 24755 | 9222 | 89354 | 0.120629 | 0.112623 | -0.008005 | 0.102573 | 0.660152 | 0.198213 | 0.240332 | 0.410848 | 0.216942 | 0.589152 | 0.206214 | True | supported | 0.147853 | 0.118868 | 0.122412 | 0.238015 | 0.242665 | 0.403163 | 0.418576 | 0.21456 | 0.219343 | 0.008005 |
+| exploratory_test | default_0_5 | home | MORTGAGE | 129762 | 15653 | 114109 | 0 | 0 | 0 | 15653 | 114109 | 0.120629 | 0.112623 | -0.008005 | 0.102573 | 0.660152 | 0.198213 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.118868 | 0.122412 | 0 | 0.00003 | 0 | 0.000245 | 0 | 0.000034 | 0.008005 |
+| exploratory_test | frozen_validation_f1 | home | OWN | 31800 | 5035 | 26765 | 12920 | 2859 | 10061 | 2176 | 16704 | 0.158333 | 0.13736 | -0.020973 | 0.129488 | 0.637941 | 0.237045 | 0.406289 | 0.567825 | 0.375901 | 0.432175 | 0.221285 | True | supported | 0.147853 | 0.154362 | 0.162387 | 0.400903 | 0.411698 | 0.554096 | 0.581452 | 0.370117 | 0.381721 | 0.020973 |
+| exploratory_test | default_0_5 | home | OWN | 31800 | 5035 | 26765 | 0 | 0 | 0 | 5035 | 26765 | 0.158333 | 0.13736 | -0.020973 | 0.129488 | 0.637941 | 0.237045 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.154362 | 0.162387 | 0 | 0.000121 | 0 | 0.000762 | 0 | 0.000144 | 0.020973 |
+| exploratory_test | frozen_validation_f1 | home | RENT | 121463 | 21444 | 100019 | 58605 | 13668 | 44937 | 7776 | 55082 | 0.176548 | 0.151816 | -0.024731 | 0.141445 | 0.63188 | 0.255964 | 0.482493 | 0.637381 | 0.449285 | 0.362619 | 0.233222 | True | supported | 0.147853 | 0.174414 | 0.178702 | 0.479683 | 0.485303 | 0.630922 | 0.643791 | 0.446204 | 0.452369 | 0.024753 |
+| exploratory_test | default_0_5 | home | RENT | 121463 | 21444 | 100019 | 0 | 0 | 0 | 21444 | 100019 | 0.176548 | 0.151816 | -0.024731 | 0.141445 | 0.63188 | 0.255964 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.174414 | 0.178702 | 0 | 0.000032 | 0 | 0.000179 | 0 | 0.000038 | 0.024753 |
+| validation | frozen_validation_f1 | home | ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.136564 | 0.136564 | 0.01865 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.136564 |
+| validation | default_0_5 | home | ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.136564 | 0.136564 | 0.01865 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.136564 |
+| validation | frozen_validation_f1 | home | MORTGAGE | 76326 | 8550 | 67776 | 17923 | 3392 | 14531 | 5158 | 53245 | 0.112019 | 0.111926 | -0.000094 | 0.096551 | 0.653415 | 0.181544 | 0.234822 | 0.396725 | 0.214397 | 0.603275 | 0.189254 | True | supported | 0.147853 | 0.109802 | 0.114277 | 0.231828 | 0.237842 | 0.386404 | 0.407139 | 0.211324 | 0.217503 | 0.002442 |
+| validation | default_0_5 | home | MORTGAGE | 76326 | 8550 | 67776 | 0 | 0 | 0 | 8550 | 67776 | 0.112019 | 0.111926 | -0.000094 | 0.096551 | 0.653415 | 0.181544 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.109802 | 0.114277 | 0 | 0.00005 | 0 | 0.000449 | 0 | 0.000057 | 0.002442 |
+| validation | frozen_validation_f1 | home | OWN | 16493 | 2380 | 14113 | 6948 | 1390 | 5558 | 990 | 8555 | 0.144304 | 0.13877 | -0.005533 | 0.120293 | 0.632223 | 0.208901 | 0.42127 | 0.584034 | 0.393821 | 0.415966 | 0.200058 | True | supported | 0.147853 | 0.139024 | 0.149749 | 0.413753 | 0.428823 | 0.564112 | 0.603685 | 0.38579 | 0.40191 | 0.007533 |
+| validation | default_0_5 | home | OWN | 16493 | 2380 | 14113 | 0 | 0 | 0 | 2380 | 14113 | 0.144304 | 0.13877 | -0.005533 | 0.120293 | 0.632223 | 0.208901 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.139024 | 0.149749 | 0 | 0.000233 | 0 | 0.001611 | 0 | 0.000272 | 0.007533 |
+| validation | frozen_validation_f1 | home | RENT | 69750 | 11385 | 58365 | 33849 | 7423 | 26426 | 3962 | 31939 | 0.163226 | 0.151822 | -0.011404 | 0.132482 | 0.637307 | 0.238345 | 0.48529 | 0.651998 | 0.452771 | 0.348002 | 0.219297 | True | supported | 0.147853 | 0.160502 | 0.165987 | 0.481582 | 0.489 | 0.643199 | 0.660695 | 0.448736 | 0.456813 | 0.011959 |
+| validation | default_0_5 | home | RENT | 69750 | 11385 | 58365 | 0 | 0 | 0 | 11385 | 58365 | 0.163226 | 0.151822 | -0.011404 | 0.132482 | 0.637307 | 0.238345 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.160502 | 0.165987 | 0 | 0.000055 | 0 | 0.000337 | 0 | 0.000066 | 0.011959 |
+| exploratory_test | frozen_validation_f1 | purpose | car | 2768 | 368 | 2400 | 755 | 168 | 587 | 200 | 1813 | 0.132948 | 0.120479 | -0.012469 | 0.111469 | 0.650834 | 0.216927 | 0.27276 | 0.456522 | 0.244583 | 0.543478 | 0.222517 | True | supported | 0.147853 | 0.120807 | 0.146106 | 0.256492 | 0.289658 | 0.406341 | 0.507601 | 0.227804 | 0.262179 | 0.013091 |
+| exploratory_test | default_0_5 | purpose | car | 2768 | 368 | 2400 | 0 | 0 | 0 | 368 | 2400 | 0.132948 | 0.120479 | -0.012469 | 0.111469 | 0.650834 | 0.216927 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.120807 | 0.146106 | 0 | 0.001386 | 0 | 0.010331 | 0 | 0.001598 | 0.013091 |
+| exploratory_test | frozen_validation_f1 | purpose | credit_card | 70650 | 8642 | 62008 | 14985 | 3245 | 11740 | 5397 | 50268 | 0.122321 | 0.110063 | -0.012258 | 0.103763 | 0.664214 | 0.202994 | 0.212102 | 0.375492 | 0.18933 | 0.624508 | 0.21655 | True | supported | 0.147853 | 0.119926 | 0.124758 | 0.209103 | 0.215132 | 0.36534 | 0.385755 | 0.186266 | 0.192433 | 0.012282 |
+| exploratory_test | default_0_5 | purpose | credit_card | 70650 | 8642 | 62008 | 0 | 0 | 0 | 8642 | 62008 | 0.122321 | 0.110063 | -0.012258 | 0.103763 | 0.664214 | 0.202994 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.119926 | 0.124758 | 0 | 0.000054 | 0 | 0.000444 | 0 | 0.000062 | 0.012282 |
+| exploratory_test | frozen_validation_f1 | purpose | debt_consolidation | 160983 | 25327 | 135656 | 64236 | 14540 | 49696 | 10787 | 85960 | 0.157327 | 0.137482 | -0.019845 | 0.128265 | 0.647755 | 0.241551 | 0.399023 | 0.574091 | 0.366338 | 0.425909 | 0.226353 | True | supported | 0.147853 | 0.155557 | 0.159114 | 0.396634 | 0.401418 | 0.56799 | 0.580169 | 0.363778 | 0.368906 | 0.019846 |
+| exploratory_test | default_0_5 | purpose | debt_consolidation | 160983 | 25327 | 135656 | 0 | 0 | 0 | 25327 | 135656 | 0.157327 | 0.137482 | -0.019845 | 0.128265 | 0.647755 | 0.241551 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.155557 | 0.159114 | 0 | 0.000024 | 0 | 0.000152 | 0 | 0.000028 | 0.019846 |
+| exploratory_test | frozen_validation_f1 | purpose | educational | 1 | 0 | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0.288019 | 0.288019 | 0.082955 | — | — | 1 | — | 1 | — | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0.206549 | 1 | — | — | 0.206549 | 1 | 0.288019 |
+| exploratory_test | default_0_5 | purpose | educational | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.288019 | 0.288019 | 0.082955 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.288019 |
+| exploratory_test | frozen_validation_f1 | purpose | home_improvement | 17160 | 2318 | 14842 | 5255 | 1115 | 4140 | 1203 | 10702 | 0.135082 | 0.122253 | -0.012828 | 0.112996 | 0.654285 | 0.214949 | 0.306235 | 0.481018 | 0.278938 | 0.518982 | 0.212179 | True | supported | 0.147853 | 0.130049 | 0.140278 | 0.299383 | 0.313175 | 0.460726 | 0.501373 | 0.271781 | 0.28621 | 0.012828 |
+| exploratory_test | default_0_5 | purpose | home_improvement | 17160 | 2318 | 14842 | 0 | 0 | 0 | 2318 | 14842 | 0.135082 | 0.122253 | -0.012828 | 0.112996 | 0.654285 | 0.214949 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.130049 | 0.140278 | 0 | 0.000224 | 0 | 0.001654 | 0 | 0.000259 | 0.012828 |
+| exploratory_test | frozen_validation_f1 | purpose | house | 1004 | 217 | 787 | 529 | 139 | 390 | 78 | 397 | 0.216135 | 0.155945 | -0.06019 | 0.167428 | 0.619871 | 0.317762 | 0.526892 | 0.640553 | 0.495553 | 0.359447 | 0.26276 | True | supported | 0.147853 | 0.191783 | 0.242652 | 0.495965 | 0.557614 | 0.574776 | 0.701441 | 0.460728 | 0.530421 | 0.06019 |
+| exploratory_test | default_0_5 | purpose | house | 1004 | 217 | 787 | 0 | 0 | 0 | 217 | 787 | 0.216135 | 0.155945 | -0.06019 | 0.167428 | 0.619871 | 0.317762 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.191783 | 0.242652 | 0 | 0.003812 | 0 | 0.017395 | 0 | 0.004857 | 0.06019 |
+| exploratory_test | frozen_validation_f1 | purpose | major_purchase | 5342 | 772 | 4570 | 1393 | 328 | 1065 | 444 | 3505 | 0.144515 | 0.116269 | -0.028247 | 0.120372 | 0.649637 | 0.22221 | 0.260764 | 0.42487 | 0.233042 | 0.57513 | 0.235463 | True | supported | 0.147853 | 0.135342 | 0.1542 | 0.249165 | 0.272706 | 0.390457 | 0.460028 | 0.221012 | 0.24552 | 0.030115 |
+| exploratory_test | default_0_5 | purpose | major_purchase | 5342 | 772 | 4570 | 0 | 0 | 0 | 772 | 4570 | 0.144515 | 0.116269 | -0.028247 | 0.120372 | 0.649637 | 0.22221 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.135342 | 0.1542 | 0 | 0.000719 | 0 | 0.004951 | 0 | 0.00084 | 0.030115 |
+| exploratory_test | frozen_validation_f1 | purpose | medical | 3146 | 561 | 2585 | 1948 | 435 | 1513 | 126 | 1072 | 0.178322 | 0.168788 | -0.009534 | 0.140675 | 0.645176 | 0.288364 | 0.619199 | 0.775401 | 0.5853 | 0.224599 | 0.223306 | True | supported | 0.147853 | 0.165341 | 0.192087 | 0.602095 | 0.636012 | 0.739062 | 0.807994 | 0.566195 | 0.604152 | 0.009534 |
+| exploratory_test | default_0_5 | purpose | medical | 3146 | 561 | 2585 | 0 | 0 | 0 | 561 | 2585 | 0.178322 | 0.168788 | -0.009534 | 0.140675 | 0.645176 | 0.288364 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.165341 | 0.192087 | 0 | 0.00122 | 0 | 0.006801 | 0 | 0.001484 | 0.009534 |
+| exploratory_test | frozen_validation_f1 | purpose | moving | 2061 | 419 | 1642 | 1189 | 296 | 893 | 123 | 749 | 0.203299 | 0.16377 | -0.039529 | 0.157698 | 0.637357 | 0.303174 | 0.576904 | 0.706444 | 0.543849 | 0.293556 | 0.248949 | True | supported | 0.147853 | 0.186484 | 0.221219 | 0.555451 | 0.598071 | 0.661123 | 0.748014 | 0.519684 | 0.56781 | 0.039529 |
+| exploratory_test | default_0_5 | purpose | moving | 2061 | 419 | 1642 | 0 | 0 | 0 | 419 | 1642 | 0.203299 | 0.16377 | -0.039529 | 0.157698 | 0.637357 | 0.303174 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.186484 | 0.221219 | 0 | 0.00186 | 0 | 0.009085 | 0 | 0.002334 | 0.039529 |
+| exploratory_test | frozen_validation_f1 | purpose | other | 15227 | 2568 | 12659 | 9348 | 1952 | 7396 | 616 | 5263 | 0.168648 | 0.168506 | -0.000141 | 0.136181 | 0.628114 | 0.243537 | 0.61391 | 0.760125 | 0.584248 | 0.239875 | 0.208815 | True | supported | 0.147853 | 0.162784 | 0.174679 | 0.606149 | 0.621613 | 0.743229 | 0.776244 | 0.575639 | 0.592807 | 0.001039 |
+| exploratory_test | default_0_5 | purpose | other | 15227 | 2568 | 12659 | 0 | 0 | 0 | 2568 | 12659 | 0.168648 | 0.168506 | -0.000141 | 0.136181 | 0.628114 | 0.243537 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.162784 | 0.174679 | 0 | 0.000252 | 0 | 0.001494 | 0 | 0.000303 | 0.001039 |
+| exploratory_test | frozen_validation_f1 | purpose | renewable_energy | 185 | 45 | 140 | 117 | 31 | 86 | 14 | 54 | 0.243243 | 0.167271 | -0.075972 | 0.188007 | 0.571429 | 0.303326 | 0.632432 | 0.688889 | 0.614286 | 0.311111 | 0.264957 | False | small_total,few_charged_off | 0.147853 | 0.187051 | 0.309881 | 0.56092 | 0.698557 | 0.543352 | 0.804713 | 0.531628 | 0.690839 | 0.090091 |
+| exploratory_test | default_0_5 | purpose | renewable_energy | 185 | 45 | 140 | 0 | 0 | 0 | 45 | 140 | 0.243243 | 0.167271 | -0.075972 | 0.188007 | 0.571429 | 0.303326 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.187051 | 0.309881 | 0 | 0.020342 | 0 | 0.078652 | 0 | 0.026706 | 0.090091 |
+| exploratory_test | frozen_validation_f1 | purpose | small_business | 2425 | 557 | 1868 | 1988 | 510 | 1478 | 47 | 390 | 0.229691 | 0.219695 | -0.009996 | 0.171988 | 0.610429 | 0.312771 | 0.819794 | 0.915619 | 0.791221 | 0.084381 | 0.256539 | True | supported | 0.147853 | 0.213384 | 0.246852 | 0.803994 | 0.834582 | 0.889593 | 0.935952 | 0.772201 | 0.809045 | 0.024756 |
+| exploratory_test | default_0_5 | purpose | small_business | 2425 | 557 | 1868 | 0 | 0 | 0 | 557 | 1868 | 0.229691 | 0.219695 | -0.009996 | 0.171988 | 0.610429 | 0.312771 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.213384 | 0.246852 | 0 | 0.001582 | 0 | 0.006849 | 0 | 0.002052 | 0.024756 |
+| exploratory_test | frozen_validation_f1 | purpose | vacation | 2071 | 338 | 1733 | 966 | 199 | 767 | 139 | 966 | 0.163206 | 0.147966 | -0.015241 | 0.133726 | 0.607456 | 0.243619 | 0.466441 | 0.588757 | 0.442585 | 0.411243 | 0.206004 | True | supported | 0.147853 | 0.147916 | 0.179743 | 0.445038 | 0.487969 | 0.535589 | 0.639931 | 0.419353 | 0.466072 | 0.015241 |
+| exploratory_test | default_0_5 | purpose | vacation | 2071 | 338 | 1733 | 0 | 0 | 0 | 338 | 1733 | 0.163206 | 0.147966 | -0.015241 | 0.133726 | 0.607456 | 0.243619 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.147916 | 0.179743 | 0 | 0.001851 | 0 | 0.011238 | 0 | 0.002212 | 0.015241 |
+| exploratory_test | frozen_validation_f1 | purpose | wedding | 3 | 0 | 3 | 1 | 0 | 1 | 0 | 2 | 0 | 0.13498 | 0.13498 | 0.01949 | — | — | 0.333333 | — | 0.333333 | — | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.561497 | 0.061492 | 0.79234 | — | — | 0.061492 | 0.79234 | 0.13498 |
+| exploratory_test | default_0_5 | purpose | wedding | 3 | 0 | 3 | 0 | 0 | 0 | 0 | 3 | 0 | 0.13498 | 0.13498 | 0.01949 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.561497 | 0 | 0.561497 | — | — | 0 | 0.561497 | 0.13498 |
+| validation | frozen_validation_f1 | purpose | car | 1516 | 175 | 1341 | 424 | 81 | 343 | 94 | 998 | 0.115435 | 0.117775 | 0.00234 | 0.098317 | 0.670216 | 0.203321 | 0.279683 | 0.462857 | 0.255779 | 0.537143 | 0.191038 | True | supported | 0.147853 | 0.100313 | 0.132502 | 0.257668 | 0.302813 | 0.390573 | 0.536737 | 0.233148 | 0.279806 | 0.006455 |
+| validation | default_0_5 | purpose | car | 1516 | 175 | 1341 | 0 | 0 | 0 | 175 | 1341 | 0.115435 | 0.117775 | 0.00234 | 0.098317 | 0.670216 | 0.203321 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.100313 | 0.132502 | 0 | 0.002528 | 0 | 0.02148 | 0 | 0.002856 | 0.006455 |
+| validation | frozen_validation_f1 | purpose | credit_card | 40100 | 4634 | 35466 | 8619 | 1788 | 6831 | 2846 | 28635 | 0.115561 | 0.110592 | -0.004969 | 0.098766 | 0.664295 | 0.19353 | 0.214938 | 0.385844 | 0.192607 | 0.614156 | 0.207449 | True | supported | 0.147853 | 0.112469 | 0.118727 | 0.210945 | 0.218985 | 0.371928 | 0.399949 | 0.188536 | 0.196744 | 0.007769 |
+| validation | default_0_5 | purpose | credit_card | 40100 | 4634 | 35466 | 0 | 0 | 0 | 4634 | 35466 | 0.115561 | 0.110592 | -0.004969 | 0.098766 | 0.664295 | 0.19353 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.112469 | 0.118727 | 0 | 0.000096 | 0 | 0.000828 | 0 | 0.000108 | 0.007769 |
+| validation | frozen_validation_f1 | purpose | debt_consolidation | 94822 | 13616 | 81206 | 37254 | 7803 | 29451 | 5813 | 51755 | 0.143595 | 0.136234 | -0.007362 | 0.118974 | 0.647743 | 0.221315 | 0.392884 | 0.573076 | 0.36267 | 0.426924 | 0.209454 | True | supported | 0.147853 | 0.141378 | 0.145842 | 0.389779 | 0.395996 | 0.564748 | 0.581362 | 0.35937 | 0.365983 | 0.007769 |
+| validation | default_0_5 | purpose | debt_consolidation | 94822 | 13616 | 81206 | 0 | 0 | 0 | 13616 | 81206 | 0.143595 | 0.136234 | -0.007362 | 0.118974 | 0.647743 | 0.221315 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.141378 | 0.145842 | 0 | 0.000041 | 0 | 0.000282 | 0 | 0.000047 | 0.007769 |
+| validation | frozen_validation_f1 | purpose | home_improvement | 8654 | 1029 | 7625 | 2624 | 503 | 2121 | 526 | 5504 | 0.118905 | 0.121347 | 0.002443 | 0.10151 | 0.656216 | 0.191482 | 0.303212 | 0.488824 | 0.278164 | 0.511176 | 0.191692 | True | supported | 0.147853 | 0.112254 | 0.125894 | 0.293617 | 0.312982 | 0.45838 | 0.519351 | 0.26822 | 0.288331 | 0.002443 |
+| validation | default_0_5 | purpose | home_improvement | 8654 | 1029 | 7625 | 0 | 0 | 0 | 1029 | 7625 | 0.118905 | 0.121347 | 0.002443 | 0.10151 | 0.656216 | 0.191482 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.112254 | 0.125894 | 0 | 0.000444 | 0 | 0.003719 | 0 | 0.000504 | 0.002443 |
+| validation | frozen_validation_f1 | purpose | house | 511 | 100 | 411 | 272 | 67 | 205 | 33 | 206 | 0.195695 | 0.15545 | -0.040245 | 0.15521 | 0.615888 | 0.262103 | 0.53229 | 0.67 | 0.498783 | 0.33 | 0.246324 | True | supported | 0.147853 | 0.16362 | 0.23231 | 0.488948 | 0.575149 | 0.573053 | 0.754369 | 0.45068 | 0.546909 | 0.04255 |
+| validation | default_0_5 | purpose | house | 511 | 100 | 411 | 0 | 0 | 0 | 100 | 411 | 0.195695 | 0.15545 | -0.040245 | 0.15521 | 0.615888 | 0.262103 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.16362 | 0.23231 | 0 | 0.007461 | 0 | 0.036993 | 0 | 0.00926 | 0.04255 |
+| validation | frozen_validation_f1 | purpose | major_purchase | 2888 | 390 | 2498 | 721 | 153 | 568 | 237 | 1930 | 0.135042 | 0.113642 | -0.021399 | 0.113333 | 0.655695 | 0.214342 | 0.249654 | 0.392308 | 0.227382 | 0.607692 | 0.212205 | True | supported | 0.147853 | 0.123061 | 0.147992 | 0.234208 | 0.265764 | 0.345125 | 0.441591 | 0.211371 | 0.24423 | 0.021399 |
+| validation | default_0_5 | purpose | major_purchase | 2888 | 390 | 2498 | 0 | 0 | 0 | 390 | 2498 | 0.135042 | 0.113642 | -0.021399 | 0.113333 | 0.655695 | 0.214342 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.123061 | 0.147992 | 0 | 0.001328 | 0 | 0.009754 | 0 | 0.001535 | 0.021399 |
+| validation | frozen_validation_f1 | purpose | medical | 1885 | 321 | 1564 | 1137 | 241 | 896 | 80 | 668 | 0.170292 | 0.165759 | -0.004533 | 0.137648 | 0.625035 | 0.240597 | 0.603183 | 0.750779 | 0.57289 | 0.249221 | 0.211961 | True | supported | 0.147853 | 0.153998 | 0.187927 | 0.580909 | 0.625037 | 0.700681 | 0.794946 | 0.548226 | 0.597197 | 0.006387 |
+| validation | default_0_5 | purpose | medical | 1885 | 321 | 1564 | 0 | 0 | 0 | 321 | 1564 | 0.170292 | 0.165759 | -0.004533 | 0.137648 | 0.625035 | 0.240597 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.153998 | 0.187927 | 0 | 0.002034 | 0 | 0.011826 | 0 | 0.00245 | 0.006387 |
+| validation | frozen_validation_f1 | purpose | moving | 1133 | 241 | 892 | 690 | 186 | 504 | 55 | 388 | 0.21271 | 0.165103 | -0.047607 | 0.163333 | 0.641665 | 0.322727 | 0.609003 | 0.771784 | 0.565022 | 0.228216 | 0.269565 | True | supported | 0.147853 | 0.189873 | 0.237488 | 0.580266 | 0.637002 | 0.714779 | 0.820261 | 0.532279 | 0.597209 | 0.047607 |
+| validation | default_0_5 | purpose | moving | 1133 | 241 | 892 | 0 | 0 | 0 | 241 | 892 | 0.21271 | 0.165103 | -0.047607 | 0.163333 | 0.641665 | 0.322727 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.189873 | 0.237488 | 0 | 0.003379 | 0 | 0.01569 | 0 | 0.004288 | 0.047607 |
+| validation | frozen_validation_f1 | purpose | other | 8252 | 1261 | 6991 | 5053 | 952 | 4101 | 309 | 2890 | 0.152811 | 0.16849 | 0.015679 | 0.126239 | 0.627811 | 0.224941 | 0.612336 | 0.754956 | 0.586611 | 0.245044 | 0.188403 | True | supported | 0.147853 | 0.14521 | 0.160736 | 0.601774 | 0.622794 | 0.730466 | 0.777898 | 0.575023 | 0.598104 | 0.015679 |
+| validation | default_0_5 | purpose | other | 8252 | 1261 | 6991 | 0 | 0 | 0 | 1261 | 6991 | 0.152811 | 0.16849 | 0.015679 | 0.126239 | 0.627811 | 0.224941 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.14521 | 0.160736 | 0 | 0.000465 | 0 | 0.003037 | 0 | 0.000549 | 0.015679 |
+| validation | frozen_validation_f1 | purpose | renewable_energy | 102 | 16 | 86 | 59 | 6 | 53 | 10 | 33 | 0.156863 | 0.162106 | 0.005243 | 0.138417 | 0.374273 | 0.222102 | 0.578431 | 0.375 | 0.616279 | 0.625 | 0.101695 | False | small_total,few_charged_off | 0.147853 | 0.098923 | 0.239711 | 0.481465 | 0.669704 | 0.184812 | 0.61359 | 0.510629 | 0.711986 | 0.060114 |
+| validation | default_0_5 | purpose | renewable_energy | 102 | 16 | 86 | 0 | 0 | 0 | 16 | 86 | 0.156863 | 0.162106 | 0.005243 | 0.138417 | 0.374273 | 0.222102 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.098923 | 0.239711 | 0 | 0.036294 | 0 | 0.193608 | 0 | 0.042758 | 0.060114 |
+| validation | frozen_validation_f1 | purpose | small_business | 1634 | 368 | 1266 | 1366 | 330 | 1036 | 38 | 230 | 0.225214 | 0.225026 | -0.000189 | 0.173029 | 0.577448 | 0.274452 | 0.835985 | 0.896739 | 0.818325 | 0.103261 | 0.241581 | True | supported | 0.147853 | 0.205618 | 0.246099 | 0.817247 | 0.853148 | 0.861441 | 0.92384 | 0.796133 | 0.838592 | 0.018393 |
+| validation | default_0_5 | purpose | small_business | 1634 | 368 | 1266 | 0 | 0 | 0 | 368 | 1266 | 0.225214 | 0.225026 | -0.000189 | 0.173029 | 0.577448 | 0.274452 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.205618 | 0.246099 | 0 | 0.002345 | 0 | 0.010331 | 0 | 0.003025 | 0.018393 |
+| validation | frozen_validation_f1 | purpose | vacation | 1065 | 164 | 901 | 499 | 95 | 404 | 69 | 497 | 0.153991 | 0.147654 | -0.006336 | 0.126552 | 0.61986 | 0.250053 | 0.468545 | 0.579268 | 0.448391 | 0.420732 | 0.190381 | True | supported | 0.147853 | 0.13356 | 0.176908 | 0.438742 | 0.498574 | 0.502746 | 0.652162 | 0.416204 | 0.481015 | 0.012344 |
+| validation | default_0_5 | purpose | vacation | 1065 | 164 | 901 | 0 | 0 | 0 | 164 | 901 | 0.153991 | 0.147654 | -0.006336 | 0.126552 | 0.61986 | 0.250053 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13356 | 0.176908 | 0 | 0.003594 | 0 | 0.022887 | 0 | 0.004245 | 0.012344 |
+| validation | frozen_validation_f1 | purpose | wedding | 8 | 0 | 8 | 2 | 0 | 2 | 0 | 6 | 0 | 0.110556 | 0.110556 | 0.013373 | — | — | 0.25 | — | 0.25 | — | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.324408 | 0.071479 | 0.590725 | — | — | 0.071479 | 0.590725 | 0.110556 |
+| validation | default_0_5 | purpose | wedding | 8 | 0 | 8 | 0 | 0 | 0 | 0 | 8 | 0 | 0.110556 | 0.110556 | 0.013373 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.324408 | 0 | 0.324408 | — | — | 0 | 0.324408 | 0.110556 |
+| exploratory_test | frozen_validation_f1 | income | Missing | 2 | 1 | 1 | 1 | 0 | 1 | 1 | 0 | 0.5 | 0.1404 | -0.3596 | 0.41253 | 0 | 0.5 | 0.5 | 0 | 1 | 1 | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0.094531 | 0.905469 | 0.094531 | 0.905469 | 0 | 0.793451 | 0.206549 | 1 | 0.3596 |
+| exploratory_test | default_0_5 | income | Missing | 2 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 0.5 | 0.1404 | -0.3596 | 0.41253 | 0 | 0.5 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0.094531 | 0.905469 | 0 | 0.65762 | 0 | 0.793451 | 0 | 0.793451 | 0.3596 |
+| exploratory_test | frozen_validation_f1 | income | Q1_lowest | 67112 | 12928 | 54184 | 46848 | 10512 | 36336 | 2416 | 17848 | 0.192633 | 0.180782 | -0.011851 | 0.151744 | 0.614135 | 0.263611 | 0.698057 | 0.813119 | 0.670604 | 0.186881 | 0.224385 | True | supported | 0.147853 | 0.189667 | 0.195634 | 0.694572 | 0.701519 | 0.806307 | 0.819745 | 0.666635 | 0.674549 | 0.011851 |
+| exploratory_test | default_0_5 | income | Q1_lowest | 67112 | 12928 | 54184 | 0 | 0 | 0 | 12928 | 54184 | 0.192633 | 0.180782 | -0.011851 | 0.151744 | 0.614135 | 0.263611 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.189667 | 0.195634 | 0 | 0.000057 | 0 | 0.000297 | 0 | 0.000071 | 0.011851 |
+| exploratory_test | frozen_validation_f1 | income | Q2 | 72286 | 11329 | 60957 | 30957 | 6680 | 24277 | 4649 | 36680 | 0.156725 | 0.143077 | -0.013648 | 0.128376 | 0.636348 | 0.233044 | 0.428257 | 0.589637 | 0.398264 | 0.410363 | 0.215783 | True | supported | 0.147853 | 0.154093 | 0.159393 | 0.424654 | 0.431868 | 0.58055 | 0.598663 | 0.394385 | 0.402157 | 0.013826 |
+| exploratory_test | default_0_5 | income | Q2 | 72286 | 11329 | 60957 | 0 | 0 | 0 | 11329 | 60957 | 0.156725 | 0.143077 | -0.013648 | 0.128376 | 0.636348 | 0.233044 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.154093 | 0.159393 | 0 | 0.000053 | 0 | 0.000339 | 0 | 0.000063 | 0.013826 |
+| exploratory_test | frozen_validation_f1 | income | Q3 | 67492 | 9390 | 58102 | 16762 | 3861 | 12901 | 5529 | 45201 | 0.139128 | 0.117652 | -0.021475 | 0.11609 | 0.65285 | 0.225775 | 0.248355 | 0.411182 | 0.222041 | 0.588818 | 0.230342 | True | supported | 0.147853 | 0.136537 | 0.141759 | 0.24511 | 0.251629 | 0.401268 | 0.421169 | 0.21868 | 0.225438 | 0.021506 |
+| exploratory_test | default_0_5 | income | Q3 | 67492 | 9390 | 58102 | 0 | 0 | 0 | 9390 | 58102 | 0.139128 | 0.117652 | -0.021475 | 0.11609 | 0.65285 | 0.225775 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.136537 | 0.141759 | 0 | 0.000057 | 0 | 0.000409 | 0 | 0.000066 | 0.021506 |
+| exploratory_test | frozen_validation_f1 | income | Q4_highest | 76134 | 8484 | 67650 | 8143 | 1905 | 6238 | 6579 | 61412 | 0.111435 | 0.092028 | -0.019407 | 0.095996 | 0.669607 | 0.195552 | 0.106956 | 0.22454 | 0.09221 | 0.77546 | 0.233943 | True | supported | 0.147853 | 0.109219 | 0.11369 | 0.104781 | 0.109171 | 0.215787 | 0.233543 | 0.090053 | 0.094413 | 0.019414 |
+| exploratory_test | default_0_5 | income | Q4_highest | 76134 | 8484 | 67650 | 0 | 0 | 0 | 8484 | 67650 | 0.111435 | 0.092028 | -0.019407 | 0.095996 | 0.669607 | 0.195552 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.109219 | 0.11369 | 0 | 0.00005 | 0 | 0.000453 | 0 | 0.000057 | 0.019414 |
+| validation | frozen_validation_f1 | income | Q1_lowest | 39538 | 7391 | 32147 | 27795 | 6039 | 21756 | 1352 | 10391 | 0.186934 | 0.180538 | -0.006396 | 0.148744 | 0.608908 | 0.24772 | 0.702995 | 0.817075 | 0.676766 | 0.182925 | 0.217269 | True | supported | 0.147853 | 0.183122 | 0.190807 | 0.698471 | 0.707479 | 0.808097 | 0.825723 | 0.671632 | 0.681857 | 0.007366 |
+| validation | default_0_5 | income | Q1_lowest | 39538 | 7391 | 32147 | 0 | 0 | 0 | 7391 | 32147 | 0.186934 | 0.180538 | -0.006396 | 0.148744 | 0.608908 | 0.24772 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.183122 | 0.190807 | 0 | 0.000097 | 0 | 0.000519 | 0 | 0.000119 | 0.007366 |
+| validation | frozen_validation_f1 | income | Q2 | 42082 | 6086 | 35996 | 17682 | 3529 | 14153 | 2557 | 21843 | 0.144622 | 0.142305 | -0.002317 | 0.120406 | 0.632055 | 0.214162 | 0.42018 | 0.579855 | 0.393183 | 0.420145 | 0.199581 | True | supported | 0.147853 | 0.141294 | 0.148015 | 0.415471 | 0.424903 | 0.567408 | 0.592202 | 0.388148 | 0.39824 | 0.005528 |
+| validation | default_0_5 | income | Q2 | 42082 | 6086 | 35996 | 0 | 0 | 0 | 6086 | 35996 | 0.144622 | 0.142305 | -0.002317 | 0.120406 | 0.632055 | 0.214162 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.141294 | 0.148015 | 0 | 0.000091 | 0 | 0.000631 | 0 | 0.000107 | 0.005528 |
+| validation | frozen_validation_f1 | income | Q3 | 39005 | 4767 | 34238 | 9087 | 1824 | 7263 | 2943 | 26975 | 0.122215 | 0.115608 | -0.006608 | 0.104383 | 0.642672 | 0.191734 | 0.23297 | 0.382631 | 0.212133 | 0.617369 | 0.200726 | True | supported | 0.147853 | 0.119002 | 0.125503 | 0.228801 | 0.237191 | 0.368933 | 0.396517 | 0.207835 | 0.216495 | 0.006972 |
+| validation | default_0_5 | income | Q3 | 39005 | 4767 | 34238 | 0 | 0 | 0 | 4767 | 34238 | 0.122215 | 0.115608 | -0.006608 | 0.104383 | 0.642672 | 0.191734 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.119002 | 0.125503 | 0 | 0.000098 | 0 | 0.000805 | 0 | 0.000112 | 0.006972 |
+| validation | frozen_validation_f1 | income | Q4_highest | 41945 | 4071 | 37874 | 4156 | 813 | 3343 | 3258 | 34531 | 0.097056 | 0.090247 | -0.006808 | 0.085221 | 0.660618 | 0.165079 | 0.099082 | 0.199705 | 0.088266 | 0.800295 | 0.195621 | True | supported | 0.147853 | 0.094259 | 0.099926 | 0.09626 | 0.101978 | 0.18771 | 0.212266 | 0.085451 | 0.091165 | 0.00681 |
+| validation | default_0_5 | income | Q4_highest | 41945 | 4071 | 37874 | 0 | 0 | 0 | 4071 | 37874 | 0.097056 | 0.090247 | -0.006808 | 0.085221 | 0.660618 | 0.165079 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.094259 | 0.099926 | 0 | 0.000092 | 0 | 0.000943 | 0 | 0.000101 | 0.00681 |
+| exploratory_test | frozen_validation_f1 | fico | 680_to_719 | 125033 | 17743 | 107290 | 37238 | 7780 | 29458 | 9963 | 77832 | 0.141907 | 0.127254 | -0.014653 | 0.119124 | 0.623679 | 0.208022 | 0.297825 | 0.438483 | 0.274564 | 0.561517 | 0.208926 | True | supported | 0.147853 | 0.139983 | 0.143852 | 0.295297 | 0.300366 | 0.431196 | 0.445796 | 0.271902 | 0.277243 | 0.014653 |
+| exploratory_test | default_0_5 | fico | 680_to_719 | 125033 | 17743 | 107290 | 0 | 0 | 0 | 17743 | 107290 | 0.141907 | 0.127254 | -0.014653 | 0.119124 | 0.623679 | 0.208022 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.139983 | 0.143852 | 0 | 0.000031 | 0 | 0.000216 | 0 | 0.000036 | 0.014653 |
+| exploratory_test | frozen_validation_f1 | fico | 720_to_759 | 37723 | 3153 | 34570 | 1963 | 383 | 1580 | 2770 | 32990 | 0.083583 | 0.079515 | -0.004068 | 0.074917 | 0.64754 | 0.141997 | 0.052037 | 0.121472 | 0.045704 | 0.878528 | 0.19511 | True | supported | 0.147853 | 0.080832 | 0.086418 | 0.049841 | 0.054324 | 0.110527 | 0.133337 | 0.043553 | 0.047957 | 0.004226 |
+| exploratory_test | default_0_5 | fico | 720_to_759 | 37723 | 3153 | 34570 | 0 | 0 | 0 | 3153 | 34570 | 0.083583 | 0.079515 | -0.004068 | 0.074917 | 0.64754 | 0.141997 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.080832 | 0.086418 | 0 | 0.000102 | 0 | 0.001217 | 0 | 0.000111 | 0.004226 |
+| exploratory_test | frozen_validation_f1 | fico | 760_plus | 13738 | 655 | 13083 | 91 | 22 | 69 | 633 | 13014 | 0.047678 | 0.045292 | -0.002386 | 0.044154 | 0.698891 | 0.119705 | 0.006624 | 0.033588 | 0.005274 | 0.966412 | 0.241758 | True | supported | 0.147853 | 0.044239 | 0.051369 | 0.005399 | 0.008125 | 0.022284 | 0.050331 | 0.00417 | 0.006669 | 0.002386 |
+| exploratory_test | default_0_5 | fico | 760_plus | 13738 | 655 | 13083 | 0 | 0 | 0 | 655 | 13083 | 0.047678 | 0.045292 | -0.002386 | 0.044154 | 0.698891 | 0.119705 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.044239 | 0.051369 | 0 | 0.00028 | 0 | 0.005831 | 0 | 0.000294 | 0.002386 |
+| exploratory_test | frozen_validation_f1 | fico | Below_680 | 106532 | 20581 | 85951 | 63419 | 14773 | 48646 | 5808 | 37305 | 0.193191 | 0.167928 | -0.025263 | 0.152829 | 0.609717 | 0.263623 | 0.595305 | 0.717798 | 0.565974 | 0.282202 | 0.232943 | True | supported | 0.147853 | 0.190831 | 0.195573 | 0.592354 | 0.598249 | 0.711609 | 0.723906 | 0.562657 | 0.569284 | 0.025263 |
+| exploratory_test | default_0_5 | fico | Below_680 | 106532 | 20581 | 85951 | 0 | 0 | 0 | 20581 | 85951 | 0.193191 | 0.167928 | -0.025263 | 0.152829 | 0.609717 | 0.263623 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.190831 | 0.195573 | 0 | 0.000036 | 0 | 0.000187 | 0 | 0.000045 | 0.025263 |
+| validation | frozen_validation_f1 | fico | 680_to_719 | 71403 | 9335 | 62068 | 20561 | 4110 | 16451 | 5225 | 45617 | 0.130737 | 0.125896 | -0.004841 | 0.110902 | 0.631237 | 0.196149 | 0.287957 | 0.440279 | 0.265048 | 0.559721 | 0.199893 | True | supported | 0.147853 | 0.128284 | 0.133229 | 0.284647 | 0.29129 | 0.430235 | 0.450371 | 0.26159 | 0.268535 | 0.005145 |
+| validation | default_0_5 | fico | 680_to_719 | 71403 | 9335 | 62068 | 0 | 0 | 0 | 9335 | 62068 | 0.130737 | 0.125896 | -0.004841 | 0.110902 | 0.631237 | 0.196149 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.128284 | 0.133229 | 0 | 0.000054 | 0 | 0.000411 | 0 | 0.000062 | 0.005145 |
+| validation | frozen_validation_f1 | fico | 720_to_759 | 20760 | 1565 | 19195 | 880 | 160 | 720 | 1405 | 18475 | 0.075385 | 0.0768 | 0.001414 | 0.068333 | 0.642517 | 0.128662 | 0.042389 | 0.102236 | 0.03751 | 0.897764 | 0.181818 | True | supported | 0.147853 | 0.071872 | 0.079056 | 0.039732 | 0.045216 | 0.088187 | 0.118233 | 0.034913 | 0.040292 | 0.002069 |
+| validation | default_0_5 | fico | 720_to_759 | 20760 | 1565 | 19195 | 0 | 0 | 0 | 1565 | 19195 | 0.075385 | 0.0768 | 0.001414 | 0.068333 | 0.642517 | 0.128662 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.071872 | 0.079056 | 0 | 0.000185 | 0 | 0.002449 | 0 | 0.0002 | 0.002069 |
+| validation | frozen_validation_f1 | fico | 760_plus | 7228 | 346 | 6882 | 64 | 12 | 52 | 334 | 6830 | 0.047869 | 0.045527 | -0.002343 | 0.044517 | 0.677239 | 0.112233 | 0.008854 | 0.034682 | 0.007556 | 0.965318 | 0.1875 | True | supported | 0.147853 | 0.043183 | 0.053036 | 0.006941 | 0.01129 | 0.019949 | 0.059634 | 0.005767 | 0.009894 | 0.002343 |
+| validation | default_0_5 | fico | 760_plus | 7228 | 346 | 6882 | 0 | 0 | 0 | 346 | 6882 | 0.047869 | 0.045527 | -0.002343 | 0.044517 | 0.677239 | 0.112233 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.043183 | 0.053036 | 0 | 0.000531 | 0 | 0.010981 | 0 | 0.000558 | 0.002343 |
+| validation | frozen_validation_f1 | fico | Below_680 | 63179 | 11069 | 52110 | 37215 | 7923 | 29292 | 3146 | 22818 | 0.175201 | 0.16633 | -0.008871 | 0.141422 | 0.611434 | 0.238965 | 0.589041 | 0.715783 | 0.562119 | 0.284217 | 0.212898 | True | supported | 0.147853 | 0.172256 | 0.178185 | 0.585199 | 0.592872 | 0.707307 | 0.724109 | 0.557854 | 0.566374 | 0.009505 |
+| validation | default_0_5 | fico | Below_680 | 63179 | 11069 | 52110 | 0 | 0 | 0 | 11069 | 52110 | 0.175201 | 0.16633 | -0.008871 | 0.141422 | 0.611434 | 0.238965 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.172256 | 0.178185 | 0 | 0.000061 | 0 | 0.000347 | 0 | 0.000074 | 0.009505 |
+| exploratory_test | frozen_validation_f1 | employment | 10_plus_years | 89647 | 11957 | 77690 | 25753 | 5578 | 20175 | 6379 | 57515 | 0.133379 | 0.120627 | -0.012751 | 0.111524 | 0.660094 | 0.218049 | 0.287271 | 0.466505 | 0.259686 | 0.533495 | 0.216596 | True | supported | 0.147853 | 0.131169 | 0.13562 | 0.284318 | 0.290242 | 0.457575 | 0.475456 | 0.256615 | 0.262781 | 0.012751 |
+| exploratory_test | default_0_5 | employment | 10_plus_years | 89647 | 11957 | 77690 | 0 | 0 | 0 | 11957 | 77690 | 0.133379 | 0.120627 | -0.012751 | 0.111524 | 0.660094 | 0.218049 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.131169 | 0.13562 | 0 | 0.000043 | 0 | 0.000321 | 0 | 0.000049 | 0.012751 |
+| exploratory_test | frozen_validation_f1 | employment | 2_to_5_years | 82602 | 12262 | 70340 | 30459 | 6625 | 23834 | 5637 | 46506 | 0.148447 | 0.132575 | -0.015872 | 0.12247 | 0.645657 | 0.227804 | 0.368744 | 0.540287 | 0.33884 | 0.459713 | 0.217505 | True | supported | 0.147853 | 0.146038 | 0.150888 | 0.36546 | 0.37204 | 0.531455 | 0.549094 | 0.335351 | 0.342346 | 0.015923 |
+| exploratory_test | default_0_5 | employment | 2_to_5_years | 82602 | 12262 | 70340 | 0 | 0 | 0 | 12262 | 70340 | 0.148447 | 0.132575 | -0.015872 | 0.12247 | 0.645657 | 0.227804 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.146038 | 0.150888 | 0 | 0.000047 | 0 | 0.000313 | 0 | 0.000055 | 0.015923 |
+| exploratory_test | frozen_validation_f1 | employment | 6_to_9_years | 48507 | 7135 | 41372 | 17304 | 3852 | 13452 | 3283 | 27920 | 0.147092 | 0.131405 | -0.015688 | 0.12117 | 0.654233 | 0.230632 | 0.356732 | 0.539874 | 0.325147 | 0.460126 | 0.222607 | True | supported | 0.147853 | 0.143968 | 0.150272 | 0.352481 | 0.361006 | 0.528291 | 0.551414 | 0.32065 | 0.329677 | 0.015832 |
+| exploratory_test | default_0_5 | employment | 6_to_9_years | 48507 | 7135 | 41372 | 0 | 0 | 0 | 7135 | 41372 | 0.147092 | 0.131405 | -0.015688 | 0.12117 | 0.654233 | 0.230632 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.143968 | 0.150272 | 0 | 0.000079 | 0 | 0.000538 | 0 | 0.000093 | 0.015832 |
+| exploratory_test | frozen_validation_f1 | employment | Below_2_years | 43310 | 6687 | 36623 | 16766 | 3676 | 13090 | 3011 | 23533 | 0.154399 | 0.134963 | -0.019436 | 0.126922 | 0.640087 | 0.228067 | 0.387116 | 0.549723 | 0.357426 | 0.450277 | 0.219253 | True | supported | 0.147853 | 0.151026 | 0.157832 | 0.382539 | 0.391713 | 0.537774 | 0.561616 | 0.352533 | 0.362349 | 0.019436 |
+| exploratory_test | default_0_5 | employment | Below_2_years | 43310 | 6687 | 36623 | 0 | 0 | 0 | 6687 | 36623 | 0.154399 | 0.134963 | -0.019436 | 0.126922 | 0.640087 | 0.228067 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.151026 | 0.157832 | 0 | 0.000089 | 0 | 0.000574 | 0 | 0.000105 | 0.019436 |
+| exploratory_test | frozen_validation_f1 | employment | Missing | 18960 | 4091 | 14869 | 12429 | 3227 | 9202 | 864 | 5667 | 0.21577 | 0.181346 | -0.034424 | 0.164534 | 0.62804 | 0.302163 | 0.655538 | 0.788805 | 0.618871 | 0.211195 | 0.259635 | True | supported | 0.147853 | 0.209973 | 0.221683 | 0.648743 | 0.66227 | 0.776029 | 0.801038 | 0.611035 | 0.626646 | 0.034424 |
+| exploratory_test | default_0_5 | employment | Missing | 18960 | 4091 | 14869 | 0 | 0 | 0 | 4091 | 14869 | 0.21577 | 0.181346 | -0.034424 | 0.164534 | 0.62804 | 0.302163 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.209973 | 0.221683 | 0 | 0.000203 | 0 | 0.000938 | 0 | 0.000258 | 0.034424 |
+| validation | frozen_validation_f1 | employment | 10_plus_years | 51146 | 6225 | 44921 | 14797 | 2810 | 11987 | 3415 | 32934 | 0.12171 | 0.120963 | -0.000748 | 0.10383 | 0.645713 | 0.192269 | 0.289309 | 0.451406 | 0.266846 | 0.548594 | 0.189903 | True | supported | 0.147853 | 0.118905 | 0.124572 | 0.285395 | 0.293254 | 0.439077 | 0.463794 | 0.262776 | 0.270956 | 0.001553 |
+| validation | default_0_5 | employment | 10_plus_years | 51146 | 6225 | 44921 | 0 | 0 | 0 | 6225 | 44921 | 0.12171 | 0.120963 | -0.000748 | 0.10383 | 0.645713 | 0.192269 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.118905 | 0.124572 | 0 | 0.000075 | 0 | 0.000617 | 0 | 0.000086 | 0.001553 |
+| validation | frozen_validation_f1 | employment | 2_to_5_years | 46593 | 6421 | 40172 | 17077 | 3578 | 13499 | 2843 | 26673 | 0.13781 | 0.131776 | -0.006035 | 0.114611 | 0.658106 | 0.217749 | 0.366514 | 0.557234 | 0.33603 | 0.442766 | 0.209522 | True | supported | 0.147853 | 0.13471 | 0.14097 | 0.36215 | 0.3709 | 0.545054 | 0.569346 | 0.331427 | 0.340665 | 0.008025 |
+| validation | default_0_5 | employment | 2_to_5_years | 46593 | 6421 | 40172 | 0 | 0 | 0 | 6421 | 40172 | 0.13781 | 0.131776 | -0.006035 | 0.114611 | 0.658106 | 0.217749 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13471 | 0.14097 | 0 | 0.000082 | 0 | 0.000598 | 0 | 0.000096 | 0.008025 |
+| validation | frozen_validation_f1 | employment | 6_to_9_years | 31558 | 4291 | 27267 | 11156 | 2297 | 8859 | 1994 | 18408 | 0.135972 | 0.13087 | -0.005102 | 0.113659 | 0.650227 | 0.213586 | 0.353508 | 0.535306 | 0.324898 | 0.464694 | 0.205898 | True | supported | 0.147853 | 0.132234 | 0.139798 | 0.348252 | 0.3588 | 0.520359 | 0.550191 | 0.319364 | 0.330481 | 0.005232 |
+| validation | default_0_5 | employment | 6_to_9_years | 31558 | 4291 | 27267 | 0 | 0 | 0 | 4291 | 27267 | 0.135972 | 0.13087 | -0.005102 | 0.113659 | 0.650227 | 0.213586 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.132234 | 0.139798 | 0 | 0.000122 | 0 | 0.000894 | 0 | 0.000141 | 0.005232 |
+| validation | frozen_validation_f1 | employment | Below_2_years | 23627 | 3433 | 20194 | 9111 | 1976 | 7135 | 1457 | 13059 | 0.1453 | 0.134539 | -0.010761 | 0.120036 | 0.652749 | 0.222481 | 0.385618 | 0.57559 | 0.353323 | 0.42441 | 0.216881 | True | supported | 0.147853 | 0.140864 | 0.149851 | 0.379431 | 0.391843 | 0.558981 | 0.59203 | 0.346758 | 0.359943 | 0.011753 |
+| validation | default_0_5 | employment | Below_2_years | 23627 | 3433 | 20194 | 0 | 0 | 0 | 3433 | 20194 | 0.1453 | 0.134539 | -0.010761 | 0.120036 | 0.652749 | 0.222481 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.140864 | 0.149851 | 0 | 0.000163 | 0 | 0.001118 | 0 | 0.00019 | 0.011753 |
+| validation | frozen_validation_f1 | employment | Missing | 9646 | 1945 | 7701 | 6579 | 1544 | 5035 | 401 | 2666 | 0.201638 | 0.185149 | -0.016488 | 0.157628 | 0.608445 | 0.266506 | 0.682044 | 0.79383 | 0.653811 | 0.20617 | 0.234686 | True | supported | 0.147853 | 0.193751 | 0.209763 | 0.67268 | 0.691264 | 0.775281 | 0.811222 | 0.643111 | 0.664358 | 0.017602 |
+| validation | default_0_5 | employment | Missing | 9646 | 1945 | 7701 | 0 | 0 | 0 | 1945 | 7701 | 0.201638 | 0.185149 | -0.016488 | 0.157628 | 0.608445 | 0.266506 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.193751 | 0.209763 | 0 | 0.000398 | 0 | 0.001971 | 0 | 0.000499 | 0.017602 |
+| exploratory_test | frozen_validation_f1 | delinquency | None | 224052 | 32702 | 191350 | 79974 | 17918 | 62056 | 14784 | 129294 | 0.145957 | 0.130835 | -0.015122 | 0.119923 | 0.661336 | 0.235851 | 0.356944 | 0.547918 | 0.324306 | 0.452082 | 0.224048 | True | supported | 0.147853 | 0.144501 | 0.147425 | 0.354963 | 0.35893 | 0.542518 | 0.553306 | 0.322212 | 0.326407 | 0.015122 |
+| exploratory_test | default_0_5 | delinquency | None | 224052 | 32702 | 191350 | 0 | 0 | 0 | 32702 | 191350 | 0.145957 | 0.130835 | -0.015122 | 0.119923 | 0.661336 | 0.235851 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.144501 | 0.147425 | 0 | 0.000017 | 0 | 0.000117 | 0 | 0.00002 | 0.015122 |
+| exploratory_test | frozen_validation_f1 | delinquency | One_or_more | 58974 | 9430 | 49544 | 22737 | 5040 | 17697 | 4390 | 31847 | 0.159901 | 0.137493 | -0.022408 | 0.131231 | 0.626456 | 0.232378 | 0.385543 | 0.534464 | 0.357198 | 0.465536 | 0.221665 | True | supported | 0.147853 | 0.156965 | 0.162881 | 0.381622 | 0.389478 | 0.524385 | 0.544516 | 0.35299 | 0.361428 | 0.022485 |
+| exploratory_test | default_0_5 | delinquency | One_or_more | 58974 | 9430 | 49544 | 0 | 0 | 0 | 9430 | 49544 | 0.159901 | 0.137493 | -0.022408 | 0.131231 | 0.626456 | 0.232378 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.156965 | 0.162881 | 0 | 0.000065 | 0 | 0.000407 | 0 | 0.000078 | 0.022485 |
+| validation | frozen_validation_f1 | delinquency | None | 128739 | 17350 | 111389 | 45842 | 9593 | 36249 | 7757 | 75140 | 0.134769 | 0.130372 | -0.004397 | 0.112274 | 0.661235 | 0.218315 | 0.356085 | 0.552911 | 0.325427 | 0.447089 | 0.209262 | True | supported | 0.147853 | 0.132914 | 0.136645 | 0.353473 | 0.358705 | 0.545502 | 0.560296 | 0.322682 | 0.328185 | 0.005482 |
+| validation | default_0_5 | delinquency | None | 128739 | 17350 | 111389 | 0 | 0 | 0 | 17350 | 111389 | 0.134769 | 0.130372 | -0.004397 | 0.112274 | 0.661235 | 0.218315 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.132914 | 0.136645 | 0 | 0.00003 | 0 | 0.000221 | 0 | 0.000034 | 0.005482 |
+| validation | frozen_validation_f1 | delinquency | One_or_more | 33831 | 4965 | 28866 | 12878 | 2612 | 10266 | 2353 | 18600 | 0.146759 | 0.137073 | -0.009686 | 0.12237 | 0.624233 | 0.210089 | 0.380657 | 0.526083 | 0.355643 | 0.473917 | 0.202827 | True | supported | 0.147853 | 0.143028 | 0.15057 | 0.375497 | 0.385844 | 0.512179 | 0.539946 | 0.35014 | 0.361185 | 0.01076 |
+| validation | default_0_5 | delinquency | One_or_more | 33831 | 4965 | 28866 | 0 | 0 | 0 | 4965 | 28866 | 0.146759 | 0.137073 | -0.009686 | 0.12237 | 0.624233 | 0.210089 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.143028 | 0.15057 | 0 | 0.000114 | 0 | 0.000773 | 0 | 0.000133 | 0.01076 |
+| exploratory_test | frozen_validation_f1 | bankruptcy | None | 246951 | 35590 | 211361 | 86449 | 19078 | 67371 | 16512 | 143990 | 0.144118 | 0.130072 | -0.014046 | 0.118846 | 0.657939 | 0.231709 | 0.350065 | 0.536049 | 0.318748 | 0.463951 | 0.220685 | True | supported | 0.147853 | 0.142738 | 0.145508 | 0.348186 | 0.351949 | 0.530865 | 0.541226 | 0.316765 | 0.320738 | 0.014046 |
+| exploratory_test | default_0_5 | bankruptcy | None | 246951 | 35590 | 211361 | 0 | 0 | 0 | 35590 | 211361 | 0.144118 | 0.130072 | -0.014046 | 0.118846 | 0.657939 | 0.231709 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.142738 | 0.145508 | 0 | 0.000016 | 0 | 0.000108 | 0 | 0.000018 | 0.014046 |
+| exploratory_test | frozen_validation_f1 | bankruptcy | One_or_more | 36075 | 6542 | 29533 | 16262 | 3880 | 12382 | 2662 | 17151 | 0.181344 | 0.146946 | -0.034398 | 0.145779 | 0.620676 | 0.25439 | 0.450783 | 0.593091 | 0.41926 | 0.406909 | 0.238593 | True | supported | 0.147853 | 0.177402 | 0.185354 | 0.445654 | 0.455923 | 0.581135 | 0.604937 | 0.413643 | 0.424898 | 0.034466 |
+| exploratory_test | default_0_5 | bankruptcy | One_or_more | 36075 | 6542 | 29533 | 0 | 0 | 0 | 6542 | 29533 | 0.181344 | 0.146946 | -0.034398 | 0.145779 | 0.620676 | 0.25439 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.177402 | 0.185354 | 0 | 0.000106 | 0 | 0.000587 | 0 | 0.00013 | 0.034466 |
+| validation | frozen_validation_f1 | bankruptcy | None | 140359 | 18901 | 121458 | 49372 | 10227 | 39145 | 8674 | 82313 | 0.134662 | 0.129963 | -0.004699 | 0.11239 | 0.657808 | 0.215552 | 0.351755 | 0.541082 | 0.322292 | 0.458918 | 0.207142 | True | supported | 0.147853 | 0.132886 | 0.136458 | 0.349261 | 0.354257 | 0.533971 | 0.548177 | 0.31967 | 0.324926 | 0.005166 |
+| validation | default_0_5 | bankruptcy | None | 140359 | 18901 | 121458 | 0 | 0 | 0 | 18901 | 121458 | 0.134662 | 0.129963 | -0.004699 | 0.11239 | 0.657808 | 0.215552 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.132886 | 0.136458 | 0 | 0.000027 | 0 | 0.000203 | 0 | 0.000032 | 0.005166 |
+| validation | frozen_validation_f1 | bankruptcy | One_or_more | 22211 | 3414 | 18797 | 9348 | 1978 | 7370 | 1436 | 11427 | 0.153708 | 0.143166 | -0.010542 | 0.126922 | 0.626236 | 0.222089 | 0.420873 | 0.579379 | 0.392084 | 0.420621 | 0.211596 | True | supported | 0.147853 | 0.149024 | 0.158511 | 0.414394 | 0.427378 | 0.56274 | 0.59584 | 0.385127 | 0.399085 | 0.010701 |
+| validation | default_0_5 | bankruptcy | One_or_more | 22211 | 3414 | 18797 | 0 | 0 | 0 | 3414 | 18797 | 0.153708 | 0.143166 | -0.010542 | 0.126922 | 0.626236 | 0.222089 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.149024 | 0.158511 | 0 | 0.000173 | 0 | 0.001124 | 0 | 0.000204 | 0.010701 |
+| exploratory_test | frozen_validation_f1 | missingness | Any_missing | 19083 | 4116 | 14967 | 12485 | 3242 | 9243 | 874 | 5724 | 0.215689 | 0.181115 | -0.034574 | 0.164471 | 0.628297 | 0.302675 | 0.654247 | 0.787658 | 0.617559 | 0.212342 | 0.259672 | True | supported | 0.147853 | 0.209911 | 0.221582 | 0.647469 | 0.660964 | 0.774899 | 0.799881 | 0.609744 | 0.625313 | 0.034574 |
+| exploratory_test | default_0_5 | missingness | Any_missing | 19083 | 4116 | 14967 | 0 | 0 | 0 | 4116 | 14967 | 0.215689 | 0.181115 | -0.034574 | 0.164471 | 0.628297 | 0.302675 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.209911 | 0.221582 | 0 | 0.000201 | 0 | 0.000932 | 0 | 0.000257 | 0.034574 |
+| exploratory_test | frozen_validation_f1 | missingness | Complete | 263943 | 38016 | 225927 | 90226 | 19716 | 70510 | 18300 | 155417 | 0.144031 | 0.128688 | -0.015343 | 0.119229 | 0.652037 | 0.225223 | 0.341839 | 0.518624 | 0.312092 | 0.481376 | 0.218518 | True | supported | 0.147853 | 0.142697 | 0.145376 | 0.340032 | 0.343651 | 0.513599 | 0.523644 | 0.310185 | 0.314006 | 0.015367 |
+| exploratory_test | default_0_5 | missingness | Complete | 263943 | 38016 | 225927 | 0 | 0 | 0 | 38016 | 225927 | 0.144031 | 0.128688 | -0.015343 | 0.119229 | 0.652037 | 0.225223 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.142697 | 0.145376 | 0 | 0.000015 | 0 | 0.000101 | 0 | 0.000017 | 0.015367 |
+| validation | frozen_validation_f1 | missingness | Any_missing | 9717 | 1957 | 7760 | 6599 | 1549 | 5050 | 408 | 2710 | 0.2014 | 0.18461 | -0.016789 | 0.157466 | 0.60904 | 0.266703 | 0.679119 | 0.791518 | 0.650773 | 0.208482 | 0.234733 | True | supported | 0.147853 | 0.193544 | 0.209491 | 0.669768 | 0.688328 | 0.772957 | 0.808936 | 0.640094 | 0.661303 | 0.017751 |
+| validation | default_0_5 | missingness | Any_missing | 9717 | 1957 | 7760 | 0 | 0 | 0 | 1957 | 7760 | 0.2014 | 0.18461 | -0.016789 | 0.157466 | 0.60904 | 0.266703 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.193544 | 0.209491 | 0 | 0.000395 | 0 | 0.001959 | 0 | 0.000495 | 0.017751 |
+| validation | frozen_validation_f1 | missingness | Complete | 152853 | 20358 | 132495 | 52121 | 10656 | 41465 | 9702 | 91030 | 0.133187 | 0.128407 | -0.00478 | 0.111636 | 0.653124 | 0.21003 | 0.340988 | 0.523431 | 0.312955 | 0.476569 | 0.204447 | True | supported | 0.147853 | 0.131493 | 0.134899 | 0.338615 | 0.343368 | 0.516566 | 0.530286 | 0.310464 | 0.315457 | 0.005497 |
+| validation | default_0_5 | missingness | Complete | 152853 | 20358 | 132495 | 0 | 0 | 0 | 20358 | 132495 | 0.133187 | 0.128407 | -0.00478 | 0.111636 | 0.653124 | 0.21003 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.131493 | 0.134899 | 0 | 0.000025 | 0 | 0.000189 | 0 | 0.000029 | 0.005497 |
+| exploratory_test | frozen_validation_f1 | state | AK | 650 | 106 | 544 | 227 | 57 | 170 | 49 | 374 | 0.163077 | 0.1308 | -0.032277 | 0.131907 | 0.669274 | 0.251249 | 0.349231 | 0.537736 | 0.3125 | 0.462264 | 0.251101 | True | supported | 0.147853 | 0.13667 | 0.193443 | 0.313565 | 0.386668 | 0.443168 | 0.629664 | 0.274979 | 0.35265 | 0.036412 |
+| exploratory_test | default_0_5 | state | AK | 650 | 106 | 544 | 0 | 0 | 0 | 106 | 544 | 0.163077 | 0.1308 | -0.032277 | 0.131907 | 0.669274 | 0.251249 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13667 | 0.193443 | 0 | 0.005875 | 0 | 0.034973 | 0 | 0.007012 | 0.036412 |
+| exploratory_test | frozen_validation_f1 | state | AL | 3373 | 584 | 2789 | 1411 | 355 | 1056 | 229 | 1733 | 0.17314 | 0.1397 | -0.03344 | 0.138076 | 0.659227 | 0.279389 | 0.418322 | 0.607877 | 0.37863 | 0.392123 | 0.251595 | True | supported | 0.147853 | 0.160744 | 0.186279 | 0.401777 | 0.435053 | 0.567698 | 0.646645 | 0.360807 | 0.396787 | 0.03344 |
+| exploratory_test | default_0_5 | state | AL | 3373 | 584 | 2789 | 0 | 0 | 0 | 584 | 2789 | 0.17314 | 0.1397 | -0.03344 | 0.138076 | 0.659227 | 0.279389 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.160744 | 0.186279 | 0 | 0.001138 | 0 | 0.006535 | 0 | 0.001375 | 0.03344 |
+| exploratory_test | frozen_validation_f1 | state | AR | 2037 | 403 | 1634 | 837 | 210 | 627 | 193 | 1007 | 0.19784 | 0.138665 | -0.059175 | 0.157899 | 0.613321 | 0.280365 | 0.410898 | 0.521092 | 0.383721 | 0.478908 | 0.250896 | True | supported | 0.147853 | 0.181116 | 0.215702 | 0.38972 | 0.432412 | 0.47235 | 0.569435 | 0.360441 | 0.407546 | 0.059175 |
+| exploratory_test | default_0_5 | state | AR | 2037 | 403 | 1634 | 0 | 0 | 0 | 403 | 1634 | 0.19784 | 0.138665 | -0.059175 | 0.157899 | 0.613321 | 0.280365 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.181116 | 0.215702 | 0 | 0.001882 | 0 | 0.009442 | 0 | 0.002345 | 0.059175 |
+| exploratory_test | frozen_validation_f1 | state | AZ | 6652 | 1009 | 5643 | 2545 | 566 | 1979 | 443 | 3664 | 0.151684 | 0.135018 | -0.016666 | 0.124068 | 0.655794 | 0.240712 | 0.382592 | 0.560951 | 0.3507 | 0.439049 | 0.222397 | True | supported | 0.147853 | 0.143265 | 0.160505 | 0.370983 | 0.394336 | 0.530156 | 0.591284 | 0.338355 | 0.363248 | 0.016666 |
+| exploratory_test | default_0_5 | state | AZ | 6652 | 1009 | 5643 | 0 | 0 | 0 | 1009 | 5643 | 0.151684 | 0.135018 | -0.016666 | 0.124068 | 0.655794 | 0.240712 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.143265 | 0.160505 | 0 | 0.000577 | 0 | 0.003793 | 0 | 0.00068 | 0.016666 |
+| exploratory_test | frozen_validation_f1 | state | CA | 41377 | 6314 | 35063 | 14427 | 3428 | 10999 | 2886 | 24064 | 0.152597 | 0.130627 | -0.02197 | 0.124386 | 0.664103 | 0.247519 | 0.348672 | 0.54292 | 0.313692 | 0.45708 | 0.23761 | True | supported | 0.147853 | 0.149164 | 0.156094 | 0.344094 | 0.353278 | 0.530611 | 0.555178 | 0.308856 | 0.318569 | 0.021996 |
+| exploratory_test | default_0_5 | state | CA | 41377 | 6314 | 35063 | 0 | 0 | 0 | 6314 | 35063 | 0.152597 | 0.130627 | -0.02197 | 0.124386 | 0.664103 | 0.247519 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.149164 | 0.156094 | 0 | 0.000093 | 0 | 0.000608 | 0 | 0.00011 | 0.021996 |
+| exploratory_test | frozen_validation_f1 | state | CO | 5967 | 711 | 5256 | 2008 | 392 | 1616 | 319 | 3640 | 0.119155 | 0.128415 | 0.009259 | 0.100729 | 0.678961 | 0.20685 | 0.336518 | 0.551336 | 0.307458 | 0.448664 | 0.195219 | True | supported | 0.147853 | 0.111179 | 0.127621 | 0.324637 | 0.348608 | 0.5146 | 0.587521 | 0.295128 | 0.32007 | 0.009259 |
+| exploratory_test | default_0_5 | state | CO | 5967 | 711 | 5256 | 0 | 0 | 0 | 711 | 5256 | 0.119155 | 0.128415 | 0.009259 | 0.100729 | 0.678961 | 0.20685 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.111179 | 0.127621 | 0 | 0.000643 | 0 | 0.005374 | 0 | 0.00073 | 0.009259 |
+| exploratory_test | frozen_validation_f1 | state | CT | 4221 | 535 | 3686 | 1353 | 259 | 1094 | 276 | 2592 | 0.126747 | 0.126019 | -0.000728 | 0.107706 | 0.645213 | 0.193069 | 0.32054 | 0.484112 | 0.296799 | 0.515888 | 0.191426 | True | supported | 0.147853 | 0.117049 | 0.137124 | 0.30663 | 0.334777 | 0.44203 | 0.526421 | 0.282268 | 0.311752 | 0.00787 |
+| exploratory_test | default_0_5 | state | CT | 4221 | 535 | 3686 | 0 | 0 | 0 | 535 | 3686 | 0.126747 | 0.126019 | -0.000728 | 0.107706 | 0.645213 | 0.193069 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.117049 | 0.137124 | 0 | 0.000909 | 0 | 0.007129 | 0 | 0.001041 | 0.00787 |
+| exploratory_test | frozen_validation_f1 | state | DC | 716 | 80 | 636 | 197 | 44 | 153 | 36 | 483 | 0.111732 | 0.119084 | 0.007352 | 0.094048 | 0.716136 | 0.219883 | 0.27514 | 0.55 | 0.240566 | 0.45 | 0.22335 | True | supported | 0.147853 | 0.090697 | 0.136911 | 0.243694 | 0.308985 | 0.441195 | 0.654223 | 0.208968 | 0.275279 | 0.009446 |
+| exploratory_test | default_0_5 | state | DC | 716 | 80 | 636 | 0 | 0 | 0 | 80 | 636 | 0.111732 | 0.119084 | 0.007352 | 0.094048 | 0.716136 | 0.219883 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.090697 | 0.136911 | 0 | 0.005337 | 0 | 0.045818 | 0 | 0.006004 | 0.009446 |
+| exploratory_test | frozen_validation_f1 | state | DE | 800 | 115 | 685 | 272 | 61 | 211 | 54 | 474 | 0.14375 | 0.128688 | -0.015062 | 0.118453 | 0.663789 | 0.240193 | 0.34 | 0.530435 | 0.308029 | 0.469565 | 0.224265 | True | supported | 0.147853 | 0.12114 | 0.169765 | 0.308008 | 0.373521 | 0.439718 | 0.619184 | 0.274606 | 0.343593 | 0.021426 |
+| exploratory_test | default_0_5 | state | DE | 800 | 115 | 685 | 0 | 0 | 0 | 115 | 685 | 0.14375 | 0.128688 | -0.015062 | 0.118453 | 0.663789 | 0.240193 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.12114 | 0.169765 | 0 | 0.004779 | 0 | 0.032324 | 0 | 0.005577 | 0.021426 |
+| exploratory_test | frozen_validation_f1 | state | FL | 20374 | 3289 | 17085 | 8340 | 1884 | 6456 | 1405 | 10629 | 0.161431 | 0.139845 | -0.021587 | 0.131472 | 0.638764 | 0.24144 | 0.409345 | 0.572818 | 0.377875 | 0.427182 | 0.225899 | True | supported | 0.147853 | 0.156443 | 0.166547 | 0.402611 | 0.416114 | 0.555838 | 0.589629 | 0.370633 | 0.385172 | 0.02178 |
+| exploratory_test | default_0_5 | state | FL | 20374 | 3289 | 17085 | 0 | 0 | 0 | 3289 | 17085 | 0.161431 | 0.139845 | -0.021587 | 0.131472 | 0.638764 | 0.24144 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.156443 | 0.166547 | 0 | 0.000189 | 0 | 0.001167 | 0 | 0.000225 | 0.02178 |
+| exploratory_test | frozen_validation_f1 | state | GA | 9383 | 1206 | 8177 | 3431 | 694 | 2737 | 512 | 5440 | 0.12853 | 0.131939 | 0.003409 | 0.107658 | 0.667199 | 0.216048 | 0.365661 | 0.575456 | 0.334719 | 0.424544 | 0.202273 | True | supported | 0.147853 | 0.12191 | 0.135454 | 0.355973 | 0.375459 | 0.547364 | 0.603069 | 0.324571 | 0.345023 | 0.004998 |
+| exploratory_test | default_0_5 | state | GA | 9383 | 1206 | 8177 | 0 | 0 | 0 | 1206 | 8177 | 0.12853 | 0.131939 | 0.003409 | 0.107658 | 0.667199 | 0.216048 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.12191 | 0.135454 | 0 | 0.000409 | 0 | 0.003175 | 0 | 0.00047 | 0.004998 |
+| exploratory_test | frozen_validation_f1 | state | HI | 1401 | 192 | 1209 | 639 | 119 | 520 | 73 | 689 | 0.137045 | 0.146394 | 0.009349 | 0.115448 | 0.633392 | 0.203874 | 0.456103 | 0.619792 | 0.430108 | 0.380208 | 0.186228 | True | supported | 0.147853 | 0.120027 | 0.156048 | 0.430178 | 0.482268 | 0.549414 | 0.68547 | 0.402465 | 0.458193 | 0.012688 |
+| exploratory_test | default_0_5 | state | HI | 1401 | 192 | 1209 | 0 | 0 | 0 | 192 | 1209 | 0.137045 | 0.146394 | 0.009349 | 0.115448 | 0.633392 | 0.203874 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.120027 | 0.156048 | 0 | 0.002734 | 0 | 0.019615 | 0 | 0.003167 | 0.012688 |
+| exploratory_test | frozen_validation_f1 | state | IL | 11609 | 1520 | 10089 | 3954 | 783 | 3171 | 737 | 6918 | 0.130933 | 0.128913 | -0.00202 | 0.109803 | 0.657597 | 0.212899 | 0.340598 | 0.515132 | 0.314303 | 0.484868 | 0.198027 | True | supported | 0.147853 | 0.124919 | 0.137191 | 0.332031 | 0.34927 | 0.490001 | 0.540186 | 0.305316 | 0.323431 | 0.007068 |
+| exploratory_test | default_0_5 | state | IL | 11609 | 1520 | 10089 | 0 | 0 | 0 | 1520 | 10089 | 0.130933 | 0.128913 | -0.00202 | 0.109803 | 0.657597 | 0.212899 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.124919 | 0.137191 | 0 | 0.000331 | 0 | 0.002521 | 0 | 0.000381 | 0.007068 |
+| exploratory_test | frozen_validation_f1 | state | IN | 4597 | 730 | 3867 | 1783 | 414 | 1369 | 316 | 2498 | 0.158799 | 0.135005 | -0.023794 | 0.129106 | 0.65313 | 0.24873 | 0.387862 | 0.567123 | 0.354021 | 0.432877 | 0.232193 | True | supported | 0.147853 | 0.148519 | 0.169649 | 0.373875 | 0.402035 | 0.530922 | 0.602622 | 0.3391 | 0.369232 | 0.023794 |
+| exploratory_test | default_0_5 | state | IN | 4597 | 730 | 3867 | 0 | 0 | 0 | 730 | 3867 | 0.158799 | 0.135005 | -0.023794 | 0.129106 | 0.65313 | 0.24873 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.148519 | 0.169649 | 0 | 0.000835 | 0 | 0.005235 | 0 | 0.000992 | 0.023794 |
+| exploratory_test | frozen_validation_f1 | state | KS | 2413 | 290 | 2123 | 866 | 162 | 704 | 128 | 1419 | 0.120182 | 0.132372 | 0.01219 | 0.102545 | 0.657536 | 0.197439 | 0.358889 | 0.558621 | 0.331606 | 0.441379 | 0.187067 | True | supported | 0.147853 | 0.107808 | 0.133764 | 0.339989 | 0.378239 | 0.501074 | 0.614634 | 0.3119 | 0.351921 | 0.01624 |
+| exploratory_test | default_0_5 | state | KS | 2413 | 290 | 2123 | 0 | 0 | 0 | 290 | 2123 | 0.120182 | 0.132372 | 0.01219 | 0.102545 | 0.657536 | 0.197439 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.107808 | 0.133764 | 0 | 0.001589 | 0 | 0.013073 | 0 | 0.001806 | 0.01624 |
+| exploratory_test | frozen_validation_f1 | state | KY | 2607 | 404 | 2203 | 986 | 222 | 764 | 182 | 1439 | 0.154967 | 0.133925 | -0.021042 | 0.126741 | 0.650207 | 0.242565 | 0.378213 | 0.549505 | 0.3468 | 0.450495 | 0.225152 | True | supported | 0.147853 | 0.141585 | 0.169365 | 0.359789 | 0.396994 | 0.500749 | 0.597328 | 0.327207 | 0.366926 | 0.021042 |
+| exploratory_test | default_0_5 | state | KY | 2607 | 404 | 2203 | 0 | 0 | 0 | 404 | 2203 | 0.154967 | 0.133925 | -0.021042 | 0.126741 | 0.650207 | 0.242565 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.141585 | 0.169365 | 0 | 0.001471 | 0 | 0.009419 | 0 | 0.001741 | 0.021042 |
+| exploratory_test | frozen_validation_f1 | state | LA | 3294 | 584 | 2710 | 1217 | 309 | 908 | 275 | 1802 | 0.177292 | 0.132432 | -0.04486 | 0.142823 | 0.643285 | 0.261779 | 0.36946 | 0.52911 | 0.335055 | 0.47089 | 0.253903 | True | supported | 0.147853 | 0.164628 | 0.190708 | 0.353138 | 0.386085 | 0.488568 | 0.56927 | 0.317529 | 0.353049 | 0.045136 |
+| exploratory_test | default_0_5 | state | LA | 3294 | 584 | 2710 | 0 | 0 | 0 | 584 | 2710 | 0.177292 | 0.132432 | -0.04486 | 0.142823 | 0.643285 | 0.261779 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.164628 | 0.190708 | 0 | 0.001165 | 0 | 0.006535 | 0 | 0.001416 | 0.045136 |
+| exploratory_test | frozen_validation_f1 | state | MA | 6370 | 830 | 5540 | 1910 | 417 | 1493 | 413 | 4047 | 0.130298 | 0.121726 | -0.008572 | 0.108611 | 0.676917 | 0.222098 | 0.299843 | 0.50241 | 0.269495 | 0.49759 | 0.218325 | True | supported | 0.147853 | 0.122254 | 0.138788 | 0.288715 | 0.311213 | 0.468462 | 0.536335 | 0.257974 | 0.281335 | 0.009298 |
+| exploratory_test | default_0_5 | state | MA | 6370 | 830 | 5540 | 0 | 0 | 0 | 830 | 5540 | 0.130298 | 0.121726 | -0.008572 | 0.108611 | 0.676917 | 0.222098 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.122254 | 0.138788 | 0 | 0.000603 | 0 | 0.004607 | 0 | 0.000693 | 0.009298 |
+| exploratory_test | frozen_validation_f1 | state | MD | 6467 | 980 | 5487 | 2069 | 488 | 1581 | 492 | 3906 | 0.151539 | 0.125877 | -0.025661 | 0.124017 | 0.658626 | 0.249603 | 0.319932 | 0.497959 | 0.288136 | 0.502041 | 0.235863 | True | supported | 0.147853 | 0.143006 | 0.160485 | 0.308673 | 0.331404 | 0.466724 | 0.52921 | 0.276304 | 0.300264 | 0.025792 |
+| exploratory_test | default_0_5 | state | MD | 6467 | 980 | 5487 | 0 | 0 | 0 | 980 | 5487 | 0.151539 | 0.125877 | -0.025661 | 0.124017 | 0.658626 | 0.249603 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.143006 | 0.160485 | 0 | 0.000594 | 0 | 0.003905 | 0 | 0.0007 | 0.025792 |
+| exploratory_test | frozen_validation_f1 | state | ME | 334 | 35 | 299 | 132 | 20 | 112 | 15 | 187 | 0.10479 | 0.138137 | 0.033347 | 0.089831 | 0.694314 | 0.271056 | 0.39521 | 0.571429 | 0.374582 | 0.428571 | 0.151515 | False | small_total,few_charged_off | 0.147853 | 0.076317 | 0.142252 | 0.344255 | 0.448547 | 0.408574 | 0.720154 | 0.321637 | 0.430709 | 0.039327 |
+| exploratory_test | default_0_5 | state | ME | 334 | 35 | 299 | 0 | 0 | 0 | 35 | 299 | 0.10479 | 0.138137 | 0.033347 | 0.089831 | 0.694314 | 0.271056 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.076317 | 0.142252 | 0 | 0.011371 | 0 | 0.098901 | 0 | 0.012685 | 0.039327 |
+| exploratory_test | frozen_validation_f1 | state | MI | 7737 | 1126 | 6611 | 3006 | 654 | 2352 | 472 | 4259 | 0.145534 | 0.136468 | -0.009067 | 0.11954 | 0.657029 | 0.240317 | 0.388523 | 0.580817 | 0.355771 | 0.419183 | 0.217565 | True | supported | 0.147853 | 0.137853 | 0.153568 | 0.37772 | 0.399436 | 0.55177 | 0.609315 | 0.344317 | 0.367392 | 0.00917 |
+| exploratory_test | default_0_5 | state | MI | 7737 | 1126 | 6611 | 0 | 0 | 0 | 1126 | 6611 | 0.145534 | 0.136468 | -0.009067 | 0.11954 | 0.657029 | 0.240317 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.137853 | 0.153568 | 0 | 0.000496 | 0 | 0.0034 | 0 | 0.000581 | 0.00917 |
+| exploratory_test | frozen_validation_f1 | state | MN | 5094 | 753 | 4341 | 1802 | 391 | 1411 | 362 | 2930 | 0.147821 | 0.130566 | -0.017255 | 0.12163 | 0.653171 | 0.235601 | 0.35375 | 0.519256 | 0.32504 | 0.480744 | 0.216981 | True | supported | 0.147853 | 0.13834 | 0.157833 | 0.340734 | 0.366985 | 0.483563 | 0.554754 | 0.311267 | 0.339123 | 0.017255 |
+| exploratory_test | default_0_5 | state | MN | 5094 | 753 | 4341 | 0 | 0 | 0 | 753 | 4341 | 0.147821 | 0.130566 | -0.017255 | 0.12163 | 0.653171 | 0.235601 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13834 | 0.157833 | 0 | 0.000754 | 0 | 0.005076 | 0 | 0.000884 | 0.017255 |
+| exploratory_test | frozen_validation_f1 | state | MO | 4378 | 695 | 3683 | 1631 | 416 | 1215 | 279 | 2468 | 0.158748 | 0.133159 | -0.025589 | 0.127102 | 0.684441 | 0.281258 | 0.372545 | 0.598561 | 0.329894 | 0.401439 | 0.255058 | True | supported | 0.147853 | 0.148223 | 0.169872 | 0.358341 | 0.386972 | 0.561672 | 0.634367 | 0.314894 | 0.345249 | 0.025589 |
+| exploratory_test | default_0_5 | state | MO | 4378 | 695 | 3683 | 0 | 0 | 0 | 695 | 3683 | 0.158748 | 0.133159 | -0.025589 | 0.127102 | 0.684441 | 0.281258 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.148223 | 0.169872 | 0 | 0.000877 | 0 | 0.005497 | 0 | 0.001042 | 0.025589 |
+| exploratory_test | frozen_validation_f1 | state | MS | 1718 | 326 | 1392 | 747 | 197 | 550 | 129 | 842 | 0.189756 | 0.142731 | -0.047025 | 0.151603 | 0.626558 | 0.262936 | 0.434808 | 0.604294 | 0.395115 | 0.395706 | 0.263722 | True | supported | 0.147853 | 0.171914 | 0.208981 | 0.411538 | 0.458369 | 0.550294 | 0.655866 | 0.369755 | 0.421052 | 0.047497 |
+| exploratory_test | default_0_5 | state | MS | 1718 | 326 | 1392 | 0 | 0 | 0 | 326 | 1392 | 0.189756 | 0.142731 | -0.047025 | 0.151603 | 0.626558 | 0.262936 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.171914 | 0.208981 | 0 | 0.002231 | 0 | 0.011646 | 0 | 0.002752 | 0.047497 |
+| exploratory_test | frozen_validation_f1 | state | MT | 796 | 107 | 689 | 300 | 52 | 248 | 55 | 441 | 0.134422 | 0.133238 | -0.001184 | 0.11497 | 0.609633 | 0.176921 | 0.376884 | 0.485981 | 0.359942 | 0.514019 | 0.173333 | True | supported | 0.147853 | 0.112473 | 0.159882 | 0.343886 | 0.411065 | 0.39342 | 0.579514 | 0.32497 | 0.396467 | 0.017975 |
+| exploratory_test | default_0_5 | state | MT | 796 | 107 | 689 | 0 | 0 | 0 | 107 | 689 | 0.134422 | 0.133238 | -0.001184 | 0.11497 | 0.609633 | 0.176921 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.112473 | 0.159882 | 0 | 0.004803 | 0 | 0.034657 | 0 | 0.005544 | 0.017975 |
+| exploratory_test | frozen_validation_f1 | state | NC | 7644 | 1166 | 6478 | 2794 | 625 | 2169 | 541 | 4309 | 0.152538 | 0.133298 | -0.01924 | 0.125183 | 0.645227 | 0.24069 | 0.365515 | 0.536021 | 0.334826 | 0.463979 | 0.223694 | True | supported | 0.147853 | 0.144653 | 0.160772 | 0.35479 | 0.376376 | 0.507325 | 0.56448 | 0.323434 | 0.346413 | 0.01924 |
+| exploratory_test | default_0_5 | state | NC | 7644 | 1166 | 6478 | 0 | 0 | 0 | 1166 | 6478 | 0.152538 | 0.133298 | -0.01924 | 0.125183 | 0.645227 | 0.24069 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.144653 | 0.160772 | 0 | 0.000502 | 0 | 0.003284 | 0 | 0.000593 | 0.01924 |
+| exploratory_test | frozen_validation_f1 | state | ND | 311 | 49 | 262 | 143 | 30 | 113 | 19 | 149 | 0.157556 | 0.142873 | -0.014683 | 0.129733 | 0.620891 | 0.233837 | 0.459807 | 0.612245 | 0.431298 | 0.387755 | 0.20979 | False | small_total,few_charged_off | 0.147853 | 0.121275 | 0.202194 | 0.405244 | 0.515351 | 0.47246 | 0.73571 | 0.372748 | 0.491833 | 0.024481 |
+| exploratory_test | default_0_5 | state | ND | 311 | 49 | 262 | 0 | 0 | 0 | 49 | 262 | 0.157556 | 0.142873 | -0.014683 | 0.129733 | 0.620891 | 0.233837 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.121275 | 0.202194 | 0 | 0.012201 | 0 | 0.072698 | 0 | 0.01445 | 0.024481 |
+| exploratory_test | frozen_validation_f1 | state | NE | 754 | 145 | 609 | 329 | 91 | 238 | 54 | 371 | 0.192308 | 0.142625 | -0.049683 | 0.149866 | 0.679203 | 0.309141 | 0.43634 | 0.627586 | 0.390805 | 0.372414 | 0.276596 | True | supported | 0.147853 | 0.165765 | 0.22197 | 0.401352 | 0.471972 | 0.546557 | 0.70203 | 0.352852 | 0.430126 | 0.053013 |
+| exploratory_test | default_0_5 | state | NE | 754 | 145 | 609 | 0 | 0 | 0 | 145 | 609 | 0.192308 | 0.142625 | -0.049683 | 0.149866 | 0.679203 | 0.309141 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.165765 | 0.22197 | 0 | 0.005069 | 0 | 0.025809 | 0 | 0.006268 | 0.053013 |
+| exploratory_test | frozen_validation_f1 | state | NH | 1384 | 129 | 1255 | 450 | 67 | 383 | 62 | 872 | 0.093208 | 0.12668 | 0.033472 | 0.083954 | 0.65015 | 0.164835 | 0.325145 | 0.51938 | 0.305179 | 0.48062 | 0.148889 | True | supported | 0.147853 | 0.078997 | 0.109671 | 0.300979 | 0.350278 | 0.433856 | 0.603783 | 0.280329 | 0.331218 | 0.034163 |
+| exploratory_test | default_0_5 | state | NH | 1384 | 129 | 1255 | 0 | 0 | 0 | 129 | 1255 | 0.093208 | 0.12668 | 0.033472 | 0.083954 | 0.65015 | 0.164835 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.078997 | 0.109671 | 0 | 0.002768 | 0 | 0.028918 | 0 | 0.003052 | 0.034163 |
+| exploratory_test | frozen_validation_f1 | state | NJ | 10088 | 1590 | 8498 | 3348 | 760 | 2588 | 830 | 5910 | 0.157613 | 0.12711 | -0.030503 | 0.129593 | 0.641248 | 0.233008 | 0.331879 | 0.477987 | 0.304542 | 0.522013 | 0.227001 | True | supported | 0.147853 | 0.150633 | 0.164854 | 0.322756 | 0.341131 | 0.453517 | 0.502564 | 0.294848 | 0.314413 | 0.030799 |
+| exploratory_test | default_0_5 | state | NJ | 10088 | 1590 | 8498 | 0 | 0 | 0 | 1590 | 8498 | 0.157613 | 0.12711 | -0.030503 | 0.129593 | 0.641248 | 0.233008 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.150633 | 0.164854 | 0 | 0.000381 | 0 | 0.00241 | 0 | 0.000452 | 0.030799 |
+| exploratory_test | frozen_validation_f1 | state | NM | 1588 | 251 | 1337 | 641 | 141 | 500 | 110 | 837 | 0.15806 | 0.139275 | -0.018785 | 0.129212 | 0.635647 | 0.241476 | 0.403652 | 0.561753 | 0.373972 | 0.438247 | 0.219969 | True | supported | 0.147853 | 0.140946 | 0.176825 | 0.379782 | 0.427988 | 0.499897 | 0.621747 | 0.348432 | 0.400234 | 0.019379 |
+| exploratory_test | default_0_5 | state | NM | 1588 | 251 | 1337 | 0 | 0 | 0 | 251 | 1337 | 0.15806 | 0.139275 | -0.018785 | 0.129212 | 0.635647 | 0.241476 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.140946 | 0.176825 | 0 | 0.002413 | 0 | 0.015074 | 0 | 0.002865 | 0.019379 |
+| exploratory_test | frozen_validation_f1 | state | NV | 4250 | 775 | 3475 | 1808 | 444 | 1364 | 331 | 2111 | 0.182353 | 0.142082 | -0.040271 | 0.145737 | 0.634593 | 0.269012 | 0.425412 | 0.572903 | 0.392518 | 0.427097 | 0.245575 | True | supported | 0.147853 | 0.171033 | 0.194247 | 0.410622 | 0.440337 | 0.537802 | 0.607285 | 0.37641 | 0.408864 | 0.040271 |
+| exploratory_test | default_0_5 | state | NV | 4250 | 775 | 3475 | 0 | 0 | 0 | 775 | 3475 | 0.182353 | 0.142082 | -0.040271 | 0.145737 | 0.634593 | 0.269012 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.171033 | 0.194247 | 0 | 0.000903 | 0 | 0.004932 | 0 | 0.001104 | 0.040271 |
+| exploratory_test | frozen_validation_f1 | state | NY | 23386 | 3831 | 19555 | 8312 | 2005 | 6307 | 1826 | 13248 | 0.163816 | 0.131644 | -0.032172 | 0.133168 | 0.647504 | 0.247161 | 0.355426 | 0.523362 | 0.322526 | 0.476638 | 0.241218 | True | supported | 0.147853 | 0.159128 | 0.168615 | 0.349316 | 0.361584 | 0.507531 | 0.539146 | 0.31601 | 0.329112 | 0.03229 |
+| exploratory_test | default_0_5 | state | NY | 23386 | 3831 | 19555 | 0 | 0 | 0 | 3831 | 19555 | 0.163816 | 0.131644 | -0.032172 | 0.133168 | 0.647504 | 0.247161 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.159128 | 0.168615 | 0 | 0.000164 | 0 | 0.001002 | 0 | 0.000196 | 0.03229 |
+| exploratory_test | frozen_validation_f1 | state | OH | 9168 | 1433 | 7735 | 3593 | 845 | 2748 | 588 | 4987 | 0.156305 | 0.136127 | -0.020178 | 0.126495 | 0.666486 | 0.257899 | 0.391907 | 0.589672 | 0.355268 | 0.410328 | 0.23518 | True | supported | 0.147853 | 0.149015 | 0.163882 | 0.381961 | 0.401943 | 0.563997 | 0.614867 | 0.344677 | 0.366003 | 0.020354 |
+| exploratory_test | default_0_5 | state | OH | 9168 | 1433 | 7735 | 0 | 0 | 0 | 1433 | 7735 | 0.156305 | 0.136127 | -0.020178 | 0.126495 | 0.666486 | 0.257899 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.149015 | 0.163882 | 0 | 0.000419 | 0 | 0.002674 | 0 | 0.000496 | 0.020354 |
+| exploratory_test | frozen_validation_f1 | state | OK | 2596 | 480 | 2116 | 944 | 262 | 682 | 218 | 1434 | 0.1849 | 0.133125 | -0.051775 | 0.147727 | 0.647949 | 0.278766 | 0.363636 | 0.545833 | 0.322306 | 0.454167 | 0.277542 | True | supported | 0.147853 | 0.170435 | 0.200295 | 0.345346 | 0.38233 | 0.501104 | 0.589835 | 0.30273 | 0.342526 | 0.051775 |
+| exploratory_test | default_0_5 | state | OK | 2596 | 480 | 2116 | 0 | 0 | 0 | 480 | 2116 | 0.1849 | 0.133125 | -0.051775 | 0.147727 | 0.647949 | 0.278766 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.170435 | 0.200295 | 0 | 0.001478 | 0 | 0.007939 | 0 | 0.001812 | 0.051775 |
+| exploratory_test | frozen_validation_f1 | state | OR | 3399 | 350 | 3049 | 1327 | 217 | 1110 | 133 | 1939 | 0.102971 | 0.136774 | 0.033802 | 0.090581 | 0.66787 | 0.177216 | 0.390409 | 0.62 | 0.364054 | 0.38 | 0.163527 | True | supported | 0.147853 | 0.093198 | 0.113641 | 0.374141 | 0.406924 | 0.568106 | 0.669288 | 0.347156 | 0.381294 | 0.033802 |
+| exploratory_test | default_0_5 | state | OR | 3399 | 350 | 3049 | 0 | 0 | 0 | 350 | 3049 | 0.102971 | 0.136774 | 0.033802 | 0.090581 | 0.66787 | 0.177216 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.093198 | 0.113641 | 0 | 0.001129 | 0 | 0.010856 | 0 | 0.001258 | 0.033802 |
+| exploratory_test | frozen_validation_f1 | state | PA | 9505 | 1434 | 8071 | 3578 | 767 | 2811 | 667 | 5260 | 0.150868 | 0.133653 | -0.017215 | 0.124398 | 0.637539 | 0.230748 | 0.376433 | 0.534868 | 0.348284 | 0.465132 | 0.214366 | True | supported | 0.147853 | 0.143814 | 0.158204 | 0.366745 | 0.386222 | 0.508993 | 0.560556 | 0.337964 | 0.358748 | 0.017282 |
+| exploratory_test | default_0_5 | state | PA | 9505 | 1434 | 8071 | 0 | 0 | 0 | 1434 | 8071 | 0.150868 | 0.133653 | -0.017215 | 0.124398 | 0.637539 | 0.230748 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.143814 | 0.158204 | 0 | 0.000404 | 0 | 0.002672 | 0 | 0.000476 | 0.017282 |
+| exploratory_test | frozen_validation_f1 | state | RI | 1228 | 169 | 1059 | 423 | 91 | 332 | 78 | 727 | 0.137622 | 0.127807 | -0.009815 | 0.11542 | 0.644831 | 0.2147 | 0.344463 | 0.538462 | 0.313503 | 0.461538 | 0.21513 | True | supported | 0.147853 | 0.119481 | 0.158024 | 0.318407 | 0.371488 | 0.463282 | 0.611932 | 0.286279 | 0.342076 | 0.024302 |
+| exploratory_test | default_0_5 | state | RI | 1228 | 169 | 1059 | 0 | 0 | 0 | 169 | 1059 | 0.137622 | 0.127807 | -0.009815 | 0.11542 | 0.644831 | 0.2147 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.119481 | 0.158024 | 0 | 0.003118 | 0 | 0.022225 | 0 | 0.003614 | 0.024302 |
+| exploratory_test | frozen_validation_f1 | state | SC | 3182 | 370 | 2812 | 1291 | 221 | 1070 | 149 | 1742 | 0.116279 | 0.13828 | 0.022001 | 0.099643 | 0.663437 | 0.197918 | 0.40572 | 0.597297 | 0.380512 | 0.402703 | 0.171185 | True | supported | 0.147853 | 0.105601 | 0.127883 | 0.388782 | 0.422885 | 0.546572 | 0.646023 | 0.362742 | 0.398608 | 0.023669 |
+| exploratory_test | default_0_5 | state | SC | 3182 | 370 | 2812 | 0 | 0 | 0 | 370 | 2812 | 0.116279 | 0.13828 | 0.022001 | 0.099643 | 0.663437 | 0.197918 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.105601 | 0.127883 | 0 | 0.001206 | 0 | 0.010276 | 0 | 0.001364 | 0.023669 |
+| exploratory_test | frozen_validation_f1 | state | SD | 550 | 97 | 453 | 215 | 58 | 157 | 39 | 296 | 0.176364 | 0.135706 | -0.040657 | 0.139851 | 0.660613 | 0.314224 | 0.390909 | 0.597938 | 0.346578 | 0.402062 | 0.269767 | True | supported | 0.147853 | 0.146788 | 0.210429 | 0.351021 | 0.432311 | 0.498437 | 0.689978 | 0.304212 | 0.391525 | 0.040657 |
+| exploratory_test | default_0_5 | state | SD | 550 | 97 | 453 | 0 | 0 | 0 | 97 | 453 | 0.176364 | 0.135706 | -0.040657 | 0.139851 | 0.660613 | 0.314224 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.146788 | 0.210429 | 0 | 0.006936 | 0 | 0.038094 | 0 | 0.008409 | 0.040657 |
+| exploratory_test | frozen_validation_f1 | state | TN | 4428 | 707 | 3721 | 1738 | 437 | 1301 | 270 | 2420 | 0.159666 | 0.136983 | -0.022683 | 0.127958 | 0.679082 | 0.271689 | 0.392502 | 0.618105 | 0.349637 | 0.381895 | 0.251438 | True | supported | 0.147853 | 0.149173 | 0.170749 | 0.378219 | 0.406972 | 0.581745 | 0.653188 | 0.334478 | 0.365107 | 0.022866 |
+| exploratory_test | default_0_5 | state | TN | 4428 | 707 | 3721 | 0 | 0 | 0 | 707 | 3721 | 0.159666 | 0.136983 | -0.022683 | 0.127958 | 0.679082 | 0.271689 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.149173 | 0.170749 | 0 | 0.000867 | 0 | 0.005404 | 0 | 0.001031 | 0.022866 |
+| exploratory_test | frozen_validation_f1 | state | TX | 23530 | 3515 | 20015 | 8055 | 1799 | 6256 | 1716 | 13759 | 0.149384 | 0.128547 | -0.020837 | 0.123264 | 0.643621 | 0.232694 | 0.342329 | 0.511807 | 0.312566 | 0.488193 | 0.22334 | True | supported | 0.147853 | 0.144886 | 0.153996 | 0.336292 | 0.348417 | 0.495278 | 0.528309 | 0.30618 | 0.319023 | 0.020837 |
+| exploratory_test | default_0_5 | state | TX | 23530 | 3515 | 20015 | 0 | 0 | 0 | 3515 | 20015 | 0.149384 | 0.128547 | -0.020837 | 0.123264 | 0.643621 | 0.232694 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.144886 | 0.153996 | 0 | 0.000163 | 0 | 0.001092 | 0 | 0.000192 | 0.020837 |
+| exploratory_test | frozen_validation_f1 | state | UT | 1802 | 243 | 1559 | 700 | 141 | 559 | 102 | 1000 | 0.13485 | 0.135382 | 0.000532 | 0.111337 | 0.672973 | 0.244796 | 0.388457 | 0.580247 | 0.358563 | 0.419753 | 0.201429 | True | supported | 0.147853 | 0.119854 | 0.1514 | 0.366213 | 0.411176 | 0.517419 | 0.640577 | 0.335132 | 0.38269 | 0.008705 |
+| exploratory_test | default_0_5 | state | UT | 1802 | 243 | 1559 | 0 | 0 | 0 | 243 | 1559 | 0.13485 | 0.135382 | 0.000532 | 0.111337 | 0.672973 | 0.244796 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.119854 | 0.1514 | 0 | 0.002127 | 0 | 0.015562 | 0 | 0.002458 | 0.008705 |
+| exploratory_test | frozen_validation_f1 | state | VA | 7659 | 1063 | 6596 | 2514 | 559 | 1955 | 504 | 4641 | 0.138791 | 0.126592 | -0.012199 | 0.115144 | 0.665496 | 0.220186 | 0.328241 | 0.52587 | 0.296392 | 0.47413 | 0.222355 | True | supported | 0.147853 | 0.131229 | 0.146715 | 0.317813 | 0.338841 | 0.495814 | 0.55574 | 0.285492 | 0.307528 | 0.014632 |
+| exploratory_test | default_0_5 | state | VA | 7659 | 1063 | 6596 | 0 | 0 | 0 | 1063 | 6596 | 0.138791 | 0.126592 | -0.012199 | 0.115144 | 0.665496 | 0.220186 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.131229 | 0.146715 | 0 | 0.000501 | 0 | 0.003601 | 0 | 0.000582 | 0.014632 |
+| exploratory_test | frozen_validation_f1 | state | VT | 588 | 55 | 533 | 207 | 34 | 173 | 21 | 360 | 0.093537 | 0.129865 | 0.036328 | 0.085496 | 0.634522 | 0.136753 | 0.352041 | 0.618182 | 0.324578 | 0.381818 | 0.164251 | True | supported | 0.147853 | 0.072569 | 0.119783 | 0.314511 | 0.391491 | 0.486092 | 0.73484 | 0.286206 | 0.36546 | 0.036328 |
+| exploratory_test | default_0_5 | state | VT | 588 | 55 | 533 | 0 | 0 | 0 | 55 | 533 | 0.093537 | 0.129865 | 0.036328 | 0.085496 | 0.634522 | 0.136753 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.072569 | 0.119783 | 0 | 0.006491 | 0 | 0.065285 | 0 | 0.007156 | 0.036328 |
+| exploratory_test | frozen_validation_f1 | state | WA | 6017 | 684 | 5333 | 2204 | 384 | 1820 | 300 | 3513 | 0.113678 | 0.133061 | 0.019383 | 0.098066 | 0.652241 | 0.193958 | 0.366295 | 0.561404 | 0.341271 | 0.438596 | 0.174229 | True | supported | 0.147853 | 0.105903 | 0.121946 | 0.354211 | 0.378551 | 0.523976 | 0.598145 | 0.328664 | 0.354107 | 0.022474 |
+| exploratory_test | default_0_5 | state | WA | 6017 | 684 | 5333 | 0 | 0 | 0 | 684 | 5333 | 0.113678 | 0.133061 | 0.019383 | 0.098066 | 0.652241 | 0.193958 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.105903 | 0.121946 | 0 | 0.000638 | 0 | 0.005585 | 0 | 0.00072 | 0.022474 |
+| exploratory_test | frozen_validation_f1 | state | WI | 3827 | 454 | 3373 | 1338 | 259 | 1079 | 195 | 2294 | 0.118631 | 0.130552 | 0.011921 | 0.100611 | 0.672134 | 0.205464 | 0.349621 | 0.570485 | 0.319893 | 0.429515 | 0.193572 | True | supported | 0.147853 | 0.108767 | 0.12926 | 0.334671 | 0.364873 | 0.524547 | 0.615239 | 0.304365 | 0.335831 | 0.014974 |
+| exploratory_test | default_0_5 | state | WI | 3827 | 454 | 3373 | 0 | 0 | 0 | 454 | 3373 | 0.118631 | 0.130552 | 0.011921 | 0.100611 | 0.672134 | 0.205464 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.108767 | 0.12926 | 0 | 0.001003 | 0 | 0.00839 | 0 | 0.001138 | 0.014974 |
+| exploratory_test | frozen_validation_f1 | state | WV | 1182 | 144 | 1038 | 454 | 87 | 367 | 57 | 671 | 0.121827 | 0.134324 | 0.012496 | 0.103101 | 0.662452 | 0.218536 | 0.384095 | 0.604167 | 0.353565 | 0.395833 | 0.19163 | True | supported | 0.147853 | 0.104396 | 0.141709 | 0.356785 | 0.412156 | 0.522585 | 0.680335 | 0.32507 | 0.383139 | 0.013509 |
+| exploratory_test | default_0_5 | state | WV | 1182 | 144 | 1038 | 0 | 0 | 0 | 144 | 1038 | 0.121827 | 0.134324 | 0.012496 | 0.103101 | 0.662452 | 0.218536 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.104396 | 0.141709 | 0 | 0.003239 | 0 | 0.025984 | 0 | 0.003687 | 0.013509 |
+| exploratory_test | frozen_validation_f1 | state | WY | 595 | 74 | 521 | 215 | 40 | 175 | 34 | 346 | 0.12437 | 0.128555 | 0.004185 | 0.105765 | 0.641671 | 0.208176 | 0.361345 | 0.540541 | 0.335893 | 0.459459 | 0.186047 | True | supported | 0.147853 | 0.100239 | 0.15332 | 0.323748 | 0.40072 | 0.427813 | 0.649266 | 0.296669 | 0.377518 | 0.009548 |
+| exploratory_test | default_0_5 | state | WY | 595 | 74 | 521 | 0 | 0 | 0 | 74 | 521 | 0.12437 | 0.128555 | 0.004185 | 0.105765 | 0.641671 | 0.208176 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.100239 | 0.15332 | 0 | 0.006415 | 0 | 0.04935 | 0 | 0.007319 | 0.009548 |
+| validation | frozen_validation_f1 | state | AK | 417 | 47 | 370 | 137 | 23 | 114 | 24 | 256 | 0.11271 | 0.126182 | 0.013472 | 0.098173 | 0.632605 | 0.184854 | 0.328537 | 0.489362 | 0.308108 | 0.510638 | 0.167883 | False | small_total,few_charged_off | 0.147853 | 0.085825 | 0.146665 | 0.285201 | 0.375003 | 0.352756 | 0.627575 | 0.263235 | 0.356925 | 0.027923 |
+| validation | default_0_5 | state | AK | 417 | 47 | 370 | 0 | 0 | 0 | 47 | 370 | 0.11271 | 0.126182 | 0.013472 | 0.098173 | 0.632605 | 0.184854 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.085825 | 0.146665 | 0 | 0.009128 | 0 | 0.075558 | 0 | 0.010276 | 0.027923 |
+| validation | frozen_validation_f1 | state | AL | 1935 | 323 | 1612 | 776 | 192 | 584 | 131 | 1028 | 0.166925 | 0.137102 | -0.029823 | 0.13551 | 0.641163 | 0.247833 | 0.401034 | 0.594427 | 0.362283 | 0.405573 | 0.247423 | True | supported | 0.147853 | 0.150973 | 0.184197 | 0.379413 | 0.423046 | 0.540075 | 0.64656 | 0.339172 | 0.386049 | 0.031294 |
+| validation | default_0_5 | state | AL | 1935 | 323 | 1612 | 0 | 0 | 0 | 323 | 1612 | 0.166925 | 0.137102 | -0.029823 | 0.13551 | 0.641163 | 0.247833 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.150973 | 0.184197 | 0 | 0.001981 | 0 | 0.011753 | 0 | 0.002377 | 0.031294 |
+| validation | frozen_validation_f1 | state | AR | 1243 | 197 | 1046 | 500 | 114 | 386 | 83 | 660 | 0.158488 | 0.136732 | -0.021756 | 0.129727 | 0.637798 | 0.238784 | 0.402253 | 0.57868 | 0.369025 | 0.42132 | 0.228 | True | supported | 0.147853 | 0.139242 | 0.179838 | 0.375334 | 0.429773 | 0.50887 | 0.64548 | 0.340311 | 0.398697 | 0.023191 |
+| validation | default_0_5 | state | AR | 1243 | 197 | 1046 | 0 | 0 | 0 | 197 | 1046 | 0.158488 | 0.136732 | -0.021756 | 0.129727 | 0.637798 | 0.238784 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.139242 | 0.179838 | 0 | 0.003081 | 0 | 0.019127 | 0 | 0.003659 | 0.023191 |
+| validation | frozen_validation_f1 | state | AZ | 3889 | 541 | 3348 | 1442 | 310 | 1132 | 231 | 2216 | 0.13911 | 0.133867 | -0.005243 | 0.115288 | 0.659635 | 0.228358 | 0.370789 | 0.573013 | 0.338112 | 0.426987 | 0.214979 | True | supported | 0.147853 | 0.12859 | 0.150343 | 0.355743 | 0.386091 | 0.530961 | 0.614035 | 0.322282 | 0.354314 | 0.008885 |
+| validation | default_0_5 | state | AZ | 3889 | 541 | 3348 | 0 | 0 | 0 | 541 | 3348 | 0.13911 | 0.133867 | -0.005243 | 0.115288 | 0.659635 | 0.228358 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.12859 | 0.150343 | 0 | 0.000987 | 0 | 0.007051 | 0 | 0.001146 | 0.008885 |
+| validation | frozen_validation_f1 | state | CA | 24339 | 3440 | 20899 | 8622 | 1937 | 6685 | 1503 | 14214 | 0.141337 | 0.131634 | -0.009703 | 0.116208 | 0.670139 | 0.238362 | 0.354246 | 0.563081 | 0.319872 | 0.436919 | 0.224658 | True | supported | 0.147853 | 0.137017 | 0.14577 | 0.348261 | 0.360278 | 0.546445 | 0.579577 | 0.313582 | 0.326228 | 0.011312 |
+| validation | default_0_5 | state | CA | 24339 | 3440 | 20899 | 0 | 0 | 0 | 3440 | 20899 | 0.141337 | 0.131634 | -0.009703 | 0.116208 | 0.670139 | 0.238362 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.137017 | 0.14577 | 0 | 0.000158 | 0 | 0.001115 | 0 | 0.000184 | 0.011312 |
+| validation | frozen_validation_f1 | state | CO | 3393 | 382 | 3011 | 1146 | 214 | 932 | 168 | 2079 | 0.112585 | 0.128234 | 0.015649 | 0.096585 | 0.671361 | 0.188828 | 0.337754 | 0.560209 | 0.309532 | 0.439791 | 0.186736 | True | supported | 0.147853 | 0.102384 | 0.123661 | 0.322032 | 0.353843 | 0.510079 | 0.609141 | 0.29327 | 0.326278 | 0.015649 |
+| validation | default_0_5 | state | CO | 3393 | 382 | 3011 | 0 | 0 | 0 | 382 | 3011 | 0.112585 | 0.128234 | 0.015649 | 0.096585 | 0.671361 | 0.188828 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.102384 | 0.123661 | 0 | 0.001131 | 0 | 0.009956 | 0 | 0.001274 | 0.015649 |
+| validation | frozen_validation_f1 | state | CT | 2413 | 258 | 2155 | 757 | 117 | 640 | 141 | 1515 | 0.106921 | 0.125541 | 0.01862 | 0.093912 | 0.635486 | 0.168749 | 0.313717 | 0.453488 | 0.296984 | 0.546512 | 0.154557 | True | supported | 0.147853 | 0.09521 | 0.119881 | 0.295512 | 0.332515 | 0.393868 | 0.514474 | 0.278067 | 0.316623 | 0.01862 |
+| validation | default_0_5 | state | CT | 2413 | 258 | 2155 | 0 | 0 | 0 | 258 | 2155 | 0.106921 | 0.125541 | 0.01862 | 0.093912 | 0.635486 | 0.168749 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.09521 | 0.119881 | 0 | 0.001589 | 0 | 0.014671 | 0 | 0.001779 | 0.01862 |
+| validation | frozen_validation_f1 | state | DC | 483 | 48 | 435 | 133 | 25 | 108 | 23 | 327 | 0.099379 | 0.115101 | 0.015722 | 0.084627 | 0.708716 | 0.260777 | 0.275362 | 0.520833 | 0.248276 | 0.479167 | 0.18797 | False | small_total,few_charged_off | 0.147853 | 0.075778 | 0.129302 | 0.237416 | 0.316854 | 0.383292 | 0.655287 | 0.21 | 0.290959 | 0.018354 |
+| validation | default_0_5 | state | DC | 483 | 48 | 435 | 0 | 0 | 0 | 48 | 435 | 0.099379 | 0.115101 | 0.015722 | 0.084627 | 0.708716 | 0.260777 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.075778 | 0.129302 | 0 | 0.007891 | 0 | 0.0741 | 0 | 0.008754 | 0.018354 |
+| validation | frozen_validation_f1 | state | DE | 414 | 55 | 359 | 159 | 26 | 133 | 29 | 226 | 0.13285 | 0.134489 | 0.001638 | 0.113204 | 0.619347 | 0.188765 | 0.384058 | 0.472727 | 0.370474 | 0.527273 | 0.163522 | False | small_total | 0.147853 | 0.103507 | 0.168944 | 0.338477 | 0.431771 | 0.346931 | 0.602085 | 0.322135 | 0.421554 | 0.01318 |
+| validation | default_0_5 | state | DE | 414 | 55 | 359 | 0 | 0 | 0 | 55 | 359 | 0.13285 | 0.134489 | 0.001638 | 0.113204 | 0.619347 | 0.188765 | 0 | 0 | 0 | 1 | — | False | small_total | 0.5 | 0.103507 | 0.168944 | 0 | 0.009194 | 0 | 0.065285 | 0 | 0.010587 | 0.01318 |
+| validation | frozen_validation_f1 | state | FL | 11163 | 1674 | 9489 | 4655 | 995 | 3660 | 679 | 5829 | 0.14996 | 0.139585 | -0.010374 | 0.123761 | 0.641893 | 0.219602 | 0.417003 | 0.594385 | 0.38571 | 0.405615 | 0.213749 | True | supported | 0.147853 | 0.143457 | 0.156703 | 0.407886 | 0.426176 | 0.570673 | 0.617664 | 0.375964 | 0.395548 | 0.011934 |
+| validation | default_0_5 | state | FL | 11163 | 1674 | 9489 | 0 | 0 | 0 | 1674 | 9489 | 0.14996 | 0.139585 | -0.010374 | 0.123761 | 0.641893 | 0.219602 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.143457 | 0.156703 | 0 | 0.000344 | 0 | 0.00229 | 0 | 0.000405 | 0.011934 |
+| validation | frozen_validation_f1 | state | GA | 5169 | 625 | 4544 | 1829 | 335 | 1494 | 290 | 3050 | 0.120913 | 0.130679 | 0.009766 | 0.103394 | 0.648258 | 0.189365 | 0.35384 | 0.536 | 0.328785 | 0.464 | 0.18316 | True | supported | 0.147853 | 0.112306 | 0.130084 | 0.340918 | 0.36698 | 0.496802 | 0.574759 | 0.315276 | 0.342584 | 0.009766 |
+| validation | default_0_5 | state | GA | 5169 | 625 | 4544 | 0 | 0 | 0 | 625 | 4544 | 0.120913 | 0.130679 | 0.009766 | 0.103394 | 0.648258 | 0.189365 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.112306 | 0.130084 | 0 | 0.000743 | 0 | 0.006109 | 0 | 0.000845 | 0.009766 |
+| validation | frozen_validation_f1 | state | HI | 804 | 118 | 686 | 372 | 68 | 304 | 50 | 382 | 0.146766 | 0.146895 | 0.000128 | 0.123829 | 0.604956 | 0.19577 | 0.462687 | 0.576271 | 0.443149 | 0.423729 | 0.182796 | True | supported | 0.147853 | 0.123986 | 0.172906 | 0.428481 | 0.497247 | 0.486091 | 0.661642 | 0.406394 | 0.480536 | 0.016681 |
+| validation | default_0_5 | state | HI | 804 | 118 | 686 | 0 | 0 | 0 | 118 | 686 | 0.146766 | 0.146895 | 0.000128 | 0.123829 | 0.604956 | 0.19577 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.123986 | 0.172906 | 0 | 0.004755 | 0 | 0.031528 | 0 | 0.005569 | 0.016681 |
+| validation | frozen_validation_f1 | state | IA | 1 | 0 | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0.183322 | 0.183322 | 0.033607 | — | — | 1 | — | 1 | — | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0.206549 | 1 | — | — | 0.206549 | 1 | 0.183322 |
+| validation | default_0_5 | state | IA | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.183322 | 0.183322 | 0.033607 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.183322 |
+| validation | frozen_validation_f1 | state | ID | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.074744 | 0.074744 | 0.005587 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.074744 |
+| validation | default_0_5 | state | ID | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.074744 | 0.074744 | 0.005587 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.074744 |
+| validation | frozen_validation_f1 | state | IL | 6701 | 768 | 5933 | 2096 | 408 | 1688 | 360 | 4245 | 0.11461 | 0.125113 | 0.010503 | 0.097775 | 0.673821 | 0.197148 | 0.312789 | 0.53125 | 0.28451 | 0.46875 | 0.194656 | True | supported | 0.147853 | 0.107203 | 0.122459 | 0.301798 | 0.323994 | 0.495889 | 0.5663 | 0.273172 | 0.296127 | 0.010561 |
+| validation | default_0_5 | state | IL | 6701 | 768 | 5933 | 0 | 0 | 0 | 768 | 5933 | 0.11461 | 0.125113 | 0.010503 | 0.097775 | 0.673821 | 0.197148 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.107203 | 0.122459 | 0 | 0.000573 | 0 | 0.004977 | 0 | 0.000647 | 0.010561 |
+| validation | frozen_validation_f1 | state | IN | 2728 | 379 | 2349 | 1044 | 216 | 828 | 163 | 1521 | 0.13893 | 0.134399 | -0.004531 | 0.114679 | 0.663697 | 0.24589 | 0.382698 | 0.569921 | 0.35249 | 0.430079 | 0.206897 | True | supported | 0.147853 | 0.126458 | 0.152417 | 0.364636 | 0.40109 | 0.519621 | 0.618817 | 0.333426 | 0.372037 | 0.00862 |
+| validation | default_0_5 | state | IN | 2728 | 379 | 2349 | 0 | 0 | 0 | 379 | 2349 | 0.13893 | 0.134399 | -0.004531 | 0.114679 | 0.663697 | 0.24589 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.126458 | 0.152417 | 0 | 0.001406 | 0 | 0.010034 | 0 | 0.001633 | 0.00862 |
+| validation | frozen_validation_f1 | state | KS | 1408 | 131 | 1277 | 526 | 81 | 445 | 50 | 832 | 0.09304 | 0.130618 | 0.037579 | 0.083373 | 0.668301 | 0.161259 | 0.37358 | 0.618321 | 0.348473 | 0.381679 | 0.153992 | True | supported | 0.147853 | 0.078954 | 0.10934 | 0.348688 | 0.399159 | 0.532885 | 0.697015 | 0.322829 | 0.375026 | 0.037579 |
+| validation | default_0_5 | state | KS | 1408 | 131 | 1277 | 0 | 0 | 0 | 131 | 1277 | 0.09304 | 0.130618 | 0.037579 | 0.083373 | 0.668301 | 0.161259 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.078954 | 0.10934 | 0 | 0.002721 | 0 | 0.028489 | 0 | 0.002999 | 0.037579 |
+| validation | frozen_validation_f1 | state | KY | 1520 | 204 | 1316 | 585 | 125 | 460 | 79 | 856 | 0.134211 | 0.135148 | 0.000938 | 0.110904 | 0.67986 | 0.244041 | 0.384868 | 0.612745 | 0.349544 | 0.387255 | 0.213675 | True | supported | 0.147853 | 0.117993 | 0.152272 | 0.360727 | 0.40959 | 0.544404 | 0.676919 | 0.324254 | 0.37571 | 0.011052 |
+| validation | default_0_5 | state | KY | 1520 | 204 | 1316 | 0 | 0 | 0 | 204 | 1316 | 0.134211 | 0.135148 | 0.000938 | 0.110904 | 0.67986 | 0.244041 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.117993 | 0.152272 | 0 | 0.002521 | 0 | 0.018483 | 0 | 0.002911 | 0.011052 |
+| validation | frozen_validation_f1 | state | LA | 1856 | 275 | 1581 | 678 | 153 | 525 | 122 | 1056 | 0.148168 | 0.131799 | -0.016369 | 0.121705 | 0.653246 | 0.242349 | 0.365302 | 0.556364 | 0.332068 | 0.443636 | 0.225664 | True | supported | 0.147853 | 0.132732 | 0.165057 | 0.343695 | 0.387465 | 0.497269 | 0.613905 | 0.309285 | 0.355665 | 0.016369 |
+| validation | default_0_5 | state | LA | 1856 | 275 | 1581 | 0 | 0 | 0 | 275 | 1581 | 0.148168 | 0.131799 | -0.016369 | 0.121705 | 0.653246 | 0.242349 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.132732 | 0.165057 | 0 | 0.002065 | 0 | 0.013776 | 0 | 0.002424 | 0.016369 |
+| validation | frozen_validation_f1 | state | MA | 3443 | 441 | 3002 | 995 | 220 | 775 | 221 | 2227 | 0.128086 | 0.120815 | -0.007271 | 0.107391 | 0.669103 | 0.214742 | 0.288992 | 0.498866 | 0.258161 | 0.501134 | 0.221106 | True | supported | 0.147853 | 0.117336 | 0.139665 | 0.274093 | 0.304362 | 0.452412 | 0.54534 | 0.242823 | 0.274118 | 0.008116 |
+| validation | default_0_5 | state | MA | 3443 | 441 | 3002 | 0 | 0 | 0 | 441 | 3002 | 0.128086 | 0.120815 | -0.007271 | 0.107391 | 0.669103 | 0.214742 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.117336 | 0.139665 | 0 | 0.001114 | 0 | 0.008636 | 0 | 0.001278 | 0.008116 |
+| validation | frozen_validation_f1 | state | MD | 3650 | 523 | 3127 | 1153 | 252 | 901 | 271 | 2226 | 0.143288 | 0.126124 | -0.017164 | 0.118761 | 0.654033 | 0.224846 | 0.31589 | 0.481836 | 0.288136 | 0.518164 | 0.21856 | True | supported | 0.147853 | 0.132296 | 0.155029 | 0.30101 | 0.331158 | 0.439301 | 0.524635 | 0.272529 | 0.304262 | 0.018414 |
+| validation | default_0_5 | state | MD | 3650 | 523 | 3127 | 0 | 0 | 0 | 523 | 3127 | 0.143288 | 0.126124 | -0.017164 | 0.118761 | 0.654033 | 0.224846 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.132296 | 0.155029 | 0 | 0.001051 | 0 | 0.007291 | 0 | 0.001227 | 0.018414 |
+| validation | frozen_validation_f1 | state | ME | 1 | 0 | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0.193054 | 0.193054 | 0.03727 | — | — | 1 | — | 1 | — | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0.206549 | 1 | — | — | 0.206549 | 1 | 0.193054 |
+| validation | default_0_5 | state | ME | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.193054 | 0.193054 | 0.03727 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.193054 |
+| validation | frozen_validation_f1 | state | MI | 4308 | 586 | 3722 | 1629 | 324 | 1305 | 262 | 2417 | 0.136026 | 0.135235 | -0.000791 | 0.113545 | 0.648444 | 0.220975 | 0.378134 | 0.552901 | 0.350618 | 0.447099 | 0.198895 | True | supported | 0.147853 | 0.126113 | 0.146588 | 0.363768 | 0.392717 | 0.512431 | 0.592682 | 0.33545 | 0.366094 | 0.007871 |
+| validation | default_0_5 | state | MI | 4308 | 586 | 3722 | 0 | 0 | 0 | 586 | 3722 | 0.136026 | 0.135235 | -0.000791 | 0.113545 | 0.648444 | 0.220975 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.126113 | 0.146588 | 0 | 0.000891 | 0 | 0.006513 | 0 | 0.001031 | 0.007871 |
+| validation | frozen_validation_f1 | state | MN | 2949 | 445 | 2504 | 1075 | 242 | 833 | 203 | 1671 | 0.150899 | 0.131434 | -0.019465 | 0.124459 | 0.644075 | 0.22644 | 0.36453 | 0.54382 | 0.332668 | 0.45618 | 0.225116 | True | supported | 0.147853 | 0.138434 | 0.164271 | 0.347346 | 0.382067 | 0.497365 | 0.589525 | 0.314482 | 0.351366 | 0.019955 |
+| validation | default_0_5 | state | MN | 2949 | 445 | 2504 | 0 | 0 | 0 | 445 | 2504 | 0.150899 | 0.131434 | -0.019465 | 0.124459 | 0.644075 | 0.22644 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.138434 | 0.164271 | 0 | 0.001301 | 0 | 0.008559 | 0 | 0.001532 | 0.019955 |
+| validation | frozen_validation_f1 | state | MO | 2535 | 410 | 2125 | 999 | 232 | 767 | 178 | 1358 | 0.161736 | 0.134726 | -0.02701 | 0.13142 | 0.647063 | 0.250809 | 0.394083 | 0.565854 | 0.360941 | 0.434146 | 0.232232 | True | supported | 0.147853 | 0.147916 | 0.176579 | 0.375235 | 0.413252 | 0.517485 | 0.612999 | 0.340789 | 0.381595 | 0.02701 |
+| validation | default_0_5 | state | MO | 2535 | 410 | 2125 | 0 | 0 | 0 | 410 | 2125 | 0.161736 | 0.134726 | -0.02701 | 0.13142 | 0.647063 | 0.250809 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.147916 | 0.176579 | 0 | 0.001513 | 0 | 0.009282 | 0 | 0.001804 | 0.02701 |
+| validation | frozen_validation_f1 | state | MS | 754 | 137 | 617 | 335 | 84 | 251 | 53 | 366 | 0.181698 | 0.14226 | -0.039438 | 0.144711 | 0.645258 | 0.278209 | 0.444297 | 0.613139 | 0.406807 | 0.386861 | 0.250746 | True | supported | 0.147853 | 0.155811 | 0.210811 | 0.409202 | 0.479957 | 0.52956 | 0.690546 | 0.368738 | 0.446029 | 0.041008 |
+| validation | default_0_5 | state | MS | 754 | 137 | 617 | 0 | 0 | 0 | 137 | 617 | 0.181698 | 0.14226 | -0.039438 | 0.144711 | 0.645258 | 0.278209 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.155811 | 0.210811 | 0 | 0.005069 | 0 | 0.027275 | 0 | 0.006188 | 0.041008 |
+| validation | frozen_validation_f1 | state | MT | 491 | 55 | 436 | 193 | 27 | 166 | 28 | 270 | 0.112016 | 0.13777 | 0.025754 | 0.098558 | 0.610842 | 0.196272 | 0.393075 | 0.490909 | 0.380734 | 0.509091 | 0.139896 | False | small_total | 0.147853 | 0.087077 | 0.142979 | 0.350863 | 0.436948 | 0.363768 | 0.619237 | 0.336385 | 0.427166 | 0.035827 |
+| validation | default_0_5 | state | MT | 491 | 55 | 436 | 0 | 0 | 0 | 55 | 436 | 0.112016 | 0.13777 | 0.025754 | 0.098558 | 0.610842 | 0.196272 | 0 | 0 | 0 | 1 | — | False | small_total | 0.5 | 0.087077 | 0.142979 | 0 | 0.007763 | 0 | 0.065285 | 0 | 0.008734 | 0.035827 |
+| validation | frozen_validation_f1 | state | NC | 4233 | 583 | 3650 | 1599 | 329 | 1270 | 254 | 2380 | 0.137727 | 0.134236 | -0.003492 | 0.115555 | 0.640999 | 0.204095 | 0.377746 | 0.564322 | 0.347945 | 0.435678 | 0.205754 | True | supported | 0.147853 | 0.127674 | 0.148438 | 0.363258 | 0.392456 | 0.523782 | 0.604021 | 0.33266 | 0.36355 | 0.012291 |
+| validation | default_0_5 | state | NC | 4233 | 583 | 3650 | 0 | 0 | 0 | 583 | 3650 | 0.137727 | 0.134236 | -0.003492 | 0.115555 | 0.640999 | 0.204095 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.127674 | 0.148438 | 0 | 0.000907 | 0 | 0.006546 | 0 | 0.001051 | 0.012291 |
+| validation | frozen_validation_f1 | state | NH | 770 | 73 | 697 | 268 | 39 | 229 | 34 | 468 | 0.094805 | 0.128687 | 0.033882 | 0.085403 | 0.635876 | 0.169132 | 0.348052 | 0.534247 | 0.328551 | 0.465753 | 0.145522 | True | supported | 0.147853 | 0.076079 | 0.117554 | 0.315236 | 0.382377 | 0.420989 | 0.64408 | 0.294705 | 0.364277 | 0.033882 |
+| validation | default_0_5 | state | NH | 770 | 73 | 697 | 0 | 0 | 0 | 73 | 697 | 0.094805 | 0.128687 | 0.033882 | 0.085403 | 0.635876 | 0.169132 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.076079 | 0.117554 | 0 | 0.004964 | 0 | 0.049992 | 0 | 0.005481 | 0.033882 |
+| validation | frozen_validation_f1 | state | NJ | 6017 | 781 | 5236 | 1946 | 381 | 1565 | 400 | 3671 | 0.129799 | 0.125433 | -0.004366 | 0.109917 | 0.640287 | 0.198924 | 0.323417 | 0.487836 | 0.298892 | 0.512164 | 0.195786 | True | supported | 0.147853 | 0.121543 | 0.138528 | 0.311713 | 0.335346 | 0.452925 | 0.522866 | 0.286644 | 0.311435 | 0.005084 |
+| validation | default_0_5 | state | NJ | 6017 | 781 | 5236 | 0 | 0 | 0 | 781 | 5236 | 0.129799 | 0.125433 | -0.004366 | 0.109917 | 0.640287 | 0.198924 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.121543 | 0.138528 | 0 | 0.000638 | 0 | 0.004895 | 0 | 0.000733 | 0.005084 |
+| validation | frozen_validation_f1 | state | NM | 971 | 152 | 819 | 345 | 68 | 277 | 84 | 542 | 0.15654 | 0.132566 | -0.023974 | 0.130818 | 0.601913 | 0.20529 | 0.355304 | 0.447368 | 0.338217 | 0.552632 | 0.197101 | True | supported | 0.147853 | 0.135043 | 0.180743 | 0.325825 | 0.385923 | 0.37059 | 0.526742 | 0.306638 | 0.371307 | 0.029274 |
+| validation | default_0_5 | state | NM | 971 | 152 | 819 | 0 | 0 | 0 | 152 | 819 | 0.15654 | 0.132566 | -0.023974 | 0.130818 | 0.601913 | 0.20529 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.135043 | 0.180743 | 0 | 0.003941 | 0 | 0.02465 | 0 | 0.004669 | 0.029274 |
+| validation | frozen_validation_f1 | state | NV | 2354 | 383 | 1971 | 912 | 218 | 694 | 165 | 1277 | 0.162702 | 0.138144 | -0.024558 | 0.13217 | 0.642001 | 0.253538 | 0.387426 | 0.569191 | 0.352106 | 0.430809 | 0.239035 | True | supported | 0.147853 | 0.148343 | 0.178159 | 0.367945 | 0.407274 | 0.519153 | 0.617854 | 0.331326 | 0.373461 | 0.024558 |
+| validation | default_0_5 | state | NV | 2354 | 383 | 1971 | 0 | 0 | 0 | 383 | 1971 | 0.162702 | 0.138144 | -0.024558 | 0.13217 | 0.642001 | 0.253538 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.148343 | 0.178159 | 0 | 0.001629 | 0 | 0.00993 | 0 | 0.001945 | 0.024558 |
+| validation | frozen_validation_f1 | state | NY | 14079 | 2141 | 11938 | 5050 | 1104 | 3946 | 1037 | 7992 | 0.15207 | 0.131317 | -0.020754 | 0.125466 | 0.641273 | 0.224425 | 0.35869 | 0.515647 | 0.330541 | 0.484353 | 0.218614 | True | supported | 0.147853 | 0.146234 | 0.158097 | 0.350807 | 0.36665 | 0.494469 | 0.536769 | 0.322158 | 0.339033 | 0.021851 |
+| validation | default_0_5 | state | NY | 14079 | 2141 | 11938 | 0 | 0 | 0 | 2141 | 11938 | 0.15207 | 0.131317 | -0.020754 | 0.125466 | 0.641273 | 0.224425 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.146234 | 0.158097 | 0 | 0.000273 | 0 | 0.001791 | 0 | 0.000322 | 0.021851 |
+| validation | frozen_validation_f1 | state | OH | 5248 | 745 | 4503 | 2092 | 452 | 1640 | 293 | 2863 | 0.141959 | 0.136004 | -0.005954 | 0.116511 | 0.672042 | 0.240876 | 0.398628 | 0.606711 | 0.364202 | 0.393289 | 0.216061 | True | supported | 0.147853 | 0.132778 | 0.151663 | 0.38546 | 0.411944 | 0.571173 | 0.641155 | 0.350268 | 0.378367 | 0.011319 |
+| validation | default_0_5 | state | OH | 5248 | 745 | 4503 | 0 | 0 | 0 | 745 | 4503 | 0.141959 | 0.136004 | -0.005954 | 0.116511 | 0.672042 | 0.240876 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.132778 | 0.151663 | 0 | 0.000731 | 0 | 0.00513 | 0 | 0.000852 | 0.011319 |
+| validation | frozen_validation_f1 | state | OK | 1393 | 234 | 1159 | 525 | 131 | 394 | 103 | 765 | 0.167983 | 0.13367 | -0.034312 | 0.135392 | 0.660468 | 0.259235 | 0.376884 | 0.559829 | 0.339948 | 0.440171 | 0.249524 | True | supported | 0.147853 | 0.149269 | 0.188522 | 0.351807 | 0.402639 | 0.495768 | 0.621958 | 0.313246 | 0.367708 | 0.034312 |
+| validation | default_0_5 | state | OK | 1393 | 234 | 1159 | 0 | 0 | 0 | 234 | 1159 | 0.167983 | 0.13367 | -0.034312 | 0.135392 | 0.660468 | 0.259235 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.149269 | 0.188522 | 0 | 0.00275 | 0 | 0.016151 | 0 | 0.003304 | 0.034312 |
+| validation | frozen_validation_f1 | state | OR | 2101 | 249 | 1852 | 845 | 154 | 691 | 95 | 1161 | 0.118515 | 0.137533 | 0.019018 | 0.100588 | 0.67775 | 0.207245 | 0.402189 | 0.618474 | 0.37311 | 0.381526 | 0.182249 | True | supported | 0.147853 | 0.105386 | 0.133037 | 0.38142 | 0.423316 | 0.556772 | 0.676576 | 0.351368 | 0.395378 | 0.019567 |
+| validation | default_0_5 | state | OR | 2101 | 249 | 1852 | 0 | 0 | 0 | 249 | 1852 | 0.118515 | 0.137533 | 0.019018 | 0.100588 | 0.67775 | 0.207245 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.105386 | 0.133037 | 0 | 0.001825 | 0 | 0.015193 | 0 | 0.00207 | 0.019567 |
+| validation | frozen_validation_f1 | state | PA | 5504 | 754 | 4750 | 2063 | 411 | 1652 | 343 | 3098 | 0.136991 | 0.133711 | -0.003281 | 0.114335 | 0.649448 | 0.218929 | 0.374818 | 0.545093 | 0.347789 | 0.454907 | 0.199224 | True | supported | 0.147853 | 0.12816 | 0.146329 | 0.362121 | 0.38769 | 0.50941 | 0.580318 | 0.334373 | 0.361452 | 0.003281 |
+| validation | default_0_5 | state | PA | 5504 | 754 | 4750 | 0 | 0 | 0 | 754 | 4750 | 0.136991 | 0.133711 | -0.003281 | 0.114335 | 0.649448 | 0.218929 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.12816 | 0.146329 | 0 | 0.000697 | 0 | 0.005069 | 0 | 0.000808 | 0.003281 |
+| validation | frozen_validation_f1 | state | RI | 697 | 82 | 615 | 232 | 38 | 194 | 44 | 421 | 0.117647 | 0.130358 | 0.012711 | 0.102316 | 0.614614 | 0.180212 | 0.332855 | 0.463415 | 0.315447 | 0.536585 | 0.163793 | True | supported | 0.147853 | 0.095798 | 0.143688 | 0.298871 | 0.368671 | 0.359551 | 0.570553 | 0.279963 | 0.353223 | 0.012787 |
+| validation | default_0_5 | state | RI | 697 | 82 | 615 | 0 | 0 | 0 | 82 | 615 | 0.117647 | 0.130358 | 0.012711 | 0.102316 | 0.614614 | 0.180212 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.095798 | 0.143688 | 0 | 0.005481 | 0 | 0.044751 | 0 | 0.006208 | 0.012787 |
+| validation | frozen_validation_f1 | state | SC | 1971 | 220 | 1751 | 757 | 127 | 630 | 93 | 1121 | 0.111618 | 0.135783 | 0.024165 | 0.095611 | 0.671022 | 0.216144 | 0.384069 | 0.577273 | 0.359794 | 0.422727 | 0.167768 | True | supported | 0.147853 | 0.098465 | 0.126283 | 0.362842 | 0.405747 | 0.511219 | 0.640674 | 0.337644 | 0.382559 | 0.024165 |
+| validation | default_0_5 | state | SC | 1971 | 220 | 1751 | 0 | 0 | 0 | 220 | 1751 | 0.111618 | 0.135783 | 0.024165 | 0.095611 | 0.671022 | 0.216144 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.098465 | 0.126283 | 0 | 0.001945 | 0 | 0.017162 | 0 | 0.002189 | 0.024165 |
+| validation | frozen_validation_f1 | state | SD | 360 | 52 | 308 | 145 | 31 | 114 | 21 | 194 | 0.144444 | 0.140235 | -0.00421 | 0.121616 | 0.619755 | 0.202941 | 0.402778 | 0.596154 | 0.37013 | 0.403846 | 0.213793 | False | small_total | 0.147853 | 0.111882 | 0.184515 | 0.353398 | 0.45421 | 0.460676 | 0.718403 | 0.318116 | 0.425344 | 0.018408 |
+| validation | default_0_5 | state | SD | 360 | 52 | 308 | 0 | 0 | 0 | 52 | 308 | 0.144444 | 0.140235 | -0.00421 | 0.121616 | 0.619755 | 0.202941 | 0 | 0 | 0 | 1 | — | False | small_total | 0.5 | 0.111882 | 0.184515 | 0 | 0.010558 | 0 | 0.068792 | 0 | 0.012319 | 0.018408 |
+| validation | frozen_validation_f1 | state | TN | 2578 | 420 | 2158 | 1028 | 237 | 791 | 183 | 1367 | 0.162917 | 0.136832 | -0.026085 | 0.132073 | 0.651891 | 0.248126 | 0.398759 | 0.564286 | 0.366543 | 0.435714 | 0.230545 | True | supported | 0.147853 | 0.149165 | 0.177672 | 0.380022 | 0.417797 | 0.516494 | 0.610913 | 0.346467 | 0.387094 | 0.026085 |
+| validation | default_0_5 | state | TN | 2578 | 420 | 2158 | 0 | 0 | 0 | 420 | 2158 | 0.162917 | 0.136832 | -0.026085 | 0.132073 | 0.651891 | 0.248126 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.149165 | 0.177672 | 0 | 0.001488 | 0 | 0.009063 | 0 | 0.001777 | 0.026085 |
+| validation | frozen_validation_f1 | state | TX | 13388 | 1770 | 11618 | 4548 | 895 | 3653 | 875 | 7965 | 0.132208 | 0.128191 | -0.004017 | 0.111518 | 0.645204 | 0.198502 | 0.339707 | 0.50565 | 0.314426 | 0.49435 | 0.19679 | True | supported | 0.147853 | 0.126576 | 0.138051 | 0.331732 | 0.347775 | 0.482371 | 0.528904 | 0.306046 | 0.322929 | 0.005829 |
+| validation | default_0_5 | state | TX | 13388 | 1770 | 11618 | 0 | 0 | 0 | 1770 | 11618 | 0.132208 | 0.128191 | -0.004017 | 0.111518 | 0.645204 | 0.198502 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.126576 | 0.138051 | 0 | 0.000287 | 0 | 0.002166 | 0 | 0.000331 | 0.005829 |
+| validation | frozen_validation_f1 | state | UT | 1110 | 137 | 973 | 415 | 71 | 344 | 66 | 629 | 0.123423 | 0.132399 | 0.008975 | 0.105251 | 0.634609 | 0.218541 | 0.373874 | 0.518248 | 0.353546 | 0.481752 | 0.171084 | True | supported | 0.147853 | 0.105362 | 0.144082 | 0.345892 | 0.402726 | 0.435228 | 0.600273 | 0.324136 | 0.384107 | 0.011522 |
+| validation | default_0_5 | state | UT | 1110 | 137 | 973 | 0 | 0 | 0 | 137 | 973 | 0.123423 | 0.132399 | 0.008975 | 0.105251 | 0.634609 | 0.218541 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.105362 | 0.144082 | 0 | 0.003449 | 0 | 0.027275 | 0 | 0.003933 | 0.011522 |
+| validation | frozen_validation_f1 | state | VA | 4520 | 655 | 3865 | 1515 | 345 | 1170 | 310 | 2695 | 0.144912 | 0.127314 | -0.017598 | 0.119409 | 0.653906 | 0.243119 | 0.335177 | 0.526718 | 0.302717 | 0.473282 | 0.227723 | True | supported | 0.147853 | 0.134951 | 0.155475 | 0.32156 | 0.349073 | 0.488437 | 0.564687 | 0.288434 | 0.317391 | 0.017598 |
+| validation | default_0_5 | state | VA | 4520 | 655 | 3865 | 0 | 0 | 0 | 655 | 3865 | 0.144912 | 0.127314 | -0.017598 | 0.119409 | 0.653906 | 0.243119 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.134951 | 0.155475 | 0 | 0.000849 | 0 | 0.005831 | 0 | 0.000993 | 0.017598 |
+| validation | frozen_validation_f1 | state | VT | 373 | 39 | 334 | 134 | 21 | 113 | 18 | 221 | 0.104558 | 0.131323 | 0.026766 | 0.090842 | 0.680715 | 0.185641 | 0.359249 | 0.538462 | 0.338323 | 0.461538 | 0.156716 | False | small_total,few_charged_off | 0.147853 | 0.077433 | 0.139744 | 0.312222 | 0.409146 | 0.385694 | 0.684331 | 0.289676 | 0.390647 | 0.027187 |
+| validation | default_0_5 | state | VT | 373 | 39 | 334 | 0 | 0 | 0 | 39 | 334 | 0.104558 | 0.131323 | 0.026766 | 0.090842 | 0.680715 | 0.185641 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.077433 | 0.139744 | 0 | 0.010194 | 0 | 0.089667 | 0 | 0.011371 | 0.027187 |
+| validation | frozen_validation_f1 | state | WA | 3562 | 393 | 3169 | 1257 | 216 | 1041 | 177 | 2128 | 0.110331 | 0.130778 | 0.020447 | 0.096018 | 0.651353 | 0.175025 | 0.352892 | 0.549618 | 0.328495 | 0.450382 | 0.171838 | True | supported | 0.147853 | 0.100459 | 0.121043 | 0.337365 | 0.368736 | 0.500185 | 0.598091 | 0.312359 | 0.345046 | 0.020447 |
+| validation | default_0_5 | state | WA | 3562 | 393 | 3169 | 0 | 0 | 0 | 393 | 3169 | 0.110331 | 0.130778 | 0.020447 | 0.096018 | 0.651353 | 0.175025 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.100459 | 0.121043 | 0 | 0.001077 | 0 | 0.00968 | 0 | 0.001211 | 0.020447 |
+| validation | frozen_validation_f1 | state | WI | 2153 | 271 | 1882 | 786 | 150 | 636 | 121 | 1246 | 0.125871 | 0.132154 | 0.006283 | 0.106556 | 0.650915 | 0.206417 | 0.365072 | 0.553506 | 0.337938 | 0.446494 | 0.19084 | True | supported | 0.147853 | 0.112523 | 0.140552 | 0.344992 | 0.385632 | 0.49398 | 0.611535 | 0.316918 | 0.359619 | 0.006283 |
+| validation | default_0_5 | state | WI | 2153 | 271 | 1882 | 0 | 0 | 0 | 271 | 1882 | 0.125871 | 0.132154 | 0.006283 | 0.106556 | 0.650915 | 0.206417 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.112523 | 0.140552 | 0 | 0.001781 | 0 | 0.013977 | 0 | 0.002037 | 0.006283 |
+| validation | frozen_validation_f1 | state | WV | 797 | 75 | 722 | 297 | 39 | 258 | 36 | 464 | 0.094103 | 0.134519 | 0.040416 | 0.085637 | 0.637673 | 0.15032 | 0.372647 | 0.52 | 0.357341 | 0.48 | 0.131313 | True | supported | 0.147853 | 0.075735 | 0.116365 | 0.339765 | 0.406751 | 0.408742 | 0.629309 | 0.323225 | 0.392966 | 0.041883 |
+| validation | default_0_5 | state | WV | 797 | 75 | 722 | 0 | 0 | 0 | 75 | 722 | 0.094103 | 0.134519 | 0.040416 | 0.085637 | 0.637673 | 0.15032 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.075735 | 0.116365 | 0 | 0.004797 | 0 | 0.048724 | 0 | 0.005292 | 0.041883 |
+| validation | frozen_validation_f1 | state | WY | 383 | 44 | 339 | 123 | 28 | 95 | 16 | 244 | 0.114883 | 0.127915 | 0.013033 | 0.095403 | 0.728479 | 0.25563 | 0.321149 | 0.636364 | 0.280236 | 0.363636 | 0.227642 | False | small_total,few_charged_off | 0.147853 | 0.086701 | 0.150713 | 0.276362 | 0.369488 | 0.488664 | 0.762165 | 0.235095 | 0.330302 | 0.017387 |
+| validation | default_0_5 | state | WY | 383 | 44 | 339 | 0 | 0 | 0 | 44 | 339 | 0.114883 | 0.127915 | 0.013033 | 0.095403 | 0.728479 | 0.25563 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.086701 | 0.150713 | 0 | 0.00993 | 0 | 0.080296 | 0 | 0.011205 | 0.017387 |
+| exploratory_test | frozen_validation_f1 | application | Individual | 282787 | 42089 | 240698 | 102572 | 22926 | 79646 | 19163 | 161052 | 0.148836 | 0.132185 | -0.016651 | 0.122261 | 0.654348 | 0.235055 | 0.362718 | 0.544703 | 0.330896 | 0.455297 | 0.223511 | True | supported | 0.147853 | 0.147529 | 0.150153 | 0.360948 | 0.364492 | 0.539941 | 0.549456 | 0.329019 | 0.332778 | 0.016651 |
+| exploratory_test | default_0_5 | application | Individual | 282787 | 42089 | 240698 | 0 | 0 | 0 | 42089 | 240698 | 0.148836 | 0.132185 | -0.016651 | 0.122261 | 0.654348 | 0.235055 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.147529 | 0.150153 | 0 | 0.000014 | 0 | 0.000091 | 0 | 0.000016 | 0.016651 |
+| exploratory_test | frozen_validation_f1 | application | Joint App | 239 | 43 | 196 | 139 | 32 | 107 | 11 | 89 | 0.179916 | 0.176785 | -0.003131 | 0.143645 | 0.635501 | 0.254425 | 0.58159 | 0.744186 | 0.545918 | 0.255814 | 0.230216 | False | small_total,few_charged_off | 0.147853 | 0.136403 | 0.233556 | 0.518242 | 0.642356 | 0.597616 | 0.850705 | 0.476 | 0.614071 | 0.025413 |
+| exploratory_test | default_0_5 | application | Joint App | 239 | 43 | 196 | 0 | 0 | 0 | 43 | 196 | 0.179916 | 0.176785 | -0.003131 | 0.143645 | 0.635501 | 0.254425 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.136403 | 0.233556 | 0 | 0.015819 | 0 | 0.08201 | 0 | 0.019223 | 0.025413 |
+| validation | frozen_validation_f1 | application | Individual | 162570 | 22315 | 140255 | 58720 | 12205 | 46515 | 10110 | 93740 | 0.137264 | 0.131767 | -0.005497 | 0.114375 | 0.653889 | 0.216483 | 0.361198 | 0.546942 | 0.331646 | 0.453058 | 0.207851 | True | supported | 0.147853 | 0.1356 | 0.138945 | 0.358867 | 0.363536 | 0.540403 | 0.553464 | 0.329187 | 0.334114 | 0.005851 |
+| validation | default_0_5 | application | Individual | 162570 | 22315 | 140255 | 0 | 0 | 0 | 22315 | 140255 | 0.137264 | 0.131767 | -0.005497 | 0.114375 | 0.653889 | 0.216483 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.1356 | 0.138945 | 0 | 0.000024 | 0 | 0.000172 | 0 | 0.000027 | 0.005851 |
+| exploratory_test | frozen_validation_f1 | income_home | Missing / MORTGAGE | 2 | 1 | 1 | 1 | 0 | 1 | 1 | 0 | 0.5 | 0.1404 | -0.3596 | 0.41253 | 0 | 0.5 | 0.5 | 0 | 1 | 1 | 0 | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0.094531 | 0.905469 | 0.094531 | 0.905469 | 0 | 0.793451 | 0.206549 | 1 | 0.3596 |
+| exploratory_test | default_0_5 | income_home | Missing / MORTGAGE | 2 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 0.5 | 0.1404 | -0.3596 | 0.41253 | 0 | 0.5 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0.094531 | 0.905469 | 0 | 0.65762 | 0 | 0.793451 | 0 | 0.793451 | 0.3596 |
+| exploratory_test | frozen_validation_f1 | income_home | Q1_lowest / MORTGAGE | 17649 | 2934 | 14715 | 10493 | 2171 | 8322 | 763 | 6393 | 0.166242 | 0.161635 | -0.004607 | 0.13528 | 0.620931 | 0.229563 | 0.594538 | 0.739945 | 0.565545 | 0.260055 | 0.2069 | True | supported | 0.147853 | 0.160822 | 0.171807 | 0.587275 | 0.60176 | 0.723766 | 0.755497 | 0.55752 | 0.573536 | 0.007716 |
+| exploratory_test | default_0_5 | income_home | Q1_lowest / MORTGAGE | 17649 | 2934 | 14715 | 0 | 0 | 0 | 2934 | 14715 | 0.166242 | 0.161635 | -0.004607 | 0.13528 | 0.620931 | 0.229563 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.160822 | 0.171807 | 0 | 0.000218 | 0 | 0.001308 | 0 | 0.000261 | 0.007716 |
+| exploratory_test | frozen_validation_f1 | income_home | Q1_lowest / OWN | 10340 | 1950 | 8390 | 7174 | 1566 | 5608 | 384 | 2782 | 0.188588 | 0.178504 | -0.010084 | 0.149635 | 0.608835 | 0.25746 | 0.69381 | 0.803077 | 0.668415 | 0.196923 | 0.218288 | True | supported | 0.147853 | 0.181164 | 0.196243 | 0.684856 | 0.702621 | 0.784838 | 0.820124 | 0.658266 | 0.678409 | 0.010084 |
+| exploratory_test | default_0_5 | income_home | Q1_lowest / OWN | 10340 | 1950 | 8390 | 0 | 0 | 0 | 1950 | 8390 | 0.188588 | 0.178504 | -0.010084 | 0.149635 | 0.608835 | 0.25746 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.181164 | 0.196243 | 0 | 0.000371 | 0 | 0.001966 | 0 | 0.000458 | 0.010084 |
+| exploratory_test | frozen_validation_f1 | income_home | Q1_lowest / RENT | 39123 | 8044 | 31079 | 29181 | 6775 | 22406 | 1269 | 8673 | 0.205608 | 0.190022 | -0.015586 | 0.159729 | 0.607224 | 0.275286 | 0.745878 | 0.842243 | 0.720937 | 0.157757 | 0.232172 | True | supported | 0.147853 | 0.201632 | 0.209641 | 0.74154 | 0.750168 | 0.834114 | 0.850045 | 0.715923 | 0.725896 | 0.015586 |
+| exploratory_test | default_0_5 | income_home | Q1_lowest / RENT | 39123 | 8044 | 31079 | 0 | 0 | 0 | 8044 | 31079 | 0.205608 | 0.190022 | -0.015586 | 0.159729 | 0.607224 | 0.275286 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.201632 | 0.209641 | 0 | 0.000098 | 0 | 0.000477 | 0 | 0.000124 | 0.015586 |
+| exploratory_test | frozen_validation_f1 | income_home | Q2 / MORTGAGE | 30226 | 4051 | 26175 | 10478 | 2091 | 8387 | 1960 | 17788 | 0.134024 | 0.131124 | -0.0029 | 0.112853 | 0.640867 | 0.201774 | 0.346655 | 0.516169 | 0.32042 | 0.483831 | 0.199561 | True | supported | 0.147853 | 0.13023 | 0.137911 | 0.34131 | 0.352039 | 0.500772 | 0.531535 | 0.314794 | 0.326099 | 0.006891 |
+| exploratory_test | default_0_5 | income_home | Q2 / MORTGAGE | 30226 | 4051 | 26175 | 0 | 0 | 0 | 4051 | 26175 | 0.134024 | 0.131124 | -0.0029 | 0.112853 | 0.640867 | 0.201774 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13023 | 0.137911 | 0 | 0.000127 | 0 | 0.000947 | 0 | 0.000147 | 0.006891 |
+| exploratory_test | frozen_validation_f1 | income_home | Q2 / OWN | 7980 | 1260 | 6720 | 3424 | 724 | 2700 | 536 | 4020 | 0.157895 | 0.14158 | -0.016314 | 0.1297 | 0.628326 | 0.227107 | 0.429073 | 0.574603 | 0.401786 | 0.425397 | 0.211449 | True | supported | 0.147853 | 0.150059 | 0.16606 | 0.41825 | 0.439964 | 0.547118 | 0.601635 | 0.390123 | 0.41356 | 0.016314 |
+| exploratory_test | default_0_5 | income_home | Q2 / OWN | 7980 | 1260 | 6720 | 0 | 0 | 0 | 1260 | 6720 | 0.157895 | 0.14158 | -0.016314 | 0.1297 | 0.628326 | 0.227107 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.150059 | 0.16606 | 0 | 0.000481 | 0 | 0.00304 | 0 | 0.000571 | 0.016314 |
+| exploratory_test | frozen_validation_f1 | income_home | Q2 / RENT | 34080 | 6018 | 28062 | 17055 | 3865 | 13190 | 2153 | 14872 | 0.176585 | 0.154029 | -0.022556 | 0.141834 | 0.624928 | 0.252273 | 0.50044 | 0.64224 | 0.470031 | 0.35776 | 0.22662 | True | supported | 0.147853 | 0.172573 | 0.180669 | 0.495132 | 0.505748 | 0.630042 | 0.654256 | 0.464196 | 0.475874 | 0.022616 |
+| exploratory_test | default_0_5 | income_home | Q2 / RENT | 34080 | 6018 | 28062 | 0 | 0 | 0 | 6018 | 28062 | 0.176585 | 0.154029 | -0.022556 | 0.141834 | 0.624928 | 0.252273 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.172573 | 0.180669 | 0 | 0.000113 | 0 | 0.000638 | 0 | 0.000137 | 0.022616 |
+| exploratory_test | frozen_validation_f1 | income_home | Q3 / ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.081994 | 0.081994 | 0.006723 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.081994 |
+| exploratory_test | default_0_5 | income_home | Q3 / ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.081994 | 0.081994 | 0.006723 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.081994 |
+| exploratory_test | frozen_validation_f1 | income_home | Q3 / MORTGAGE | 34919 | 4141 | 30778 | 6704 | 1408 | 5296 | 2733 | 25482 | 0.118589 | 0.108798 | -0.009791 | 0.101311 | 0.654776 | 0.197802 | 0.191987 | 0.340014 | 0.172071 | 0.659986 | 0.210024 | True | supported | 0.147853 | 0.11524 | 0.122022 | 0.18789 | 0.196152 | 0.325741 | 0.354585 | 0.167895 | 0.176329 | 0.009791 |
+| exploratory_test | default_0_5 | income_home | Q3 / MORTGAGE | 34919 | 4141 | 30778 | 0 | 0 | 0 | 4141 | 30778 | 0.118589 | 0.108798 | -0.009791 | 0.101311 | 0.654776 | 0.197802 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.11524 | 0.122022 | 0 | 0.00011 | 0 | 0.000927 | 0 | 0.000125 | 0.009791 |
+| exploratory_test | frozen_validation_f1 | income_home | Q3 / OWN | 6432 | 915 | 5517 | 1587 | 373 | 1214 | 542 | 4303 | 0.142257 | 0.116894 | -0.025364 | 0.118666 | 0.644371 | 0.229459 | 0.246735 | 0.40765 | 0.220047 | 0.59235 | 0.235035 | True | supported | 0.147853 | 0.133934 | 0.151008 | 0.236353 | 0.25742 | 0.376261 | 0.439812 | 0.209312 | 0.231172 | 0.025364 |
+| exploratory_test | default_0_5 | income_home | Q3 / OWN | 6432 | 915 | 5517 | 0 | 0 | 0 | 915 | 5517 | 0.142257 | 0.116894 | -0.025364 | 0.118666 | 0.644371 | 0.229459 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.133934 | 0.151008 | 0 | 0.000597 | 0 | 0.004181 | 0 | 0.000696 | 0.025364 |
+| exploratory_test | frozen_validation_f1 | income_home | Q3 / RENT | 26140 | 4334 | 21806 | 8471 | 2080 | 6391 | 2254 | 15415 | 0.1658 | 0.129668 | -0.036131 | 0.135203 | 0.638045 | 0.249414 | 0.324063 | 0.479926 | 0.293084 | 0.520074 | 0.245544 | True | supported | 0.147853 | 0.16134 | 0.170357 | 0.318415 | 0.329762 | 0.465077 | 0.494811 | 0.28708 | 0.299162 | 0.036268 |
+| exploratory_test | default_0_5 | income_home | Q3 / RENT | 26140 | 4334 | 21806 | 0 | 0 | 0 | 4334 | 21806 | 0.1658 | 0.129668 | -0.036131 | 0.135203 | 0.638045 | 0.249414 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.16134 | 0.170357 | 0 | 0.000147 | 0 | 0.000886 | 0 | 0.000176 | 0.036268 |
+| exploratory_test | frozen_validation_f1 | income_home | Q4_highest / MORTGAGE | 46966 | 4526 | 42440 | 3510 | 761 | 2749 | 3765 | 39691 | 0.096368 | 0.085142 | -0.011225 | 0.084593 | 0.666798 | 0.1701 | 0.074735 | 0.16814 | 0.064774 | 0.83186 | 0.216809 | True | supported | 0.147853 | 0.093732 | 0.09907 | 0.072391 | 0.077148 | 0.157526 | 0.179316 | 0.062471 | 0.067155 | 0.011225 |
+| exploratory_test | default_0_5 | income_home | Q4_highest / MORTGAGE | 46966 | 4526 | 42440 | 0 | 0 | 0 | 4526 | 42440 | 0.096368 | 0.085142 | -0.011225 | 0.084593 | 0.666798 | 0.1701 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.093732 | 0.09907 | 0 | 0.000082 | 0 | 0.000848 | 0 | 0.000091 | 0.011225 |
+| exploratory_test | frozen_validation_f1 | income_home | Q4_highest / OWN | 7048 | 910 | 6138 | 735 | 196 | 539 | 714 | 5599 | 0.129115 | 0.090898 | -0.038217 | 0.109568 | 0.673391 | 0.230561 | 0.104285 | 0.215385 | 0.087814 | 0.784615 | 0.266667 | True | supported | 0.147853 | 0.121488 | 0.137146 | 0.097364 | 0.111637 | 0.189901 | 0.243261 | 0.080989 | 0.095154 | 0.038217 |
+| exploratory_test | default_0_5 | income_home | Q4_highest / OWN | 7048 | 910 | 6138 | 0 | 0 | 0 | 910 | 6138 | 0.129115 | 0.090898 | -0.038217 | 0.109568 | 0.673391 | 0.230561 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.121488 | 0.137146 | 0 | 0.000545 | 0 | 0.004204 | 0 | 0.000625 | 0.038217 |
+| exploratory_test | frozen_validation_f1 | income_home | Q4_highest / RENT | 22120 | 3048 | 19072 | 3898 | 948 | 2950 | 2100 | 16122 | 0.137794 | 0.107009 | -0.030785 | 0.115885 | 0.653407 | 0.220761 | 0.176221 | 0.311024 | 0.154677 | 0.688976 | 0.243202 | True | supported | 0.147853 | 0.133314 | 0.142399 | 0.171256 | 0.181298 | 0.294836 | 0.327687 | 0.149615 | 0.159878 | 0.030861 |
+| exploratory_test | default_0_5 | income_home | Q4_highest / RENT | 22120 | 3048 | 19072 | 0 | 0 | 0 | 3048 | 19072 | 0.137794 | 0.107009 | -0.030785 | 0.115885 | 0.653407 | 0.220761 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.133314 | 0.142399 | 0 | 0.000174 | 0 | 0.001259 | 0 | 0.000201 | 0.030861 |
+| validation | frozen_validation_f1 | income_home | Q1_lowest / ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.136564 | 0.136564 | 0.01865 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.147853 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.136564 |
+| validation | default_0_5 | income_home | Q1_lowest / ANY | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0.136564 | 0.136564 | 0.01865 | — | — | 0 | — | 0 | — | — | False | small_total,few_charged_off,few_fully_paid | 0.5 | 0 | 0.793451 | 0 | 0.793451 | — | — | 0 | 0.793451 | 0.136564 |
+| validation | frozen_validation_f1 | income_home | Q1_lowest / MORTGAGE | 10661 | 1699 | 8962 | 6281 | 1236 | 5045 | 463 | 3917 | 0.159366 | 0.160972 | 0.001607 | 0.131235 | 0.615304 | 0.217127 | 0.589157 | 0.727487 | 0.562932 | 0.272513 | 0.196784 | True | supported | 0.147853 | 0.152541 | 0.166436 | 0.579787 | 0.598462 | 0.705819 | 0.748128 | 0.552638 | 0.573173 | 0.002733 |
+| validation | default_0_5 | income_home | Q1_lowest / MORTGAGE | 10661 | 1699 | 8962 | 0 | 0 | 0 | 1699 | 8962 | 0.159366 | 0.160972 | 0.001607 | 0.131235 | 0.615304 | 0.217127 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.152541 | 0.166436 | 0 | 0.00036 | 0 | 0.002256 | 0 | 0.000428 | 0.002733 |
+| validation | frozen_validation_f1 | income_home | Q1_lowest / OWN | 5769 | 1024 | 4745 | 4065 | 827 | 3238 | 197 | 1507 | 0.1775 | 0.17872 | 0.001219 | 0.1434 | 0.601591 | 0.229846 | 0.704628 | 0.807617 | 0.682403 | 0.192383 | 0.203444 | True | supported | 0.147853 | 0.167856 | 0.187574 | 0.692723 | 0.716261 | 0.782343 | 0.830592 | 0.669013 | 0.695497 | 0.001991 |
+| validation | default_0_5 | income_home | Q1_lowest / OWN | 5769 | 1024 | 4745 | 0 | 0 | 0 | 1024 | 4745 | 0.1775 | 0.17872 | 0.001219 | 0.1434 | 0.601591 | 0.229846 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.167856 | 0.187574 | 0 | 0.000665 | 0 | 0.003737 | 0 | 0.000809 | 0.001991 |
+| validation | frozen_validation_f1 | income_home | Q1_lowest / RENT | 23107 | 4668 | 18439 | 17449 | 3976 | 13473 | 692 | 4966 | 0.202017 | 0.190021 | -0.011996 | 0.158163 | 0.599841 | 0.260682 | 0.755139 | 0.851757 | 0.73068 | 0.148243 | 0.227864 | True | supported | 0.147853 | 0.19689 | 0.207243 | 0.749553 | 0.760641 | 0.841274 | 0.861661 | 0.724229 | 0.737034 | 0.012723 |
+| validation | default_0_5 | income_home | Q1_lowest / RENT | 23107 | 4668 | 18439 | 0 | 0 | 0 | 4668 | 18439 | 0.202017 | 0.190021 | -0.011996 | 0.158163 | 0.599841 | 0.260682 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.19689 | 0.207243 | 0 | 0.000166 | 0 | 0.000822 | 0 | 0.000208 | 0.012723 |
+| validation | frozen_validation_f1 | income_home | Q2 / MORTGAGE | 17997 | 2252 | 15745 | 6059 | 1099 | 4960 | 1153 | 10785 | 0.125132 | 0.130592 | 0.00546 | 0.10716 | 0.625581 | 0.183906 | 0.336667 | 0.488011 | 0.315021 | 0.511989 | 0.181383 | True | supported | 0.147853 | 0.120378 | 0.130046 | 0.329799 | 0.343606 | 0.467404 | 0.508658 | 0.307811 | 0.322321 | 0.005937 |
+| validation | default_0_5 | income_home | Q2 / MORTGAGE | 17997 | 2252 | 15745 | 0 | 0 | 0 | 2252 | 15745 | 0.125132 | 0.130592 | 0.00546 | 0.10716 | 0.625581 | 0.183906 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.120378 | 0.130046 | 0 | 0.000213 | 0 | 0.001703 | 0 | 0.000244 | 0.005937 |
+| validation | frozen_validation_f1 | income_home | Q2 / OWN | 4239 | 609 | 3630 | 1791 | 337 | 1454 | 272 | 2176 | 0.143666 | 0.140393 | -0.003273 | 0.121062 | 0.60403 | 0.194708 | 0.422505 | 0.553366 | 0.400551 | 0.446634 | 0.188163 | True | supported | 0.147853 | 0.13343 | 0.154548 | 0.407712 | 0.437439 | 0.51367 | 0.592393 | 0.384724 | 0.416588 | 0.00669 |
+| validation | default_0_5 | income_home | Q2 / OWN | 4239 | 609 | 3630 | 0 | 0 | 0 | 609 | 3630 | 0.143666 | 0.140393 | -0.003273 | 0.121062 | 0.60403 | 0.194708 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13343 | 0.154548 | 0 | 0.000905 | 0 | 0.006268 | 0 | 0.001057 | 0.00669 |
+| validation | frozen_validation_f1 | income_home | Q2 / RENT | 19846 | 3225 | 16621 | 9832 | 2093 | 7739 | 1132 | 8882 | 0.162501 | 0.153335 | -0.009166 | 0.132277 | 0.632569 | 0.235718 | 0.495415 | 0.648992 | 0.465616 | 0.351008 | 0.212876 | True | supported | 0.147853 | 0.157434 | 0.167699 | 0.48846 | 0.502371 | 0.632351 | 0.665279 | 0.458041 | 0.473206 | 0.012311 |
+| validation | default_0_5 | income_home | Q2 / RENT | 19846 | 3225 | 16621 | 0 | 0 | 0 | 3225 | 16621 | 0.162501 | 0.153335 | -0.009166 | 0.132277 | 0.632569 | 0.235718 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.157434 | 0.167699 | 0 | 0.000194 | 0 | 0.00119 | 0 | 0.000231 | 0.012311 |
+| validation | frozen_validation_f1 | income_home | Q3 / MORTGAGE | 21050 | 2284 | 18766 | 3780 | 717 | 3063 | 1567 | 15703 | 0.108504 | 0.10728 | -0.001223 | 0.094265 | 0.643361 | 0.173891 | 0.179572 | 0.313923 | 0.163221 | 0.686077 | 0.189683 | True | supported | 0.147853 | 0.104373 | 0.112777 | 0.174446 | 0.184816 | 0.295216 | 0.333255 | 0.158002 | 0.168577 | 0.003576 |
+| validation | default_0_5 | income_home | Q3 / MORTGAGE | 21050 | 2284 | 18766 | 0 | 0 | 0 | 2284 | 18766 | 0.108504 | 0.10728 | -0.001223 | 0.094265 | 0.643361 | 0.173891 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.104373 | 0.112777 | 0 | 0.000182 | 0 | 0.001679 | 0 | 0.000205 | 0.003576 |
+| validation | frozen_validation_f1 | income_home | Q3 / OWN | 3228 | 414 | 2814 | 771 | 158 | 613 | 256 | 2201 | 0.128253 | 0.115106 | -0.013147 | 0.109178 | 0.633839 | 0.195586 | 0.238848 | 0.381643 | 0.217839 | 0.618357 | 0.204929 | True | supported | 0.147853 | 0.117158 | 0.140231 | 0.224455 | 0.253861 | 0.336139 | 0.429322 | 0.202978 | 0.23347 | 0.014931 |
+| validation | default_0_5 | income_home | Q3 / OWN | 3228 | 414 | 2814 | 0 | 0 | 0 | 414 | 2814 | 0.128253 | 0.115106 | -0.013147 | 0.109178 | 0.633839 | 0.195586 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.117158 | 0.140231 | 0 | 0.001189 | 0 | 0.009194 | 0 | 0.001363 | 0.014931 |
+| validation | frozen_validation_f1 | income_home | Q3 / RENT | 14727 | 2069 | 12658 | 4536 | 949 | 3587 | 1120 | 9071 | 0.14049 | 0.12762 | -0.01287 | 0.117793 | 0.632548 | 0.209357 | 0.308006 | 0.458676 | 0.283378 | 0.541324 | 0.209215 | True | supported | 0.147853 | 0.134972 | 0.146196 | 0.3006 | 0.315511 | 0.437301 | 0.480203 | 0.275594 | 0.291293 | 0.013765 |
+| validation | default_0_5 | income_home | Q3 / RENT | 14727 | 2069 | 12658 | 0 | 0 | 0 | 2069 | 12658 | 0.14049 | 0.12762 | -0.01287 | 0.117793 | 0.632548 | 0.209357 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.134972 | 0.146196 | 0 | 0.000261 | 0 | 0.001853 | 0 | 0.000303 | 0.013765 |
+| validation | frozen_validation_f1 | income_home | Q4_highest / MORTGAGE | 26618 | 2315 | 24303 | 1803 | 340 | 1463 | 1975 | 22840 | 0.086971 | 0.083335 | -0.003636 | 0.077293 | 0.663714 | 0.152315 | 0.067736 | 0.146868 | 0.060198 | 0.853132 | 0.188575 | True | supported | 0.147853 | 0.083645 | 0.090416 | 0.064779 | 0.070818 | 0.133034 | 0.161872 | 0.057277 | 0.063259 | 0.004371 |
+| validation | default_0_5 | income_home | Q4_highest / MORTGAGE | 26618 | 2315 | 24303 | 0 | 0 | 0 | 2315 | 24303 | 0.086971 | 0.083335 | -0.003636 | 0.077293 | 0.663714 | 0.152315 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.083645 | 0.090416 | 0 | 0.000144 | 0 | 0.001657 | 0 | 0.000158 | 0.004371 |
+| validation | frozen_validation_f1 | income_home | Q4_highest / OWN | 3257 | 333 | 2924 | 321 | 68 | 253 | 265 | 2671 | 0.102241 | 0.089351 | -0.01289 | 0.089378 | 0.657495 | 0.173712 | 0.098557 | 0.204204 | 0.086525 | 0.795796 | 0.211838 | True | supported | 0.147853 | 0.092301 | 0.113119 | 0.088788 | 0.109271 | 0.164396 | 0.250759 | 0.07687 | 0.097266 | 0.013082 |
+| validation | default_0_5 | income_home | Q4_highest / OWN | 3257 | 333 | 2924 | 0 | 0 | 0 | 333 | 2924 | 0.102241 | 0.089351 | -0.01289 | 0.089378 | 0.657495 | 0.173712 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.092301 | 0.113119 | 0 | 0.001178 | 0 | 0.011404 | 0 | 0.001312 | 0.013082 |
+| validation | frozen_validation_f1 | income_home | Q4_highest / RENT | 12070 | 1423 | 10647 | 2032 | 405 | 1627 | 1018 | 9020 | 0.117896 | 0.105733 | -0.012163 | 0.101581 | 0.639067 | 0.182327 | 0.168351 | 0.28461 | 0.152813 | 0.71539 | 0.199311 | True | supported | 0.147853 | 0.112264 | 0.123771 | 0.161782 | 0.175132 | 0.26177 | 0.30861 | 0.146104 | 0.159773 | 0.012198 |
+| validation | default_0_5 | income_home | Q4_highest / RENT | 12070 | 1423 | 10647 | 0 | 0 | 0 | 1423 | 10647 | 0.117896 | 0.105733 | -0.012163 | 0.101581 | 0.639067 | 0.182327 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.112264 | 0.123771 | 0 | 0.000318 | 0 | 0.002692 | 0 | 0.000361 | 0.012198 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 680_to_719 / None | 100833 | 14349 | 86484 | 31000 | 6455 | 24545 | 7894 | 61939 | 0.142305 | 0.128649 | -0.013655 | 0.119352 | 0.624209 | 0.208548 | 0.307439 | 0.449857 | 0.28381 | 0.550143 | 0.208226 | True | supported | 0.147853 | 0.140162 | 0.144475 | 0.304598 | 0.310294 | 0.441732 | 0.458009 | 0.280815 | 0.286824 | 0.013655 |
+| exploratory_test | default_0_5 | fico_delinquency | 680_to_719 / None | 100833 | 14349 | 86484 | 0 | 0 | 0 | 14349 | 86484 | 0.142305 | 0.128649 | -0.013655 | 0.119352 | 0.624209 | 0.208548 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.140162 | 0.144475 | 0 | 0.000038 | 0 | 0.000268 | 0 | 0.000044 | 0.013655 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 680_to_719 / One_or_more | 24200 | 3394 | 20806 | 6238 | 1325 | 4913 | 2069 | 15893 | 0.140248 | 0.12144 | -0.018808 | 0.118171 | 0.62148 | 0.206651 | 0.257769 | 0.390395 | 0.236134 | 0.609605 | 0.212408 | True | supported | 0.147853 | 0.13593 | 0.14468 | 0.252296 | 0.263318 | 0.374115 | 0.406922 | 0.230412 | 0.241953 | 0.018837 |
+| exploratory_test | default_0_5 | fico_delinquency | 680_to_719 / One_or_more | 24200 | 3394 | 20806 | 0 | 0 | 0 | 3394 | 20806 | 0.140248 | 0.12144 | -0.018808 | 0.118171 | 0.62148 | 0.206651 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.13593 | 0.14468 | 0 | 0.000159 | 0 | 0.001131 | 0 | 0.000185 | 0.018837 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 720_to_759 / None | 34084 | 2815 | 31269 | 1775 | 336 | 1439 | 2479 | 29830 | 0.08259 | 0.079663 | -0.002927 | 0.074149 | 0.648055 | 0.138716 | 0.052077 | 0.119361 | 0.04602 | 0.880639 | 0.189296 | True | supported | 0.147853 | 0.079715 | 0.08556 | 0.049769 | 0.054487 | 0.107899 | 0.131859 | 0.043753 | 0.048399 | 0.003102 |
+| exploratory_test | default_0_5 | fico_delinquency | 720_to_759 / None | 34084 | 2815 | 31269 | 0 | 0 | 0 | 2815 | 31269 | 0.08259 | 0.079663 | -0.002927 | 0.074149 | 0.648055 | 0.138716 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.079715 | 0.08556 | 0 | 0.000113 | 0 | 0.001363 | 0 | 0.000123 | 0.003102 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 720_to_759 / One_or_more | 3639 | 338 | 3301 | 188 | 47 | 141 | 291 | 3160 | 0.092883 | 0.078127 | -0.014755 | 0.082112 | 0.64427 | 0.180046 | 0.051663 | 0.139053 | 0.042714 | 0.860947 | 0.25 | True | supported | 0.147853 | 0.083876 | 0.102748 | 0.044932 | 0.059339 | 0.106207 | 0.180012 | 0.036331 | 0.05016 | 0.014755 |
+| exploratory_test | default_0_5 | fico_delinquency | 720_to_759 / One_or_more | 3639 | 338 | 3301 | 0 | 0 | 0 | 338 | 3301 | 0.092883 | 0.078127 | -0.014755 | 0.082112 | 0.64427 | 0.180046 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.083876 | 0.102748 | 0 | 0.001055 | 0 | 0.011238 | 0 | 0.001162 | 0.014755 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 760_plus / None | 13403 | 634 | 12769 | 88 | 21 | 67 | 613 | 12702 | 0.047303 | 0.045236 | -0.002067 | 0.043836 | 0.698197 | 0.118263 | 0.006566 | 0.033123 | 0.005247 | 0.966877 | 0.238636 | True | supported | 0.147853 | 0.043837 | 0.051028 | 0.005333 | 0.008081 | 0.021765 | 0.050105 | 0.004134 | 0.006658 | 0.0023 |
+| exploratory_test | default_0_5 | fico_delinquency | 760_plus / None | 13403 | 634 | 12769 | 0 | 0 | 0 | 634 | 12769 | 0.047303 | 0.045236 | -0.002067 | 0.043836 | 0.698197 | 0.118263 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.043837 | 0.051028 | 0 | 0.000287 | 0 | 0.006023 | 0 | 0.000301 | 0.0023 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 760_plus / One_or_more | 335 | 21 | 314 | 3 | 1 | 2 | 20 | 312 | 0.062687 | 0.047536 | -0.01515 | 0.056869 | 0.717925 | 0.205579 | 0.008955 | 0.047619 | 0.006369 | 0.952381 | 0.333333 | False | small_total,few_charged_off | 0.147853 | 0.041363 | 0.093926 | 0.00305 | 0.025994 | 0.008456 | 0.226694 | 0.001748 | 0.022923 | 0.01515 |
+| exploratory_test | default_0_5 | fico_delinquency | 760_plus / One_or_more | 335 | 21 | 314 | 0 | 0 | 0 | 21 | 314 | 0.062687 | 0.047536 | -0.01515 | 0.056869 | 0.717925 | 0.205579 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.041363 | 0.093926 | 0 | 0.011337 | 0 | 0.154639 | 0 | 0.012086 | 0.01515 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | Below_680 / None | 75732 | 14904 | 60828 | 47111 | 11106 | 36005 | 3798 | 24823 | 0.196799 | 0.171926 | -0.024873 | 0.15475 | 0.612236 | 0.269498 | 0.622075 | 0.745169 | 0.591915 | 0.254831 | 0.235741 | True | supported | 0.147853 | 0.193983 | 0.199646 | 0.618616 | 0.625522 | 0.738111 | 0.752101 | 0.588004 | 0.595815 | 0.024873 |
+| exploratory_test | default_0_5 | fico_delinquency | Below_680 / None | 75732 | 14904 | 60828 | 0 | 0 | 0 | 14904 | 60828 | 0.196799 | 0.171926 | -0.024873 | 0.15475 | 0.612236 | 0.269498 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.193983 | 0.199646 | 0 | 0.000051 | 0 | 0.000258 | 0 | 0.000063 | 0.024873 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | Below_680 / One_or_more | 30800 | 5677 | 25123 | 16308 | 3667 | 12641 | 2010 | 12482 | 0.184318 | 0.158098 | -0.026221 | 0.148104 | 0.600773 | 0.247268 | 0.529481 | 0.64594 | 0.503164 | 0.35406 | 0.224859 | True | supported | 0.147853 | 0.180027 | 0.188688 | 0.523903 | 0.535051 | 0.633405 | 0.658277 | 0.496982 | 0.509346 | 0.026344 |
+| exploratory_test | default_0_5 | fico_delinquency | Below_680 / One_or_more | 30800 | 5677 | 25123 | 0 | 0 | 0 | 5677 | 25123 | 0.184318 | 0.158098 | -0.026221 | 0.148104 | 0.600773 | 0.247268 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.180027 | 0.188688 | 0 | 0.000125 | 0 | 0.000676 | 0 | 0.000153 | 0.026344 |
+| validation | frozen_validation_f1 | fico_delinquency | 680_to_719 / None | 57870 | 7614 | 50256 | 17278 | 3474 | 13804 | 4140 | 36452 | 0.131571 | 0.127288 | -0.004283 | 0.111408 | 0.632913 | 0.19856 | 0.298566 | 0.456265 | 0.274674 | 0.543735 | 0.201065 | True | supported | 0.147853 | 0.128841 | 0.134349 | 0.294851 | 0.302308 | 0.445102 | 0.467472 | 0.270789 | 0.278593 | 0.005153 |
+| validation | default_0_5 | fico_delinquency | 680_to_719 / None | 57870 | 7614 | 50256 | 0 | 0 | 0 | 7614 | 50256 | 0.131571 | 0.127288 | -0.004283 | 0.111408 | 0.632913 | 0.19856 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.128841 | 0.134349 | 0 | 0.000066 | 0 | 0.000504 | 0 | 0.000076 | 0.005153 |
+| validation | frozen_validation_f1 | fico_delinquency | 680_to_719 / One_or_more | 13533 | 1721 | 11812 | 3283 | 636 | 2647 | 1085 | 9165 | 0.127171 | 0.119942 | -0.007229 | 0.108737 | 0.623895 | 0.1863 | 0.242592 | 0.369553 | 0.224094 | 0.630447 | 0.193725 | True | supported | 0.147853 | 0.121663 | 0.13289 | 0.235444 | 0.249887 | 0.347062 | 0.392624 | 0.216665 | 0.231703 | 0.008543 |
+| validation | default_0_5 | fico_delinquency | 680_to_719 / One_or_more | 13533 | 1721 | 11812 | 0 | 0 | 0 | 1721 | 11812 | 0.127171 | 0.119942 | -0.007229 | 0.108737 | 0.623895 | 0.1863 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.121663 | 0.13289 | 0 | 0.000284 | 0 | 0.002227 | 0 | 0.000325 | 0.008543 |
+| validation | frozen_validation_f1 | fico_delinquency | 720_to_759 / None | 19010 | 1416 | 17594 | 793 | 149 | 644 | 1267 | 16950 | 0.074487 | 0.076785 | 0.002298 | 0.067552 | 0.643609 | 0.129118 | 0.041715 | 0.105226 | 0.036603 | 0.894774 | 0.187894 | True | supported | 0.147853 | 0.07084 | 0.078306 | 0.038964 | 0.044651 | 0.090298 | 0.12229 | 0.033928 | 0.039481 | 0.002905 |
+| validation | default_0_5 | fico_delinquency | 720_to_759 / None | 19010 | 1416 | 17594 | 0 | 0 | 0 | 1416 | 17594 | 0.074487 | 0.076785 | 0.002298 | 0.067552 | 0.643609 | 0.129118 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.07084 | 0.078306 | 0 | 0.000202 | 0 | 0.002706 | 0 | 0.000218 | 0.002905 |
+| validation | frozen_validation_f1 | fico_delinquency | 720_to_759 / One_or_more | 1750 | 149 | 1601 | 87 | 11 | 76 | 138 | 1525 | 0.085143 | 0.076961 | -0.008182 | 0.07682 | 0.632625 | 0.132117 | 0.049714 | 0.073826 | 0.04747 | 0.926174 | 0.126437 | True | supported | 0.147853 | 0.072958 | 0.099145 | 0.040481 | 0.060921 | 0.04172 | 0.127353 | 0.038094 | 0.059013 | 0.008548 |
+| validation | default_0_5 | fico_delinquency | 720_to_759 / One_or_more | 1750 | 149 | 1601 | 0 | 0 | 0 | 149 | 1601 | 0.085143 | 0.076961 | -0.008182 | 0.07682 | 0.632625 | 0.132117 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.072958 | 0.099145 | 0 | 0.00219 | 0 | 0.025134 | 0 | 0.002394 | 0.008548 |
+| validation | frozen_validation_f1 | fico_delinquency | 760_plus / None | 7021 | 332 | 6689 | 63 | 12 | 51 | 320 | 6638 | 0.047287 | 0.045411 | -0.001875 | 0.044006 | 0.675758 | 0.112119 | 0.008973 | 0.036145 | 0.007624 | 0.963855 | 0.190476 | True | supported | 0.147853 | 0.042565 | 0.052504 | 0.00702 | 0.011463 | 0.020795 | 0.062106 | 0.005804 | 0.01001 | 0.001875 |
+| validation | default_0_5 | fico_delinquency | 760_plus / None | 7021 | 332 | 6689 | 0 | 0 | 0 | 332 | 6689 | 0.047287 | 0.045411 | -0.001875 | 0.044006 | 0.675758 | 0.112119 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.042565 | 0.052504 | 0 | 0.000547 | 0 | 0.011438 | 0 | 0.000574 | 0.001875 |
+| validation | frozen_validation_f1 | fico_delinquency | 760_plus / One_or_more | 207 | 14 | 193 | 1 | 0 | 1 | 14 | 192 | 0.067633 | 0.049434 | -0.018199 | 0.061843 | 0.705403 | 0.163422 | 0.004831 | 0 | 0.005181 | 1 | 0 | False | small_total,few_charged_off | 0.147853 | 0.040712 | 0.110309 | 0.000853 | 0.026852 | 0 | 0.215311 | 0.000915 | 0.028761 | 0.024892 |
+| validation | default_0_5 | fico_delinquency | 760_plus / One_or_more | 207 | 14 | 193 | 0 | 0 | 0 | 14 | 193 | 0.067633 | 0.049434 | -0.018199 | 0.061843 | 0.705403 | 0.163422 | 0 | 0 | 0 | 1 | — | False | small_total,few_charged_off | 0.5 | 0.040712 | 0.110309 | 0 | 0.01822 | 0 | 0.215311 | 0 | 0.019515 | 0.024892 |
+| validation | frozen_validation_f1 | fico_delinquency | Below_680 / None | 44838 | 7988 | 36850 | 27708 | 5958 | 21750 | 2030 | 15100 | 0.178152 | 0.170376 | -0.007777 | 0.143043 | 0.615108 | 0.244485 | 0.617958 | 0.745869 | 0.590231 | 0.254131 | 0.215028 | True | supported | 0.147853 | 0.174638 | 0.181722 | 0.613451 | 0.622445 | 0.736205 | 0.755297 | 0.5852 | 0.595242 | 0.008248 |
+| validation | default_0_5 | fico_delinquency | Below_680 / None | 44838 | 7988 | 36850 | 0 | 0 | 0 | 7988 | 36850 | 0.178152 | 0.170376 | -0.007777 | 0.143043 | 0.615108 | 0.244485 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.174638 | 0.181722 | 0 | 0.000086 | 0 | 0.000481 | 0 | 0.000104 | 0.008248 |
+| validation | frozen_validation_f1 | fico_delinquency | Below_680 / One_or_more | 18341 | 3081 | 15260 | 9507 | 1965 | 7542 | 1116 | 7718 | 0.167984 | 0.156438 | -0.011547 | 0.137459 | 0.600926 | 0.223855 | 0.518347 | 0.63778 | 0.494233 | 0.36222 | 0.20669 | True | supported | 0.147853 | 0.162643 | 0.173464 | 0.511113 | 0.525574 | 0.620646 | 0.65457 | 0.486303 | 0.502166 | 0.012578 |
+| validation | default_0_5 | fico_delinquency | Below_680 / One_or_more | 18341 | 3081 | 15260 | 0 | 0 | 0 | 3081 | 15260 | 0.167984 | 0.156438 | -0.011547 | 0.137459 | 0.600926 | 0.223855 | 0 | 0 | 0 | 1 | — | True | supported | 0.5 | 0.162643 | 0.173464 | 0 | 0.000209 | 0 | 0.001245 | 0 | 0.000252 | 0.012578 |
+
+### segment_spreads
+
+| split | policy | dimension | observed_groups | supported_groups | supported_rows | all_groups_zero_flags | flag_rate_spread | tpr_spread | fpr_spread | roc_auc_spread | calibration_bias_spread | brier_score_spread |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| exploratory_test | default_0_5 | application | 2 | 1 | 282787 | True | — | — | — | — | — | — |
+| exploratory_test | default_0_5 | bankruptcy | 2 | 2 | 283026 | True | 0 | 0 | 0 | 0.037262 | 0.020352 | 0.026932 |
+| exploratory_test | default_0_5 | delinquency | 2 | 2 | 283026 | True | 0 | 0 | 0 | 0.03488 | 0.007287 | 0.011308 |
+| exploratory_test | default_0_5 | employment | 5 | 5 | 283026 | True | 0 | 0 | 0 | 0.032054 | 0.021673 | 0.05301 |
+| exploratory_test | default_0_5 | fico | 4 | 4 | 283026 | True | 0 | 0 | 0 | 0.089174 | 0.022876 | 0.108675 |
+| exploratory_test | default_0_5 | fico_delinquency | 8 | 7 | 282691 | True | 0 | 0 | 0 | 0.097425 | 0.024153 | 0.110914 |
+| exploratory_test | default_0_5 | home | 4 | 3 | 283025 | True | 0 | 0 | 0 | 0.028272 | 0.016726 | 0.038872 |
+| exploratory_test | default_0_5 | income | 5 | 4 | 283024 | True | 0 | 0 | 0 | 0.055472 | 0.009624 | 0.055748 |
+| exploratory_test | default_0_5 | income_home | 14 | 12 | 283023 | True | 0 | 0 | 0 | 0.066167 | 0.035317 | 0.075136 |
+| exploratory_test | default_0_5 | missingness | 2 | 2 | 283026 | True | 0 | 0 | 0 | 0.023741 | 0.019231 | 0.045242 |
+| exploratory_test | default_0_5 | purpose | 14 | 11 | 282837 | True | 0 | 0 | 0 | 0.056758 | 0.060049 | 0.068225 |
+| exploratory_test | default_0_5 | state | 49 | 47 | 282381 | True | 0 | 0 | 0 | 0.106503 | 0.095503 | 0.073945 |
+| exploratory_test | frozen_validation_f1 | application | 2 | 1 | 282787 | False | — | — | — | — | — | — |
+| exploratory_test | frozen_validation_f1 | bankruptcy | 2 | 2 | 283026 | False | 0.100718 | 0.057041 | 0.100511 | 0.037262 | 0.020352 | 0.026932 |
+| exploratory_test | frozen_validation_f1 | delinquency | 2 | 2 | 283026 | False | 0.028599 | 0.013453 | 0.032891 | 0.03488 | 0.007287 | 0.011308 |
+| exploratory_test | frozen_validation_f1 | employment | 5 | 5 | 283026 | False | 0.368267 | 0.3223 | 0.359186 | 0.032054 | 0.021673 | 0.05301 |
+| exploratory_test | frozen_validation_f1 | fico | 4 | 4 | 283026 | False | 0.588681 | 0.68421 | 0.5607 | 0.089174 | 0.022876 | 0.108675 |
+| exploratory_test | frozen_validation_f1 | fico_delinquency | 8 | 7 | 282691 | False | 0.61551 | 0.712046 | 0.586668 | 0.097425 | 0.024153 | 0.110914 |
+| exploratory_test | frozen_validation_f1 | home | 4 | 3 | 283025 | False | 0.24216 | 0.226533 | 0.232343 | 0.028272 | 0.016726 | 0.038872 |
+| exploratory_test | frozen_validation_f1 | income | 5 | 4 | 283024 | False | 0.591101 | 0.588579 | 0.578394 | 0.055472 | 0.009624 | 0.055748 |
+| exploratory_test | frozen_validation_f1 | income_home | 14 | 12 | 283023 | False | 0.671143 | 0.674103 | 0.656163 | 0.066167 | 0.035317 | 0.075136 |
+| exploratory_test | frozen_validation_f1 | missingness | 2 | 2 | 283026 | False | 0.312408 | 0.269034 | 0.305467 | 0.023741 | 0.019231 | 0.045242 |
+| exploratory_test | frozen_validation_f1 | purpose | 14 | 11 | 282837 | False | 0.607692 | 0.540128 | 0.60189 | 0.056758 | 0.060049 | 0.068225 |
+| exploratory_test | frozen_validation_f1 | state | 49 | 47 | 282381 | False | 0.180963 | 0.149599 | 0.189541 | 0.106503 | 0.095503 | 0.073945 |
+| validation | default_0_5 | application | 1 | 1 | 162570 | True | — | — | — | — | — | — |
+| validation | default_0_5 | bankruptcy | 2 | 2 | 162570 | True | 0 | 0 | 0 | 0.031572 | 0.005843 | 0.014532 |
+| validation | default_0_5 | delinquency | 2 | 2 | 162570 | True | 0 | 0 | 0 | 0.037002 | 0.005289 | 0.010096 |
+| validation | default_0_5 | employment | 5 | 5 | 162570 | True | 0 | 0 | 0 | 0.04966 | 0.015741 | 0.053798 |
+| validation | default_0_5 | fico | 4 | 4 | 162570 | True | 0 | 0 | 0 | 0.065805 | 0.010285 | 0.096905 |
+| validation | default_0_5 | fico_delinquency | 8 | 7 | 162363 | True | 0 | 0 | 0 | 0.074832 | 0.013844 | 0.099037 |
+| validation | default_0_5 | home | 4 | 3 | 162569 | True | 0 | 0 | 0 | 0.021192 | 0.011311 | 0.035931 |
+| validation | default_0_5 | income | 4 | 4 | 162570 | True | 0 | 0 | 0 | 0.051709 | 0.004491 | 0.063524 |
+| validation | default_0_5 | income_home | 13 | 12 | 162569 | True | 0 | 0 | 0 | 0.063873 | 0.018607 | 0.080869 |
+| validation | default_0_5 | missingness | 2 | 2 | 162570 | True | 0 | 0 | 0 | 0.044084 | 0.01201 | 0.04583 |
+| validation | default_0_5 | purpose | 13 | 11 | 162460 | True | 0 | 0 | 0 | 0.092768 | 0.063285 | 0.074711 |
+| validation | default_0_5 | state | 49 | 39 | 159646 | True | 0 | 0 | 0 | 0.077947 | 0.079854 | 0.061338 |
+| validation | frozen_validation_f1 | application | 1 | 1 | 162570 | False | — | — | — | — | — | — |
+| validation | frozen_validation_f1 | bankruptcy | 2 | 2 | 162570 | False | 0.069117 | 0.038297 | 0.069791 | 0.031572 | 0.005843 | 0.014532 |
+| validation | frozen_validation_f1 | delinquency | 2 | 2 | 162570 | False | 0.024572 | 0.026828 | 0.030216 | 0.037002 | 0.005289 | 0.010096 |
+| validation | frozen_validation_f1 | employment | 5 | 5 | 162570 | False | 0.392735 | 0.342425 | 0.386965 | 0.04966 | 0.015741 | 0.053798 |
+| validation | frozen_validation_f1 | fico | 4 | 4 | 162570 | False | 0.580186 | 0.681101 | 0.554563 | 0.065805 | 0.010285 | 0.096905 |
+| validation | frozen_validation_f1 | fico_delinquency | 8 | 7 | 162363 | False | 0.608985 | 0.709724 | 0.582606 | 0.074832 | 0.013844 | 0.099037 |
+| validation | frozen_validation_f1 | home | 4 | 3 | 162569 | False | 0.250469 | 0.255273 | 0.238374 | 0.021192 | 0.011311 | 0.035931 |
+| validation | frozen_validation_f1 | income | 4 | 4 | 162570 | False | 0.603912 | 0.61737 | 0.5885 | 0.051709 | 0.004491 | 0.063524 |
+| validation | frozen_validation_f1 | income_home | 13 | 12 | 162569 | False | 0.687403 | 0.704888 | 0.670481 | 0.063873 | 0.018607 | 0.080869 |
+| validation | frozen_validation_f1 | missingness | 2 | 2 | 162570 | False | 0.338131 | 0.268087 | 0.337818 | 0.044084 | 0.01201 | 0.04583 |
+| validation | frozen_validation_f1 | purpose | 13 | 11 | 162460 | False | 0.621048 | 0.510895 | 0.625718 | 0.092768 | 0.063285 | 0.074711 |
+| validation | frozen_validation_f1 | state | 49 | 39 | 159646 | False | 0.173694 | 0.171105 | 0.184987 | 0.077947 | 0.079854 | 0.061338 |
+
+### segment_calibration_bins
+
+| split | dimension | group | bin | rows | mean_probability | observed_rate | observed_lower_95 | observed_upper_95 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| exploratory_test | home | ANY | 0 | 1 | 0.081994 | 0 | 0 | 0.793451 |
+| exploratory_test | home | MORTGAGE | 0 | 59824 | 0.067457 | 0.068952 | 0.066949 | 0.07101 |
+| exploratory_test | home | MORTGAGE | 1 | 60968 | 0.139618 | 0.152916 | 0.150081 | 0.155795 |
+| exploratory_test | home | MORTGAGE | 2 | 8747 | 0.227976 | 0.243512 | 0.234631 | 0.252618 |
+| exploratory_test | home | MORTGAGE | 3 | 220 | 0.323161 | 0.331818 | 0.272953 | 0.396456 |
+| exploratory_test | home | MORTGAGE | 4 | 3 | 0.413481 | 0.666667 | 0.20766 | 0.938508 |
+| exploratory_test | home | OWN | 0 | 10007 | 0.069551 | 0.087339 | 0.081964 | 0.09303 |
+| exploratory_test | home | OWN | 1 | 16426 | 0.146116 | 0.168331 | 0.162687 | 0.17413 |
+| exploratory_test | home | OWN | 2 | 5111 | 0.232473 | 0.254745 | 0.242987 | 0.266871 |
+| exploratory_test | home | OWN | 3 | 249 | 0.324464 | 0.361446 | 0.304297 | 0.422805 |
+| exploratory_test | home | OWN | 4 | 7 | 0.426377 | 0.571429 | 0.250458 | 0.84178 |
+| exploratory_test | home | RENT | 0 | 27865 | 0.074349 | 0.089467 | 0.086172 | 0.092875 |
+| exploratory_test | home | RENT | 1 | 65988 | 0.146655 | 0.175153 | 0.172272 | 0.178072 |
+| exploratory_test | home | RENT | 2 | 25529 | 0.235179 | 0.260057 | 0.254713 | 0.265474 |
+| exploratory_test | home | RENT | 3 | 2022 | 0.327231 | 0.361029 | 0.340376 | 0.382209 |
+| exploratory_test | home | RENT | 4 | 59 | 0.429435 | 0.40678 | 0.29089 | 0.534066 |
+| validation | home | ANY | 1 | 1 | 0.136564 | 0 | 0 | 0.793451 |
+| validation | home | MORTGAGE | 0 | 35544 | 0.06772 | 0.065553 | 0.063026 | 0.068173 |
+| validation | home | MORTGAGE | 1 | 35746 | 0.139379 | 0.142086 | 0.138505 | 0.145744 |
+| validation | home | MORTGAGE | 2 | 4902 | 0.226453 | 0.224194 | 0.212738 | 0.236082 |
+| validation | home | MORTGAGE | 3 | 133 | 0.323674 | 0.315789 | 0.242908 | 0.399013 |
+| validation | home | MORTGAGE | 4 | 1 | 0.425548 | 0 | 0 | 0.793451 |
+| validation | home | OWN | 0 | 4914 | 0.069996 | 0.078348 | 0.071159 | 0.086194 |
+| validation | home | OWN | 1 | 8793 | 0.146627 | 0.154214 | 0.146816 | 0.161913 |
+| validation | home | OWN | 2 | 2667 | 0.231171 | 0.227972 | 0.212448 | 0.244278 |
+| validation | home | OWN | 3 | 119 | 0.327342 | 0.260504 | 0.190017 | 0.34597 |
+| validation | home | RENT | 0 | 15564 | 0.074537 | 0.077551 | 0.073452 | 0.081858 |
+| validation | home | RENT | 1 | 38604 | 0.146782 | 0.160502 | 0.156874 | 0.164197 |
+| validation | home | RENT | 2 | 14470 | 0.234813 | 0.251279 | 0.244278 | 0.258411 |
+| validation | home | RENT | 3 | 1081 | 0.325831 | 0.308048 | 0.281246 | 0.33621 |
+| validation | home | RENT | 4 | 31 | 0.423049 | 0.419355 | 0.264155 | 0.592337 |
+| exploratory_test | purpose | car | 0 | 1149 | 0.068425 | 0.08181 | 0.067322 | 0.099086 |
+| exploratory_test | purpose | car | 1 | 1339 | 0.139413 | 0.151606 | 0.133395 | 0.17181 |
+| exploratory_test | purpose | car | 2 | 259 | 0.2368 | 0.250965 | 0.202063 | 0.307147 |
+| exploratory_test | purpose | car | 3 | 21 | 0.326735 | 0.285714 | 0.138139 | 0.499564 |
+| exploratory_test | purpose | credit_card | 0 | 34315 | 0.069085 | 0.070815 | 0.068148 | 0.073577 |
+| exploratory_test | purpose | credit_card | 1 | 31962 | 0.13745 | 0.159252 | 0.155281 | 0.163304 |
+| exploratory_test | purpose | credit_card | 2 | 4252 | 0.228899 | 0.254939 | 0.242064 | 0.268256 |
+| exploratory_test | purpose | credit_card | 3 | 121 | 0.320886 | 0.31405 | 0.238154 | 0.401389 |
+| exploratory_test | purpose | debt_consolidation | 0 | 49454 | 0.070462 | 0.080034 | 0.077675 | 0.082458 |
+| exploratory_test | purpose | debt_consolidation | 1 | 84706 | 0.144859 | 0.16863 | 0.166124 | 0.171167 |
+| exploratory_test | purpose | debt_consolidation | 2 | 25447 | 0.23292 | 0.257987 | 0.252648 | 0.263399 |
+| exploratory_test | purpose | debt_consolidation | 3 | 1343 | 0.324658 | 0.376768 | 0.351238 | 0.403002 |
+| exploratory_test | purpose | debt_consolidation | 4 | 33 | 0.426179 | 0.424242 | 0.272356 | 0.591927 |
+| exploratory_test | purpose | educational | 2 | 1 | 0.288019 | 0 | 0 | 0.793451 |
+| exploratory_test | purpose | home_improvement | 0 | 6773 | 0.066475 | 0.075299 | 0.069253 | 0.081827 |
+| exploratory_test | purpose | home_improvement | 1 | 8560 | 0.142011 | 0.158178 | 0.150601 | 0.166061 |
+| exploratory_test | purpose | home_improvement | 2 | 1755 | 0.232908 | 0.245014 | 0.225463 | 0.265679 |
+| exploratory_test | purpose | home_improvement | 3 | 72 | 0.323134 | 0.333333 | 0.235346 | 0.448204 |
+| exploratory_test | purpose | house | 0 | 180 | 0.066848 | 0.122222 | 0.082115 | 0.178117 |
+| exploratory_test | purpose | house | 1 | 582 | 0.148397 | 0.197595 | 0.167273 | 0.231882 |
+| exploratory_test | purpose | house | 2 | 228 | 0.234796 | 0.320175 | 0.263027 | 0.383283 |
+| exploratory_test | purpose | house | 3 | 14 | 0.331141 | 0.5 | 0.267992 | 0.732008 |
+| exploratory_test | purpose | major_purchase | 0 | 2382 | 0.066128 | 0.085223 | 0.074667 | 0.097114 |
+| exploratory_test | purpose | major_purchase | 1 | 2459 | 0.139546 | 0.174461 | 0.159972 | 0.189966 |
+| exploratory_test | purpose | major_purchase | 2 | 474 | 0.235135 | 0.28692 | 0.248041 | 0.329225 |
+| exploratory_test | purpose | major_purchase | 3 | 27 | 0.332997 | 0.148148 | 0.059159 | 0.324787 |
+| exploratory_test | purpose | medical | 0 | 441 | 0.067006 | 0.068027 | 0.048064 | 0.095452 |
+| exploratory_test | purpose | medical | 1 | 1767 | 0.152887 | 0.153933 | 0.137859 | 0.171509 |
+| exploratory_test | purpose | medical | 2 | 834 | 0.235504 | 0.260192 | 0.231563 | 0.29102 |
+| exploratory_test | purpose | medical | 3 | 101 | 0.332523 | 0.386139 | 0.297023 | 0.483598 |
+| exploratory_test | purpose | medical | 4 | 3 | 0.43696 | 1 | 0.438503 | 1 |
+| exploratory_test | purpose | moving | 0 | 279 | 0.072208 | 0.107527 | 0.076364 | 0.149351 |
+| exploratory_test | purpose | moving | 1 | 1256 | 0.150939 | 0.174363 | 0.154381 | 0.196331 |
+| exploratory_test | purpose | moving | 2 | 476 | 0.232929 | 0.317227 | 0.277023 | 0.360357 |
+| exploratory_test | purpose | moving | 3 | 45 | 0.32918 | 0.355556 | 0.232191 | 0.501642 |
+| exploratory_test | purpose | moving | 4 | 5 | 0.4234 | 0.6 | 0.230724 | 0.882379 |
+| exploratory_test | purpose | other | 0 | 2181 | 0.072492 | 0.073361 | 0.063153 | 0.085069 |
+| exploratory_test | purpose | other | 1 | 8432 | 0.152282 | 0.15287 | 0.145347 | 0.160709 |
+| exploratory_test | purpose | other | 2 | 4221 | 0.235695 | 0.2362 | 0.22363 | 0.24925 |
+| exploratory_test | purpose | other | 3 | 386 | 0.326178 | 0.310881 | 0.266761 | 0.358728 |
+| exploratory_test | purpose | other | 4 | 7 | 0.418774 | 0.285714 | 0.082219 | 0.641066 |
+| exploratory_test | purpose | renewable_energy | 0 | 18 | 0.072186 | 0.222222 | 0.090009 | 0.452146 |
+| exploratory_test | purpose | renewable_energy | 1 | 118 | 0.151674 | 0.211864 | 0.147825 | 0.294072 |
+| exploratory_test | purpose | renewable_energy | 2 | 45 | 0.23205 | 0.355556 | 0.232191 | 0.501642 |
+| exploratory_test | purpose | renewable_energy | 3 | 4 | 0.32651 | 0 | 0 | 0.489891 |
+| exploratory_test | purpose | small_business | 0 | 113 | 0.076424 | 0.053097 | 0.02456 | 0.111021 |
+| exploratory_test | purpose | small_business | 1 | 892 | 0.157398 | 0.189462 | 0.165098 | 0.216489 |
+| exploratory_test | purpose | small_business | 2 | 1054 | 0.245847 | 0.232448 | 0.207947 | 0.258892 |
+| exploratory_test | purpose | small_business | 3 | 345 | 0.334681 | 0.373913 | 0.324509 | 0.426094 |
+| exploratory_test | purpose | small_business | 4 | 21 | 0.435167 | 0.380952 | 0.20751 | 0.591213 |
+| exploratory_test | purpose | vacation | 0 | 412 | 0.077518 | 0.109223 | 0.082637 | 0.143029 |
+| exploratory_test | purpose | vacation | 1 | 1306 | 0.146977 | 0.150842 | 0.132457 | 0.171275 |
+| exploratory_test | purpose | vacation | 2 | 341 | 0.230703 | 0.269795 | 0.225442 | 0.319276 |
+| exploratory_test | purpose | vacation | 3 | 12 | 0.323124 | 0.333333 | 0.13812 | 0.609378 |
+| exploratory_test | purpose | wedding | 1 | 3 | 0.13498 | 0 | 0 | 0.561497 |
+| validation | purpose | car | 0 | 654 | 0.064703 | 0.062691 | 0.046546 | 0.083944 |
+| validation | purpose | car | 1 | 712 | 0.141062 | 0.136236 | 0.112983 | 0.163393 |
+| validation | purpose | car | 2 | 141 | 0.233199 | 0.255319 | 0.190501 | 0.333116 |
+| validation | purpose | car | 3 | 9 | 0.323797 | 0.111111 | 0.019891 | 0.435 |
+| validation | purpose | credit_card | 0 | 19302 | 0.069565 | 0.066677 | 0.063243 | 0.070283 |
+| validation | purpose | credit_card | 1 | 18293 | 0.137527 | 0.148909 | 0.143824 | 0.154142 |
+| validation | purpose | credit_card | 2 | 2453 | 0.228091 | 0.246637 | 0.229984 | 0.264082 |
+| validation | purpose | credit_card | 3 | 51 | 0.319727 | 0.352941 | 0.236345 | 0.490139 |
+| validation | purpose | credit_card | 4 | 1 | 0.406392 | 0 | 0 | 0.793451 |
+| validation | purpose | debt_consolidation | 0 | 29263 | 0.070566 | 0.072446 | 0.069532 | 0.075473 |
+| validation | purpose | debt_consolidation | 1 | 50591 | 0.144677 | 0.153822 | 0.150704 | 0.156992 |
+| validation | purpose | debt_consolidation | 2 | 14301 | 0.23195 | 0.245857 | 0.238869 | 0.252982 |
+| validation | purpose | debt_consolidation | 3 | 657 | 0.323176 | 0.29376 | 0.26021 | 0.329706 |
+| validation | purpose | debt_consolidation | 4 | 10 | 0.41867 | 0.5 | 0.236593 | 0.763407 |
+| validation | purpose | home_improvement | 0 | 3532 | 0.066564 | 0.065402 | 0.057711 | 0.074037 |
+| validation | purpose | home_improvement | 1 | 4185 | 0.142048 | 0.141458 | 0.131228 | 0.152345 |
+| validation | purpose | home_improvement | 2 | 901 | 0.231673 | 0.217536 | 0.191827 | 0.245644 |
+| validation | purpose | home_improvement | 3 | 36 | 0.328602 | 0.277778 | 0.158483 | 0.439925 |
+| validation | purpose | house | 0 | 84 | 0.065295 | 0.095238 | 0.049052 | 0.176826 |
+| validation | purpose | house | 1 | 312 | 0.149312 | 0.185897 | 0.146645 | 0.232791 |
+| validation | purpose | house | 2 | 110 | 0.234327 | 0.3 | 0.222299 | 0.391199 |
+| validation | purpose | house | 3 | 5 | 0.317793 | 0.2 | 0.036224 | 0.624465 |
+| validation | purpose | major_purchase | 0 | 1346 | 0.064348 | 0.076523 | 0.063496 | 0.091961 |
+| validation | purpose | major_purchase | 1 | 1279 | 0.139356 | 0.172791 | 0.153059 | 0.194483 |
+| validation | purpose | major_purchase | 2 | 237 | 0.231966 | 0.240506 | 0.19051 | 0.298781 |
+| validation | purpose | major_purchase | 3 | 26 | 0.322068 | 0.346154 | 0.194122 | 0.537794 |
+| validation | purpose | medical | 0 | 290 | 0.07049 | 0.07931 | 0.053428 | 0.116193 |
+| validation | purpose | medical | 1 | 1087 | 0.153138 | 0.157314 | 0.13688 | 0.180161 |
+| validation | purpose | medical | 2 | 453 | 0.237003 | 0.242826 | 0.205609 | 0.284367 |
+| validation | purpose | medical | 3 | 54 | 0.328655 | 0.296296 | 0.191374 | 0.428276 |
+| validation | purpose | medical | 4 | 1 | 0.442565 | 1 | 0.206549 | 1 |
+| validation | purpose | moving | 0 | 129 | 0.071799 | 0.085271 | 0.048281 | 0.146248 |
+| validation | purpose | moving | 1 | 734 | 0.153425 | 0.196185 | 0.16907 | 0.226464 |
+| validation | purpose | moving | 2 | 246 | 0.232571 | 0.288618 | 0.235588 | 0.348148 |
+| validation | purpose | moving | 3 | 23 | 0.328344 | 0.608696 | 0.407855 | 0.778424 |
+| validation | purpose | moving | 4 | 1 | 0.421181 | 1 | 0.206549 | 1 |
+| validation | purpose | other | 0 | 1123 | 0.072079 | 0.065895 | 0.052814 | 0.081936 |
+| validation | purpose | other | 1 | 4619 | 0.151785 | 0.13661 | 0.127007 | 0.146816 |
+| validation | purpose | other | 2 | 2312 | 0.235476 | 0.213235 | 0.197022 | 0.2304 |
+| validation | purpose | other | 3 | 196 | 0.321882 | 0.321429 | 0.260019 | 0.389703 |
+| validation | purpose | other | 4 | 2 | 0.413917 | 0 | 0 | 0.65762 |
+| validation | purpose | renewable_energy | 0 | 8 | 0.071469 | 0.375 | 0.136844 | 0.694258 |
+| validation | purpose | renewable_energy | 1 | 71 | 0.147884 | 0.140845 | 0.078342 | 0.240217 |
+| validation | purpose | renewable_energy | 2 | 21 | 0.230166 | 0.095238 | 0.026519 | 0.289141 |
+| validation | purpose | renewable_energy | 3 | 2 | 0.314918 | 0.5 | 0.094531 | 0.905469 |
+| validation | purpose | small_business | 0 | 56 | 0.07569 | 0.107143 | 0.050039 | 0.214684 |
+| validation | purpose | small_business | 1 | 596 | 0.158091 | 0.171141 | 0.143033 | 0.203461 |
+| validation | purpose | small_business | 2 | 701 | 0.247301 | 0.25535 | 0.224463 | 0.288902 |
+| validation | purpose | small_business | 3 | 264 | 0.335673 | 0.284091 | 0.23309 | 0.341285 |
+| validation | purpose | small_business | 4 | 17 | 0.426788 | 0.352941 | 0.173097 | 0.586996 |
+| validation | purpose | vacation | 0 | 232 | 0.078445 | 0.064655 | 0.03957 | 0.103923 |
+| validation | purpose | vacation | 1 | 660 | 0.147923 | 0.15 | 0.124787 | 0.179263 |
+| validation | purpose | vacation | 2 | 163 | 0.234187 | 0.276074 | 0.213198 | 0.34926 |
+| validation | purpose | vacation | 3 | 10 | 0.325096 | 0.5 | 0.236593 | 0.763407 |
+| validation | purpose | wedding | 0 | 3 | 0.070336 | 0 | 0 | 0.561497 |
+| validation | purpose | wedding | 1 | 5 | 0.134688 | 0 | 0 | 0.434482 |
+| exploratory_test | income | Missing | 1 | 2 | 0.1404 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | income | Q1_lowest | 0 | 5188 | 0.080402 | 0.082113 | 0.074948 | 0.089896 |
+| exploratory_test | income | Q1_lowest | 1 | 37573 | 0.155032 | 0.165997 | 0.162269 | 0.169793 |
+| exploratory_test | income | Q1_lowest | 2 | 22704 | 0.235658 | 0.250661 | 0.245066 | 0.25634 |
+| exploratory_test | income | Q1_lowest | 3 | 1609 | 0.325568 | 0.344935 | 0.322102 | 0.368506 |
+| exploratory_test | income | Q1_lowest | 4 | 38 | 0.427745 | 0.5 | 0.348499 | 0.651501 |
+| exploratory_test | income | Q2 | 0 | 16341 | 0.075846 | 0.075516 | 0.071563 | 0.079667 |
+| exploratory_test | income | Q2 | 1 | 44896 | 0.144865 | 0.161395 | 0.158021 | 0.164827 |
+| exploratory_test | income | Q2 | 2 | 10505 | 0.230272 | 0.252451 | 0.244235 | 0.260848 |
+| exploratory_test | income | Q2 | 3 | 530 | 0.328593 | 0.362264 | 0.32247 | 0.404041 |
+| exploratory_test | income | Q2 | 4 | 14 | 0.431021 | 0.357143 | 0.163447 | 0.612356 |
+| exploratory_test | income | Q3 | 0 | 27644 | 0.071076 | 0.080741 | 0.077587 | 0.084011 |
+| exploratory_test | income | Q3 | 1 | 35137 | 0.138494 | 0.165125 | 0.161279 | 0.169044 |
+| exploratory_test | income | Q3 | 2 | 4438 | 0.229474 | 0.280081 | 0.267065 | 0.293478 |
+| exploratory_test | income | Q3 | 3 | 259 | 0.328451 | 0.416988 | 0.358582 | 0.477822 |
+| exploratory_test | income | Q3 | 4 | 14 | 0.429997 | 0.357143 | 0.163447 | 0.612356 |
+| exploratory_test | income | Q4_highest | 0 | 48524 | 0.065576 | 0.07419 | 0.071892 | 0.076556 |
+| exploratory_test | income | Q4_highest | 1 | 25774 | 0.131697 | 0.169163 | 0.164635 | 0.173789 |
+| exploratory_test | income | Q4_highest | 2 | 1740 | 0.228939 | 0.278736 | 0.258173 | 0.300273 |
+| exploratory_test | income | Q4_highest | 3 | 93 | 0.327803 | 0.408602 | 0.314255 | 0.5102 |
+| exploratory_test | income | Q4_highest | 4 | 3 | 0.417726 | 0.333333 | 0.061492 | 0.79234 |
+| validation | income | Q1_lowest | 0 | 2766 | 0.08097 | 0.08243 | 0.07275 | 0.093267 |
+| validation | income | Q1_lowest | 1 | 22675 | 0.155308 | 0.162073 | 0.157333 | 0.166927 |
+| validation | income | Q1_lowest | 2 | 13196 | 0.234795 | 0.243483 | 0.236236 | 0.25088 |
+| validation | income | Q1_lowest | 3 | 882 | 0.324296 | 0.302721 | 0.27331 | 0.333844 |
+| validation | income | Q1_lowest | 4 | 19 | 0.428854 | 0.421053 | 0.231419 | 0.637241 |
+| validation | income | Q2 | 0 | 9272 | 0.076418 | 0.069456 | 0.064458 | 0.074811 |
+| validation | income | Q2 | 1 | 26773 | 0.144409 | 0.148246 | 0.14404 | 0.152553 |
+| validation | income | Q2 | 2 | 5756 | 0.229443 | 0.240271 | 0.229409 | 0.251479 |
+| validation | income | Q2 | 3 | 274 | 0.328658 | 0.321168 | 0.268682 | 0.378599 |
+| validation | income | Q2 | 4 | 7 | 0.421014 | 0.285714 | 0.082219 | 0.641066 |
+| validation | income | Q3 | 0 | 16516 | 0.071405 | 0.072899 | 0.069033 | 0.076964 |
+| validation | income | Q3 | 1 | 20103 | 0.137776 | 0.148286 | 0.143441 | 0.153266 |
+| validation | income | Q3 | 2 | 2238 | 0.228558 | 0.241287 | 0.224013 | 0.259447 |
+| validation | income | Q3 | 3 | 144 | 0.327109 | 0.277778 | 0.211122 | 0.355982 |
+| validation | income | Q3 | 4 | 4 | 0.407411 | 0.5 | 0.150039 | 0.849961 |
+| validation | income | Q4_highest | 0 | 27468 | 0.065504 | 0.067205 | 0.064305 | 0.070227 |
+| validation | income | Q4_highest | 1 | 13593 | 0.130985 | 0.147576 | 0.141713 | 0.153638 |
+| validation | income | Q4_highest | 2 | 849 | 0.228285 | 0.243816 | 0.216129 | 0.273811 |
+| validation | income | Q4_highest | 3 | 33 | 0.334569 | 0.333333 | 0.197502 | 0.503921 |
+| validation | income | Q4_highest | 4 | 2 | 0.407547 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | fico | 680_to_719 | 0 | 43886 | 0.077763 | 0.088434 | 0.085813 | 0.091126 |
+| exploratory_test | fico | 680_to_719 | 1 | 69192 | 0.139785 | 0.157576 | 0.15488 | 0.16031 |
+| exploratory_test | fico | 680_to_719 | 2 | 11272 | 0.230824 | 0.241661 | 0.233847 | 0.249651 |
+| exploratory_test | fico | 680_to_719 | 3 | 663 | 0.325535 | 0.340875 | 0.305803 | 0.37778 |
+| exploratory_test | fico | 680_to_719 | 4 | 20 | 0.428559 | 0.45 | 0.258198 | 0.657915 |
+| exploratory_test | fico | 720_to_759 | 0 | 28987 | 0.063702 | 0.065685 | 0.06289 | 0.068594 |
+| exploratory_test | fico | 720_to_759 | 1 | 8361 | 0.127579 | 0.138022 | 0.130794 | 0.145582 |
+| exploratory_test | fico | 720_to_759 | 2 | 363 | 0.226848 | 0.258953 | 0.216579 | 0.306376 |
+| exploratory_test | fico | 720_to_759 | 3 | 12 | 0.331617 | 0.083333 | 0.014865 | 0.35388 |
+| exploratory_test | fico | 760_plus | 0 | 13246 | 0.042205 | 0.042352 | 0.039053 | 0.045917 |
+| exploratory_test | fico | 760_plus | 1 | 466 | 0.123007 | 0.188841 | 0.155904 | 0.226866 |
+| exploratory_test | fico | 760_plus | 2 | 26 | 0.224732 | 0.230769 | 0.110338 | 0.420516 |
+| exploratory_test | fico | Below_680 | 0 | 11578 | 0.085083 | 0.098981 | 0.093673 | 0.104554 |
+| exploratory_test | fico | Below_680 | 1 | 65363 | 0.149837 | 0.175956 | 0.173056 | 0.178894 |
+| exploratory_test | fico | Below_680 | 2 | 27726 | 0.234297 | 0.261379 | 0.256241 | 0.266584 |
+| exploratory_test | fico | Below_680 | 3 | 1816 | 0.326949 | 0.36674 | 0.344878 | 0.389164 |
+| exploratory_test | fico | Below_680 | 4 | 49 | 0.428378 | 0.428571 | 0.300233 | 0.567295 |
+| validation | fico | 680_to_719 | 0 | 25599 | 0.07761 | 0.077933 | 0.074712 | 0.08128 |
+| validation | fico | 680_to_719 | 1 | 39395 | 0.139358 | 0.147506 | 0.144039 | 0.151042 |
+| validation | fico | 680_to_719 | 2 | 6047 | 0.23052 | 0.234827 | 0.224314 | 0.245677 |
+| validation | fico | 680_to_719 | 3 | 353 | 0.325374 | 0.294618 | 0.249478 | 0.344179 |
+| validation | fico | 680_to_719 | 4 | 9 | 0.417278 | 0.555556 | 0.266651 | 0.811221 |
+| validation | fico | 720_to_759 | 0 | 16481 | 0.062845 | 0.060676 | 0.057133 | 0.064424 |
+| validation | fico | 720_to_759 | 1 | 4105 | 0.126174 | 0.126431 | 0.116613 | 0.136948 |
+| validation | fico | 720_to_759 | 2 | 163 | 0.22606 | 0.257669 | 0.196651 | 0.329845 |
+| validation | fico | 720_to_759 | 3 | 10 | 0.341308 | 0.4 | 0.16818 | 0.687326 |
+| validation | fico | 720_to_759 | 4 | 1 | 0.404048 | 0 | 0 | 0.793451 |
+| validation | fico | 760_plus | 0 | 6927 | 0.041844 | 0.043598 | 0.039036 | 0.048664 |
+| validation | fico | 760_plus | 1 | 291 | 0.126777 | 0.134021 | 0.099612 | 0.177966 |
+| validation | fico | 760_plus | 2 | 9 | 0.223337 | 0.444444 | 0.188779 | 0.733349 |
+| validation | fico | 760_plus | 3 | 1 | 0.31228 | 1 | 0.206549 | 1 |
+| validation | fico | Below_680 | 0 | 7015 | 0.085356 | 0.089095 | 0.082651 | 0.095988 |
+| validation | fico | Below_680 | 1 | 39353 | 0.149752 | 0.159124 | 0.155543 | 0.162771 |
+| validation | fico | Below_680 | 2 | 15820 | 0.233347 | 0.24507 | 0.238429 | 0.251833 |
+| validation | fico | Below_680 | 3 | 969 | 0.325741 | 0.306502 | 0.278284 | 0.336247 |
+| validation | fico | Below_680 | 4 | 22 | 0.426387 | 0.363636 | 0.197332 | 0.570483 |
+| exploratory_test | employment | 10_plus_years | 0 | 36873 | 0.068688 | 0.072194 | 0.069596 | 0.07488 |
+| exploratory_test | employment | 10_plus_years | 1 | 43924 | 0.141008 | 0.160004 | 0.156605 | 0.163462 |
+| exploratory_test | employment | 10_plus_years | 2 | 8437 | 0.231387 | 0.251274 | 0.242133 | 0.260641 |
+| exploratory_test | employment | 10_plus_years | 3 | 405 | 0.325733 | 0.350617 | 0.305747 | 0.398295 |
+| exploratory_test | employment | 10_plus_years | 4 | 8 | 0.424657 | 0.625 | 0.305742 | 0.863156 |
+| exploratory_test | employment | 2_to_5_years | 0 | 27585 | 0.070367 | 0.078847 | 0.075725 | 0.082086 |
+| exploratory_test | employment | 2_to_5_years | 1 | 43105 | 0.144038 | 0.163183 | 0.159724 | 0.166701 |
+| exploratory_test | employment | 2_to_5_years | 2 | 11377 | 0.230626 | 0.25156 | 0.243672 | 0.259616 |
+| exploratory_test | employment | 2_to_5_years | 3 | 519 | 0.327884 | 0.358382 | 0.318306 | 0.400538 |
+| exploratory_test | employment | 2_to_5_years | 4 | 16 | 0.44372 | 0.3125 | 0.141646 | 0.555956 |
+| exploratory_test | employment | 6_to_9_years | 0 | 16731 | 0.069705 | 0.075787 | 0.071874 | 0.079896 |
+| exploratory_test | employment | 6_to_9_years | 1 | 24863 | 0.143221 | 0.163536 | 0.158991 | 0.168185 |
+| exploratory_test | employment | 6_to_9_years | 2 | 6530 | 0.232901 | 0.254977 | 0.244552 | 0.26569 |
+| exploratory_test | employment | 6_to_9_years | 3 | 370 | 0.325829 | 0.362162 | 0.314838 | 0.41232 |
+| exploratory_test | employment | 6_to_9_years | 4 | 13 | 0.423953 | 0.153846 | 0.043258 | 0.422346 |
+| exploratory_test | employment | Below_2_years | 0 | 13670 | 0.070482 | 0.081858 | 0.077379 | 0.086572 |
+| exploratory_test | employment | Below_2_years | 1 | 23052 | 0.144673 | 0.16966 | 0.16487 | 0.17456 |
+| exploratory_test | employment | Below_2_years | 2 | 6308 | 0.230684 | 0.247464 | 0.23697 | 0.258264 |
+| exploratory_test | employment | Below_2_years | 3 | 275 | 0.325506 | 0.338182 | 0.284838 | 0.395984 |
+| exploratory_test | employment | Below_2_years | 4 | 5 | 0.415703 | 0.6 | 0.230724 | 0.882379 |
+| exploratory_test | employment | Missing | 0 | 2838 | 0.070413 | 0.094433 | 0.084215 | 0.105746 |
+| exploratory_test | employment | Missing | 1 | 8438 | 0.15306 | 0.190448 | 0.182212 | 0.198966 |
+| exploratory_test | employment | Missing | 2 | 6735 | 0.24263 | 0.276615 | 0.266061 | 0.287423 |
+| exploratory_test | employment | Missing | 3 | 922 | 0.326879 | 0.366594 | 0.336104 | 0.398192 |
+| exploratory_test | employment | Missing | 4 | 27 | 0.425002 | 0.555556 | 0.37313 | 0.724141 |
+| validation | employment | 10_plus_years | 0 | 20703 | 0.068977 | 0.068782 | 0.065414 | 0.07231 |
+| validation | employment | 10_plus_years | 1 | 25448 | 0.140929 | 0.143233 | 0.138983 | 0.147591 |
+| validation | employment | 10_plus_years | 2 | 4776 | 0.230536 | 0.22969 | 0.217981 | 0.241834 |
+| validation | employment | 10_plus_years | 3 | 217 | 0.325006 | 0.267281 | 0.212823 | 0.329835 |
+| validation | employment | 10_plus_years | 4 | 2 | 0.403078 | 0.5 | 0.094531 | 0.905469 |
+| validation | employment | 2_to_5_years | 0 | 15695 | 0.070328 | 0.06741 | 0.063592 | 0.071439 |
+| validation | employment | 2_to_5_years | 1 | 24419 | 0.144093 | 0.154634 | 0.150153 | 0.159223 |
+| validation | employment | 2_to_5_years | 2 | 6195 | 0.229697 | 0.240678 | 0.230195 | 0.251482 |
+| validation | employment | 2_to_5_years | 3 | 271 | 0.327988 | 0.335793 | 0.282208 | 0.393969 |
+| validation | employment | 2_to_5_years | 4 | 13 | 0.42829 | 0.384615 | 0.177097 | 0.644771 |
+| validation | employment | 6_to_9_years | 0 | 10811 | 0.070123 | 0.071224 | 0.066526 | 0.076226 |
+| validation | employment | 6_to_9_years | 1 | 16494 | 0.143299 | 0.149388 | 0.144029 | 0.154909 |
+| validation | employment | 6_to_9_years | 2 | 4023 | 0.231983 | 0.244594 | 0.231559 | 0.258116 |
+| validation | employment | 6_to_9_years | 3 | 225 | 0.324098 | 0.32 | 0.262508 | 0.383535 |
+| validation | employment | 6_to_9_years | 4 | 5 | 0.426394 | 0.2 | 0.036224 | 0.624465 |
+| validation | employment | Below_2_years | 0 | 7600 | 0.070114 | 0.071184 | 0.065617 | 0.077184 |
+| validation | employment | Below_2_years | 1 | 12405 | 0.144909 | 0.160419 | 0.154066 | 0.166982 |
+| validation | employment | Below_2_years | 2 | 3483 | 0.230471 | 0.248923 | 0.234845 | 0.263554 |
+| validation | employment | Below_2_years | 3 | 137 | 0.326408 | 0.240876 | 0.176969 | 0.318918 |
+| validation | employment | Below_2_years | 4 | 2 | 0.419194 | 1 | 0.34238 | 1 |
+| validation | employment | Missing | 0 | 1213 | 0.072801 | 0.106348 | 0.090225 | 0.124956 |
+| validation | employment | Missing | 1 | 4378 | 0.153478 | 0.172682 | 0.161774 | 0.184163 |
+| validation | employment | Missing | 2 | 3562 | 0.242657 | 0.25379 | 0.239769 | 0.268341 |
+| validation | employment | Missing | 3 | 483 | 0.325414 | 0.3147 | 0.274884 | 0.35744 |
+| validation | employment | Missing | 4 | 10 | 0.419578 | 0.4 | 0.16818 | 0.687326 |
+| exploratory_test | delinquency | None | 0 | 80889 | 0.068283 | 0.073298 | 0.071522 | 0.075114 |
+| exploratory_test | delinquency | None | 1 | 109587 | 0.143592 | 0.164125 | 0.161944 | 0.16633 |
+| exploratory_test | delinquency | None | 2 | 31417 | 0.233758 | 0.254767 | 0.249979 | 0.259614 |
+| exploratory_test | delinquency | None | 3 | 2102 | 0.326602 | 0.359657 | 0.339415 | 0.380412 |
+| exploratory_test | delinquency | None | 4 | 57 | 0.426311 | 0.473684 | 0.349872 | 0.60082 |
+| exploratory_test | delinquency | One_or_more | 0 | 16808 | 0.076154 | 0.092991 | 0.088693 | 0.097475 |
+| exploratory_test | delinquency | One_or_more | 1 | 33795 | 0.143631 | 0.16748 | 0.163537 | 0.171499 |
+| exploratory_test | delinquency | One_or_more | 2 | 7970 | 0.23114 | 0.259348 | 0.249843 | 0.269084 |
+| exploratory_test | delinquency | One_or_more | 3 | 389 | 0.326557 | 0.352185 | 0.306375 | 0.400886 |
+| exploratory_test | delinquency | One_or_more | 4 | 12 | 0.438498 | 0.25 | 0.088942 | 0.532305 |
+| validation | delinquency | None | 0 | 46409 | 0.068461 | 0.067185 | 0.064943 | 0.069499 |
+| validation | delinquency | None | 1 | 63626 | 0.1437 | 0.15107 | 0.148309 | 0.153874 |
+| validation | delinquency | None | 2 | 17576 | 0.232933 | 0.242433 | 0.236154 | 0.248824 |
+| validation | delinquency | None | 3 | 1103 | 0.325533 | 0.31641 | 0.289641 | 0.344453 |
+| validation | delinquency | None | 4 | 25 | 0.424333 | 0.4 | 0.234033 | 0.592605 |
+| validation | delinquency | One_or_more | 0 | 9613 | 0.076346 | 0.083637 | 0.078268 | 0.089339 |
+| validation | delinquency | One_or_more | 1 | 19518 | 0.1432 | 0.154678 | 0.149673 | 0.159819 |
+| validation | delinquency | One_or_more | 2 | 4463 | 0.230859 | 0.242438 | 0.23009 | 0.255229 |
+| validation | delinquency | One_or_more | 3 | 230 | 0.326796 | 0.247826 | 0.196476 | 0.307461 |
+| validation | delinquency | One_or_more | 4 | 7 | 0.418819 | 0.428571 | 0.15822 | 0.749542 |
+| exploratory_test | bankruptcy | None | 0 | 90149 | 0.068706 | 0.074732 | 0.073033 | 0.076467 |
+| exploratory_test | bankruptcy | None | 1 | 120926 | 0.143236 | 0.161702 | 0.159638 | 0.163788 |
+| exploratory_test | bankruptcy | None | 2 | 33532 | 0.233624 | 0.252117 | 0.247498 | 0.256793 |
+| exploratory_test | bankruptcy | None | 3 | 2278 | 0.326784 | 0.35777 | 0.33834 | 0.377679 |
+| exploratory_test | bankruptcy | None | 4 | 66 | 0.429498 | 0.454545 | 0.340241 | 0.57385 |
+| exploratory_test | bankruptcy | One_or_more | 0 | 7548 | 0.080759 | 0.100026 | 0.09346 | 0.107 |
+| exploratory_test | bankruptcy | One_or_more | 1 | 22456 | 0.145569 | 0.182223 | 0.177229 | 0.187326 |
+| exploratory_test | bankruptcy | One_or_more | 2 | 5855 | 0.230961 | 0.276174 | 0.264871 | 0.28777 |
+| exploratory_test | bankruptcy | One_or_more | 3 | 213 | 0.324572 | 0.366197 | 0.304401 | 0.432734 |
+| exploratory_test | bankruptcy | One_or_more | 4 | 3 | 0.404949 | 0 | 0 | 0.561497 |
+| validation | bankruptcy | None | 0 | 51110 | 0.068769 | 0.068656 | 0.066496 | 0.070881 |
+| validation | bankruptcy | None | 1 | 69069 | 0.14344 | 0.151283 | 0.148631 | 0.153975 |
+| validation | bankruptcy | None | 2 | 18915 | 0.232855 | 0.240814 | 0.234774 | 0.24696 |
+| validation | bankruptcy | None | 3 | 1236 | 0.325814 | 0.304207 | 0.279198 | 0.33043 |
+| validation | bankruptcy | None | 4 | 29 | 0.423874 | 0.413793 | 0.255132 | 0.592622 |
+| validation | bankruptcy | One_or_more | 0 | 4912 | 0.08069 | 0.08408 | 0.07664 | 0.092169 |
+| validation | bankruptcy | One_or_more | 1 | 14075 | 0.144286 | 0.155027 | 0.149142 | 0.1611 |
+| validation | bankruptcy | One_or_more | 2 | 3124 | 0.230443 | 0.252241 | 0.237322 | 0.267768 |
+| validation | bankruptcy | One_or_more | 3 | 97 | 0.324943 | 0.309278 | 0.226042 | 0.407046 |
+| validation | bankruptcy | One_or_more | 4 | 3 | 0.41591 | 0.333333 | 0.061492 | 0.79234 |
+| exploratory_test | missingness | Any_missing | 0 | 2874 | 0.070344 | 0.094294 | 0.084144 | 0.105526 |
+| exploratory_test | missingness | Any_missing | 1 | 8495 | 0.153008 | 0.190465 | 0.182256 | 0.198954 |
+| exploratory_test | missingness | Any_missing | 2 | 6761 | 0.242568 | 0.276734 | 0.266199 | 0.287523 |
+| exploratory_test | missingness | Any_missing | 3 | 926 | 0.326972 | 0.368251 | 0.337788 | 0.399801 |
+| exploratory_test | missingness | Any_missing | 4 | 27 | 0.425002 | 0.555556 | 0.37313 | 0.724141 |
+| exploratory_test | missingness | Complete | 0 | 94823 | 0.069616 | 0.076152 | 0.074481 | 0.077858 |
+| exploratory_test | missingness | Complete | 1 | 134887 | 0.143009 | 0.163307 | 0.161344 | 0.165289 |
+| exploratory_test | missingness | Complete | 2 | 32626 | 0.231293 | 0.251333 | 0.246656 | 0.256069 |
+| exploratory_test | missingness | Complete | 3 | 1565 | 0.326372 | 0.352716 | 0.32943 | 0.376723 |
+| exploratory_test | missingness | Complete | 4 | 42 | 0.430635 | 0.357143 | 0.229892 | 0.508336 |
+| validation | missingness | Any_missing | 0 | 1246 | 0.072534 | 0.105939 | 0.090045 | 0.124255 |
+| validation | missingness | Any_missing | 1 | 4412 | 0.153392 | 0.172711 | 0.161843 | 0.184148 |
+| validation | missingness | Any_missing | 2 | 3565 | 0.242649 | 0.254137 | 0.240116 | 0.268688 |
+| validation | missingness | Any_missing | 3 | 484 | 0.325361 | 0.316116 | 0.276279 | 0.358848 |
+| validation | missingness | Any_missing | 4 | 10 | 0.419578 | 0.4 | 0.16818 | 0.687326 |
+| validation | missingness | Complete | 0 | 54776 | 0.069752 | 0.069191 | 0.067096 | 0.071346 |
+| validation | missingness | Complete | 1 | 78732 | 0.143033 | 0.150752 | 0.14827 | 0.153268 |
+| validation | missingness | Complete | 2 | 18474 | 0.230557 | 0.240175 | 0.23407 | 0.246389 |
+| validation | missingness | Complete | 3 | 849 | 0.325973 | 0.297998 | 0.268197 | 0.329618 |
+| validation | missingness | Complete | 4 | 22 | 0.42474 | 0.409091 | 0.232558 | 0.612652 |
+| exploratory_test | state | AK | 0 | 231 | 0.066371 | 0.073593 | 0.046453 | 0.114684 |
+| exploratory_test | state | AK | 1 | 317 | 0.140834 | 0.192429 | 0.15282 | 0.239403 |
+| exploratory_test | state | AK | 2 | 92 | 0.235871 | 0.282609 | 0.200757 | 0.381887 |
+| exploratory_test | state | AK | 3 | 9 | 0.325479 | 0.222222 | 0.063225 | 0.547411 |
+| exploratory_test | state | AK | 4 | 1 | 0.414526 | 0 | 0 | 0.793451 |
+| exploratory_test | state | AL | 0 | 954 | 0.070027 | 0.085954 | 0.069786 | 0.105443 |
+| exploratory_test | state | AL | 1 | 1841 | 0.144433 | 0.178707 | 0.161882 | 0.196871 |
+| exploratory_test | state | AL | 2 | 536 | 0.232872 | 0.296642 | 0.25953 | 0.336648 |
+| exploratory_test | state | AL | 3 | 42 | 0.325717 | 0.333333 | 0.210125 | 0.484475 |
+| exploratory_test | state | AR | 0 | 589 | 0.06971 | 0.11545 | 0.092097 | 0.143786 |
+| exploratory_test | state | AR | 1 | 1099 | 0.144481 | 0.207461 | 0.184527 | 0.232434 |
+| exploratory_test | state | AR | 2 | 330 | 0.231741 | 0.29697 | 0.250236 | 0.348376 |
+| exploratory_test | state | AR | 3 | 18 | 0.318038 | 0.444444 | 0.245595 | 0.662836 |
+| exploratory_test | state | AR | 4 | 1 | 0.417283 | 1 | 0.206549 | 1 |
+| exploratory_test | state | AZ | 0 | 2190 | 0.070158 | 0.075342 | 0.065016 | 0.087156 |
+| exploratory_test | state | AZ | 1 | 3425 | 0.145378 | 0.166131 | 0.154042 | 0.178969 |
+| exploratory_test | state | AZ | 2 | 974 | 0.231957 | 0.255647 | 0.229248 | 0.283965 |
+| exploratory_test | state | AZ | 3 | 62 | 0.326099 | 0.403226 | 0.290249 | 0.527495 |
+| exploratory_test | state | AZ | 4 | 1 | 0.426379 | 1 | 0.206549 | 1 |
+| exploratory_test | state | CA | 0 | 14983 | 0.069874 | 0.07662 | 0.072469 | 0.080989 |
+| exploratory_test | state | CA | 1 | 20305 | 0.142742 | 0.172076 | 0.166946 | 0.177329 |
+| exploratory_test | state | CA | 2 | 5710 | 0.233704 | 0.268301 | 0.256967 | 0.279947 |
+| exploratory_test | state | CA | 3 | 366 | 0.326896 | 0.368852 | 0.321022 | 0.419407 |
+| exploratory_test | state | CA | 4 | 13 | 0.425883 | 0.384615 | 0.177097 | 0.644771 |
+| exploratory_test | state | CO | 0 | 2183 | 0.068553 | 0.053138 | 0.044489 | 0.063357 |
+| exploratory_test | state | CO | 1 | 2990 | 0.142566 | 0.137124 | 0.125259 | 0.14992 |
+| exploratory_test | state | CO | 2 | 738 | 0.233045 | 0.228997 | 0.200131 | 0.26067 |
+| exploratory_test | state | CO | 3 | 55 | 0.325514 | 0.290909 | 0.187712 | 0.421407 |
+| exploratory_test | state | CO | 4 | 1 | 0.435148 | 0 | 0 | 0.793451 |
+| exploratory_test | state | CT | 0 | 1664 | 0.069181 | 0.069712 | 0.058441 | 0.082964 |
+| exploratory_test | state | CT | 1 | 2025 | 0.142586 | 0.151111 | 0.136173 | 0.16737 |
+| exploratory_test | state | CT | 2 | 492 | 0.233173 | 0.20935 | 0.175721 | 0.247482 |
+| exploratory_test | state | CT | 3 | 37 | 0.326983 | 0.243243 | 0.133614 | 0.401173 |
+| exploratory_test | state | CT | 4 | 3 | 0.41747 | 0.333333 | 0.061492 | 0.79234 |
+| exploratory_test | state | DC | 0 | 307 | 0.065995 | 0.052117 | 0.032331 | 0.082973 |
+| exploratory_test | state | DC | 1 | 332 | 0.140148 | 0.135542 | 0.102865 | 0.176557 |
+| exploratory_test | state | DC | 2 | 70 | 0.232145 | 0.242857 | 0.157519 | 0.35495 |
+| exploratory_test | state | DC | 3 | 7 | 0.317699 | 0.285714 | 0.082219 | 0.641066 |
+| exploratory_test | state | DE | 0 | 282 | 0.069311 | 0.060284 | 0.037975 | 0.094411 |
+| exploratory_test | state | DE | 1 | 424 | 0.143882 | 0.17217 | 0.139219 | 0.211007 |
+| exploratory_test | state | DE | 2 | 90 | 0.234703 | 0.255556 | 0.176748 | 0.354376 |
+| exploratory_test | state | DE | 3 | 4 | 0.318873 | 0.5 | 0.150039 | 0.849961 |
+| exploratory_test | state | FL | 0 | 6078 | 0.071192 | 0.083909 | 0.077199 | 0.091145 |
+| exploratory_test | state | FL | 1 | 10688 | 0.145186 | 0.170191 | 0.163185 | 0.177434 |
+| exploratory_test | state | FL | 2 | 3372 | 0.233472 | 0.261862 | 0.2473 | 0.276967 |
+| exploratory_test | state | FL | 3 | 230 | 0.325955 | 0.317391 | 0.260657 | 0.380125 |
+| exploratory_test | state | FL | 4 | 6 | 0.417551 | 0.666667 | 0.299993 | 0.903229 |
+| exploratory_test | state | GA | 0 | 3250 | 0.06968 | 0.06 | 0.052343 | 0.068696 |
+| exploratory_test | state | GA | 1 | 4767 | 0.143885 | 0.142647 | 0.133007 | 0.152863 |
+| exploratory_test | state | GA | 2 | 1283 | 0.232446 | 0.237724 | 0.215236 | 0.261779 |
+| exploratory_test | state | GA | 3 | 80 | 0.326043 | 0.3 | 0.210646 | 0.407682 |
+| exploratory_test | state | GA | 4 | 3 | 0.439478 | 0.666667 | 0.20766 | 0.938508 |
+| exploratory_test | state | HI | 0 | 383 | 0.069611 | 0.075718 | 0.053234 | 0.106628 |
+| exploratory_test | state | HI | 1 | 728 | 0.147491 | 0.133242 | 0.110471 | 0.159863 |
+| exploratory_test | state | HI | 2 | 266 | 0.237357 | 0.229323 | 0.182869 | 0.283484 |
+| exploratory_test | state | HI | 3 | 23 | 0.325534 | 0.217391 | 0.09664 | 0.419035 |
+| exploratory_test | state | HI | 4 | 1 | 0.438876 | 0 | 0 | 0.793451 |
+| exploratory_test | state | IL | 0 | 4196 | 0.069261 | 0.064347 | 0.057314 | 0.072177 |
+| exploratory_test | state | IL | 1 | 5821 | 0.142104 | 0.150318 | 0.141368 | 0.159729 |
+| exploratory_test | state | IL | 2 | 1493 | 0.231928 | 0.22639 | 0.20588 | 0.248304 |
+| exploratory_test | state | IL | 3 | 98 | 0.327152 | 0.377551 | 0.287905 | 0.476434 |
+| exploratory_test | state | IL | 4 | 1 | 0.41157 | 0 | 0 | 0.793451 |
+| exploratory_test | state | IN | 0 | 1464 | 0.070298 | 0.076503 | 0.063968 | 0.091254 |
+| exploratory_test | state | IN | 1 | 2461 | 0.145131 | 0.177164 | 0.162586 | 0.192748 |
+| exploratory_test | state | IN | 2 | 634 | 0.233386 | 0.264984 | 0.232121 | 0.300678 |
+| exploratory_test | state | IN | 3 | 38 | 0.330694 | 0.368421 | 0.233842 | 0.52716 |
+| exploratory_test | state | KS | 0 | 835 | 0.070537 | 0.051497 | 0.038454 | 0.068647 |
+| exploratory_test | state | KS | 1 | 1208 | 0.143004 | 0.144868 | 0.126145 | 0.165842 |
+| exploratory_test | state | KS | 2 | 349 | 0.23205 | 0.180516 | 0.143712 | 0.224276 |
+| exploratory_test | state | KS | 3 | 20 | 0.318282 | 0.45 | 0.258198 | 0.657915 |
+| exploratory_test | state | KS | 4 | 1 | 0.416255 | 0 | 0 | 0.793451 |
+| exploratory_test | state | KY | 0 | 865 | 0.070162 | 0.073988 | 0.058366 | 0.093378 |
+| exploratory_test | state | KY | 1 | 1335 | 0.143567 | 0.177528 | 0.157964 | 0.198942 |
+| exploratory_test | state | KY | 2 | 390 | 0.233712 | 0.248718 | 0.208407 | 0.293931 |
+| exploratory_test | state | KY | 3 | 17 | 0.331902 | 0.352941 | 0.173097 | 0.586996 |
+| exploratory_test | state | LA | 0 | 1129 | 0.069447 | 0.098317 | 0.082288 | 0.117071 |
+| exploratory_test | state | LA | 1 | 1682 | 0.144066 | 0.203329 | 0.184781 | 0.22323 |
+| exploratory_test | state | LA | 2 | 451 | 0.232822 | 0.259424 | 0.221122 | 0.301788 |
+| exploratory_test | state | LA | 3 | 31 | 0.324177 | 0.451613 | 0.291617 | 0.622278 |
+| exploratory_test | state | LA | 4 | 1 | 0.455705 | 0 | 0 | 0.793451 |
+| exploratory_test | state | MA | 0 | 2698 | 0.066673 | 0.065975 | 0.057211 | 0.075972 |
+| exploratory_test | state | MA | 1 | 2881 | 0.14127 | 0.160014 | 0.147081 | 0.173853 |
+| exploratory_test | state | MA | 2 | 755 | 0.233676 | 0.233113 | 0.20435 | 0.264577 |
+| exploratory_test | state | MA | 3 | 34 | 0.331047 | 0.382353 | 0.239002 | 0.54959 |
+| exploratory_test | state | MA | 4 | 2 | 0.414252 | 1 | 0.34238 | 1 |
+| exploratory_test | state | MD | 0 | 2456 | 0.068957 | 0.083876 | 0.073552 | 0.0955 |
+| exploratory_test | state | MD | 1 | 3225 | 0.141744 | 0.166512 | 0.154052 | 0.179764 |
+| exploratory_test | state | MD | 2 | 733 | 0.232106 | 0.297408 | 0.265442 | 0.331487 |
+| exploratory_test | state | MD | 3 | 52 | 0.327112 | 0.365385 | 0.248007 | 0.501283 |
+| exploratory_test | state | MD | 4 | 1 | 0.423816 | 0 | 0 | 0.793451 |
+| exploratory_test | state | ME | 0 | 110 | 0.070493 | 0.036364 | 0.01423 | 0.089787 |
+| exploratory_test | state | ME | 1 | 165 | 0.145987 | 0.09697 | 0.060572 | 0.151707 |
+| exploratory_test | state | ME | 2 | 56 | 0.237404 | 0.232143 | 0.140994 | 0.357682 |
+| exploratory_test | state | ME | 3 | 3 | 0.333767 | 0.666667 | 0.20766 | 0.938508 |
+| exploratory_test | state | MI | 0 | 2483 | 0.07112 | 0.074104 | 0.064446 | 0.085078 |
+| exploratory_test | state | MI | 1 | 4000 | 0.144952 | 0.1535 | 0.142662 | 0.165003 |
+| exploratory_test | state | MI | 2 | 1178 | 0.233171 | 0.252122 | 0.228158 | 0.277698 |
+| exploratory_test | state | MI | 3 | 75 | 0.325005 | 0.413333 | 0.308777 | 0.526335 |
+| exploratory_test | state | MI | 4 | 1 | 0.400633 | 0 | 0 | 0.793451 |
+| exploratory_test | state | MN | 0 | 1751 | 0.069744 | 0.07253 | 0.061295 | 0.085637 |
+| exploratory_test | state | MN | 1 | 2657 | 0.1433 | 0.164848 | 0.151225 | 0.179438 |
+| exploratory_test | state | MN | 2 | 650 | 0.231766 | 0.267692 | 0.235092 | 0.303022 |
+| exploratory_test | state | MN | 3 | 36 | 0.321789 | 0.388889 | 0.247849 | 0.551355 |
+| exploratory_test | state | MO | 0 | 1477 | 0.069199 | 0.069736 | 0.057832 | 0.083873 |
+| exploratory_test | state | MO | 1 | 2221 | 0.143912 | 0.169293 | 0.154271 | 0.185457 |
+| exploratory_test | state | MO | 2 | 647 | 0.232535 | 0.31221 | 0.2777 | 0.348937 |
+| exploratory_test | state | MO | 3 | 33 | 0.323835 | 0.424242 | 0.272356 | 0.591927 |
+| exploratory_test | state | MS | 0 | 471 | 0.072319 | 0.112527 | 0.087065 | 0.144257 |
+| exploratory_test | state | MS | 1 | 931 | 0.146423 | 0.197637 | 0.173322 | 0.224437 |
+| exploratory_test | state | MS | 2 | 302 | 0.23272 | 0.278146 | 0.230637 | 0.331228 |
+| exploratory_test | state | MS | 3 | 13 | 0.31863 | 0.384615 | 0.177097 | 0.644771 |
+| exploratory_test | state | MS | 4 | 1 | 0.405247 | 0 | 0 | 0.793451 |
+| exploratory_test | state | MT | 0 | 267 | 0.070458 | 0.086142 | 0.058086 | 0.125939 |
+| exploratory_test | state | MT | 1 | 407 | 0.143889 | 0.152334 | 0.120686 | 0.190484 |
+| exploratory_test | state | MT | 2 | 114 | 0.229269 | 0.184211 | 0.12376 | 0.265249 |
+| exploratory_test | state | MT | 3 | 8 | 0.318268 | 0.125 | 0.022417 | 0.470888 |
+| exploratory_test | state | NC | 0 | 2578 | 0.069179 | 0.081071 | 0.071147 | 0.092241 |
+| exploratory_test | state | NC | 1 | 3887 | 0.143537 | 0.170826 | 0.159321 | 0.182981 |
+| exploratory_test | state | NC | 2 | 1105 | 0.233574 | 0.234389 | 0.210359 | 0.26026 |
+| exploratory_test | state | NC | 3 | 73 | 0.330689 | 0.452055 | 0.343147 | 0.565757 |
+| exploratory_test | state | NC | 4 | 1 | 0.420709 | 1 | 0.206549 | 1 |
+| exploratory_test | state | ND | 0 | 91 | 0.071059 | 0.098901 | 0.052909 | 0.177386 |
+| exploratory_test | state | ND | 1 | 164 | 0.149065 | 0.170732 | 0.120846 | 0.235689 |
+| exploratory_test | state | ND | 2 | 53 | 0.236295 | 0.207547 | 0.120046 | 0.334577 |
+| exploratory_test | state | ND | 3 | 3 | 0.332325 | 0.333333 | 0.061492 | 0.79234 |
+| exploratory_test | state | NE | 0 | 195 | 0.07128 | 0.066667 | 0.039371 | 0.110706 |
+| exploratory_test | state | NE | 1 | 422 | 0.146043 | 0.199052 | 0.163746 | 0.239788 |
+| exploratory_test | state | NE | 2 | 133 | 0.230478 | 0.353383 | 0.277302 | 0.437696 |
+| exploratory_test | state | NE | 3 | 4 | 0.339012 | 0.25 | 0.045587 | 0.699358 |
+| exploratory_test | state | NH | 0 | 527 | 0.068349 | 0.051233 | 0.035447 | 0.073515 |
+| exploratory_test | state | NH | 1 | 671 | 0.141773 | 0.104322 | 0.083402 | 0.129747 |
+| exploratory_test | state | NH | 2 | 178 | 0.234009 | 0.162921 | 0.115897 | 0.224188 |
+| exploratory_test | state | NH | 3 | 8 | 0.315162 | 0.375 | 0.136844 | 0.694258 |
+| exploratory_test | state | NJ | 0 | 3876 | 0.069178 | 0.084365 | 0.076022 | 0.093532 |
+| exploratory_test | state | NJ | 1 | 4902 | 0.142742 | 0.187678 | 0.176994 | 0.198852 |
+| exploratory_test | state | NJ | 2 | 1231 | 0.233952 | 0.257514 | 0.233868 | 0.282669 |
+| exploratory_test | state | NJ | 3 | 77 | 0.331029 | 0.311688 | 0.219273 | 0.422 |
+| exploratory_test | state | NJ | 4 | 2 | 0.47136 | 1 | 0.34238 | 1 |
+| exploratory_test | state | NM | 0 | 507 | 0.070314 | 0.094675 | 0.072152 | 0.123293 |
+| exploratory_test | state | NM | 1 | 785 | 0.145095 | 0.16051 | 0.136493 | 0.187832 |
+| exploratory_test | state | NM | 2 | 278 | 0.236373 | 0.255396 | 0.207709 | 0.30975 |
+| exploratory_test | state | NM | 3 | 17 | 0.321837 | 0.294118 | 0.1328 | 0.531331 |
+| exploratory_test | state | NM | 4 | 1 | 0.437494 | 1 | 0.206549 | 1 |
+| exploratory_test | state | NV | 0 | 1161 | 0.071726 | 0.095607 | 0.080002 | 0.11388 |
+| exploratory_test | state | NV | 1 | 2324 | 0.145163 | 0.189329 | 0.173918 | 0.205765 |
+| exploratory_test | state | NV | 2 | 721 | 0.234045 | 0.287101 | 0.255275 | 0.321184 |
+| exploratory_test | state | NV | 3 | 42 | 0.324397 | 0.380952 | 0.249997 | 0.53186 |
+| exploratory_test | state | NV | 4 | 2 | 0.423362 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | state | NY | 0 | 8193 | 0.069821 | 0.089345 | 0.083359 | 0.095715 |
+| exploratory_test | state | NY | 1 | 11738 | 0.142783 | 0.183677 | 0.176776 | 0.190785 |
+| exploratory_test | state | NY | 2 | 3228 | 0.234116 | 0.267658 | 0.252668 | 0.283201 |
+| exploratory_test | state | NY | 3 | 224 | 0.328074 | 0.352679 | 0.293071 | 0.417253 |
+| exploratory_test | state | NY | 4 | 3 | 0.457198 | 0 | 0 | 0.561497 |
+| exploratory_test | state | OH | 0 | 2790 | 0.069427 | 0.076344 | 0.067063 | 0.086791 |
+| exploratory_test | state | OH | 1 | 4976 | 0.144817 | 0.163384 | 0.153372 | 0.173916 |
+| exploratory_test | state | OH | 2 | 1332 | 0.233238 | 0.286036 | 0.26241 | 0.310893 |
+| exploratory_test | state | OH | 3 | 68 | 0.326781 | 0.382353 | 0.276094 | 0.501193 |
+| exploratory_test | state | OH | 4 | 2 | 0.404322 | 0 | 0 | 0.65762 |
+| exploratory_test | state | OK | 0 | 832 | 0.069827 | 0.108173 | 0.088841 | 0.131107 |
+| exploratory_test | state | OK | 1 | 1404 | 0.143343 | 0.198718 | 0.17868 | 0.2204 |
+| exploratory_test | state | OK | 2 | 334 | 0.23329 | 0.305389 | 0.25844 | 0.356764 |
+| exploratory_test | state | OK | 3 | 26 | 0.320151 | 0.346154 | 0.194122 | 0.537794 |
+| exploratory_test | state | OR | 0 | 1115 | 0.070433 | 0.052018 | 0.040454 | 0.066659 |
+| exploratory_test | state | OR | 1 | 1701 | 0.144601 | 0.104644 | 0.090978 | 0.120092 |
+| exploratory_test | state | OR | 2 | 546 | 0.234773 | 0.190476 | 0.159746 | 0.225532 |
+| exploratory_test | state | OR | 3 | 36 | 0.325526 | 0.277778 | 0.158483 | 0.439925 |
+| exploratory_test | state | OR | 4 | 1 | 0.488414 | 0 | 0 | 0.793451 |
+| exploratory_test | state | PA | 0 | 3160 | 0.069755 | 0.086392 | 0.077092 | 0.096697 |
+| exploratory_test | state | PA | 1 | 4920 | 0.144357 | 0.15935 | 0.149389 | 0.169842 |
+| exploratory_test | state | PA | 2 | 1343 | 0.232802 | 0.256143 | 0.233516 | 0.280161 |
+| exploratory_test | state | PA | 3 | 79 | 0.325839 | 0.405063 | 0.303663 | 0.515268 |
+| exploratory_test | state | PA | 4 | 3 | 0.439379 | 0.333333 | 0.061492 | 0.79234 |
+| exploratory_test | state | RI | 0 | 450 | 0.069314 | 0.068889 | 0.048953 | 0.096123 |
+| exploratory_test | state | RI | 1 | 625 | 0.14262 | 0.1744 | 0.146665 | 0.206113 |
+| exploratory_test | state | RI | 2 | 144 | 0.234052 | 0.173611 | 0.120449 | 0.243734 |
+| exploratory_test | state | RI | 3 | 9 | 0.323842 | 0.444444 | 0.188779 | 0.733349 |
+| exploratory_test | state | SC | 0 | 994 | 0.070634 | 0.047284 | 0.035743 | 0.06231 |
+| exploratory_test | state | SC | 1 | 1660 | 0.146407 | 0.130723 | 0.115356 | 0.147795 |
+| exploratory_test | state | SC | 2 | 502 | 0.23498 | 0.189243 | 0.157387 | 0.225819 |
+| exploratory_test | state | SC | 3 | 25 | 0.33384 | 0.44 | 0.266656 | 0.629327 |
+| exploratory_test | state | SC | 4 | 1 | 0.456704 | 0 | 0 | 0.793451 |
+| exploratory_test | state | SD | 0 | 166 | 0.072376 | 0.096386 | 0.060202 | 0.150827 |
+| exploratory_test | state | SD | 1 | 311 | 0.145368 | 0.180064 | 0.141346 | 0.22659 |
+| exploratory_test | state | SD | 2 | 67 | 0.228762 | 0.313433 | 0.215053 | 0.432046 |
+| exploratory_test | state | SD | 3 | 5 | 0.334122 | 0.6 | 0.230724 | 0.882379 |
+| exploratory_test | state | SD | 4 | 1 | 0.416841 | 1 | 0.206549 | 1 |
+| exploratory_test | state | TN | 0 | 1386 | 0.069866 | 0.070707 | 0.058365 | 0.085422 |
+| exploratory_test | state | TN | 1 | 2303 | 0.144532 | 0.16891 | 0.154162 | 0.184761 |
+| exploratory_test | state | TN | 2 | 686 | 0.232309 | 0.290087 | 0.257372 | 0.325141 |
+| exploratory_test | state | TN | 3 | 52 | 0.328823 | 0.403846 | 0.281597 | 0.539324 |
+| exploratory_test | state | TN | 4 | 1 | 0.405362 | 0 | 0 | 0.793451 |
+| exploratory_test | state | TX | 0 | 8581 | 0.069143 | 0.086237 | 0.080481 | 0.092363 |
+| exploratory_test | state | TX | 1 | 11900 | 0.143318 | 0.165378 | 0.158811 | 0.172161 |
+| exploratory_test | state | TX | 2 | 2875 | 0.232338 | 0.257391 | 0.241741 | 0.273689 |
+| exploratory_test | state | TX | 3 | 164 | 0.32747 | 0.378049 | 0.307428 | 0.454252 |
+| exploratory_test | state | TX | 4 | 10 | 0.421891 | 0.5 | 0.236593 | 0.763407 |
+| exploratory_test | state | UT | 0 | 574 | 0.069435 | 0.055749 | 0.039764 | 0.077641 |
+| exploratory_test | state | UT | 1 | 940 | 0.144037 | 0.146809 | 0.125622 | 0.17087 |
+| exploratory_test | state | UT | 2 | 273 | 0.232961 | 0.245421 | 0.198139 | 0.299769 |
+| exploratory_test | state | UT | 3 | 14 | 0.331685 | 0.428571 | 0.213808 | 0.674094 |
+| exploratory_test | state | UT | 4 | 1 | 0.466969 | 0 | 0 | 0.793451 |
+| exploratory_test | state | VA | 0 | 2983 | 0.068216 | 0.072746 | 0.063965 | 0.082625 |
+| exploratory_test | state | VA | 1 | 3658 | 0.142887 | 0.160197 | 0.148668 | 0.172439 |
+| exploratory_test | state | VA | 2 | 949 | 0.232466 | 0.25922 | 0.23235 | 0.288032 |
+| exploratory_test | state | VA | 3 | 68 | 0.328176 | 0.191176 | 0.115273 | 0.300106 |
+| exploratory_test | state | VA | 4 | 1 | 0.474384 | 1 | 0.206549 | 1 |
+| exploratory_test | state | VT | 0 | 216 | 0.070422 | 0.060185 | 0.035506 | 0.100234 |
+| exploratory_test | state | VT | 1 | 290 | 0.14303 | 0.106897 | 0.076335 | 0.147736 |
+| exploratory_test | state | VT | 2 | 80 | 0.237251 | 0.1375 | 0.078547 | 0.229671 |
+| exploratory_test | state | VT | 3 | 2 | 0.345405 | 0 | 0 | 0.65762 |
+| exploratory_test | state | WA | 0 | 2061 | 0.070449 | 0.057254 | 0.048023 | 0.068132 |
+| exploratory_test | state | WA | 1 | 3039 | 0.143848 | 0.126357 | 0.115014 | 0.138644 |
+| exploratory_test | state | WA | 2 | 862 | 0.232687 | 0.179814 | 0.155616 | 0.206854 |
+| exploratory_test | state | WA | 3 | 55 | 0.321847 | 0.490909 | 0.363768 | 0.619237 |
+| exploratory_test | state | WI | 0 | 1358 | 0.069178 | 0.054492 | 0.043628 | 0.067869 |
+| exploratory_test | state | WI | 1 | 1923 | 0.143089 | 0.127405 | 0.113242 | 0.143054 |
+| exploratory_test | state | WI | 2 | 514 | 0.23377 | 0.245136 | 0.209929 | 0.284125 |
+| exploratory_test | state | WI | 3 | 32 | 0.32379 | 0.28125 | 0.155646 | 0.453745 |
+| exploratory_test | state | WV | 0 | 396 | 0.066968 | 0.060606 | 0.041062 | 0.088593 |
+| exploratory_test | state | WV | 1 | 596 | 0.144897 | 0.127517 | 0.103103 | 0.156701 |
+| exploratory_test | state | WV | 2 | 175 | 0.234103 | 0.222857 | 0.167528 | 0.290093 |
+| exploratory_test | state | WV | 3 | 14 | 0.323074 | 0.285714 | 0.117214 | 0.546491 |
+| exploratory_test | state | WV | 4 | 1 | 0.401554 | 1 | 0.206549 | 1 |
+| exploratory_test | state | WY | 0 | 211 | 0.068779 | 0.07109 | 0.043552 | 0.113967 |
+| exploratory_test | state | WY | 1 | 308 | 0.143268 | 0.133117 | 0.099663 | 0.175609 |
+| exploratory_test | state | WY | 2 | 73 | 0.2314 | 0.246575 | 0.162045 | 0.356444 |
+| exploratory_test | state | WY | 3 | 3 | 0.319649 | 0 | 0 | 0.561497 |
+| validation | state | AK | 0 | 160 | 0.070919 | 0.075 | 0.043421 | 0.126508 |
+| validation | state | AK | 1 | 208 | 0.142363 | 0.105769 | 0.070892 | 0.154945 |
+| validation | state | AK | 2 | 46 | 0.231304 | 0.282609 | 0.173242 | 0.425486 |
+| validation | state | AK | 3 | 3 | 0.339788 | 0 | 0 | 0.561497 |
+| validation | state | AL | 0 | 585 | 0.071078 | 0.094017 | 0.072944 | 0.120387 |
+| validation | state | AL | 1 | 1048 | 0.145088 | 0.175573 | 0.153735 | 0.19978 |
+| validation | state | AL | 2 | 283 | 0.230515 | 0.279152 | 0.230113 | 0.334106 |
+| validation | state | AL | 3 | 18 | 0.33404 | 0.277778 | 0.124998 | 0.508727 |
+| validation | state | AL | 4 | 1 | 0.410317 | 0 | 0 | 0.793451 |
+| validation | state | AR | 0 | 380 | 0.069334 | 0.073684 | 0.051469 | 0.104433 |
+| validation | state | AR | 1 | 661 | 0.144957 | 0.18003 | 0.152615 | 0.211143 |
+| validation | state | AR | 2 | 193 | 0.232655 | 0.248705 | 0.193024 | 0.314194 |
+| validation | state | AR | 3 | 9 | 0.321365 | 0.222222 | 0.063225 | 0.547411 |
+| validation | state | AZ | 0 | 1258 | 0.070003 | 0.064388 | 0.052107 | 0.079321 |
+| validation | state | AZ | 1 | 2035 | 0.143106 | 0.155283 | 0.140198 | 0.171666 |
+| validation | state | AZ | 2 | 561 | 0.231759 | 0.231729 | 0.19871 | 0.268398 |
+| validation | state | AZ | 3 | 35 | 0.32306 | 0.4 | 0.255507 | 0.564273 |
+| validation | state | CA | 0 | 8519 | 0.070551 | 0.068318 | 0.063153 | 0.073872 |
+| validation | state | CA | 1 | 12286 | 0.142947 | 0.154159 | 0.147882 | 0.160652 |
+| validation | state | CA | 2 | 3304 | 0.233305 | 0.267252 | 0.252439 | 0.282605 |
+| validation | state | CA | 3 | 224 | 0.326657 | 0.352679 | 0.293071 | 0.417253 |
+| validation | state | CA | 4 | 6 | 0.425001 | 0.333333 | 0.096771 | 0.700007 |
+| validation | state | CO | 0 | 1270 | 0.07023 | 0.053543 | 0.042454 | 0.067325 |
+| validation | state | CO | 1 | 1663 | 0.142378 | 0.128683 | 0.113441 | 0.145637 |
+| validation | state | CO | 2 | 434 | 0.232076 | 0.211982 | 0.176142 | 0.252875 |
+| validation | state | CO | 3 | 26 | 0.323414 | 0.307692 | 0.165013 | 0.499883 |
+| validation | state | CT | 0 | 930 | 0.069633 | 0.058065 | 0.044773 | 0.074992 |
+| validation | state | CT | 1 | 1183 | 0.141165 | 0.121724 | 0.104307 | 0.141591 |
+| validation | state | CT | 2 | 284 | 0.232265 | 0.197183 | 0.155083 | 0.247365 |
+| validation | state | CT | 3 | 16 | 0.325634 | 0.25 | 0.101821 | 0.494983 |
+| validation | state | DC | 0 | 228 | 0.068869 | 0.048246 | 0.02715 | 0.084312 |
+| validation | state | DC | 1 | 211 | 0.139939 | 0.123223 | 0.085494 | 0.174425 |
+| validation | state | DC | 2 | 42 | 0.229933 | 0.238095 | 0.13481 | 0.385275 |
+| validation | state | DC | 3 | 2 | 0.353595 | 0.5 | 0.094531 | 0.905469 |
+| validation | state | DE | 0 | 141 | 0.070001 | 0.06383 | 0.033941 | 0.116854 |
+| validation | state | DE | 1 | 207 | 0.143381 | 0.154589 | 0.111681 | 0.210084 |
+| validation | state | DE | 2 | 60 | 0.236619 | 0.2 | 0.118285 | 0.317818 |
+| validation | state | DE | 3 | 6 | 0.321864 | 0.333333 | 0.096771 | 0.700007 |
+| validation | state | FL | 0 | 3287 | 0.071307 | 0.073928 | 0.065471 | 0.083378 |
+| validation | state | FL | 1 | 5949 | 0.145513 | 0.163725 | 0.15454 | 0.173344 |
+| validation | state | FL | 2 | 1821 | 0.232533 | 0.236683 | 0.217728 | 0.256747 |
+| validation | state | FL | 3 | 104 | 0.325053 | 0.25 | 0.176696 | 0.341114 |
+| validation | state | FL | 4 | 2 | 0.450424 | 0 | 0 | 0.65762 |
+| validation | state | GA | 0 | 1816 | 0.069379 | 0.062225 | 0.052012 | 0.074286 |
+| validation | state | GA | 1 | 2641 | 0.144184 | 0.136691 | 0.124116 | 0.150321 |
+| validation | state | GA | 2 | 679 | 0.232425 | 0.209131 | 0.18022 | 0.241315 |
+| validation | state | GA | 3 | 32 | 0.326656 | 0.28125 | 0.155646 | 0.453745 |
+| validation | state | GA | 4 | 1 | 0.425548 | 0 | 0 | 0.793451 |
+| validation | state | HI | 0 | 204 | 0.070323 | 0.102941 | 0.06832 | 0.15224 |
+| validation | state | HI | 1 | 433 | 0.145757 | 0.138568 | 0.109192 | 0.174301 |
+| validation | state | HI | 2 | 145 | 0.230626 | 0.227586 | 0.166894 | 0.30234 |
+| validation | state | HI | 3 | 22 | 0.32745 | 0.181818 | 0.073069 | 0.385166 |
+| validation | state | IA | 1 | 1 | 0.183322 | 0 | 0 | 0.793451 |
+| validation | state | ID | 0 | 1 | 0.074744 | 0 | 0 | 0.793451 |
+| validation | state | IL | 0 | 2587 | 0.068367 | 0.05373 | 0.045684 | 0.0631 |
+| validation | state | IL | 1 | 3301 | 0.141622 | 0.133596 | 0.122415 | 0.145629 |
+| validation | state | IL | 2 | 764 | 0.232889 | 0.229058 | 0.200659 | 0.260167 |
+| validation | state | IL | 3 | 47 | 0.325369 | 0.255319 | 0.152532 | 0.395082 |
+| validation | state | IL | 4 | 2 | 0.402974 | 0.5 | 0.094531 | 0.905469 |
+| validation | state | IN | 0 | 866 | 0.071105 | 0.064665 | 0.050131 | 0.083044 |
+| validation | state | IN | 1 | 1456 | 0.144645 | 0.148352 | 0.13102 | 0.167534 |
+| validation | state | IN | 2 | 395 | 0.229884 | 0.253165 | 0.212802 | 0.298282 |
+| validation | state | IN | 3 | 11 | 0.332362 | 0.636364 | 0.353801 | 0.848335 |
+| validation | state | KS | 0 | 499 | 0.068918 | 0.04008 | 0.026093 | 0.061094 |
+| validation | state | KS | 1 | 716 | 0.145574 | 0.114525 | 0.093228 | 0.139936 |
+| validation | state | KS | 2 | 183 | 0.230246 | 0.147541 | 0.103422 | 0.206153 |
+| validation | state | KS | 3 | 10 | 0.315471 | 0.2 | 0.056682 | 0.509838 |
+| validation | state | KY | 0 | 466 | 0.071057 | 0.051502 | 0.034851 | 0.075488 |
+| validation | state | KY | 1 | 838 | 0.144592 | 0.149165 | 0.126647 | 0.174884 |
+| validation | state | KY | 2 | 207 | 0.233373 | 0.241546 | 0.188289 | 0.304221 |
+| validation | state | KY | 3 | 9 | 0.315172 | 0.555556 | 0.266651 | 0.811221 |
+| validation | state | LA | 0 | 663 | 0.068674 | 0.078431 | 0.06031 | 0.101409 |
+| validation | state | LA | 1 | 912 | 0.144531 | 0.16557 | 0.142859 | 0.191086 |
+| validation | state | LA | 2 | 260 | 0.231786 | 0.242308 | 0.194222 | 0.297897 |
+| validation | state | LA | 3 | 21 | 0.333869 | 0.428571 | 0.2447 | 0.634534 |
+| validation | state | MA | 0 | 1482 | 0.067094 | 0.066802 | 0.055177 | 0.080666 |
+| validation | state | MA | 1 | 1561 | 0.141485 | 0.153107 | 0.136097 | 0.17182 |
+| validation | state | MA | 2 | 375 | 0.233746 | 0.256 | 0.214458 | 0.30249 |
+| validation | state | MA | 3 | 25 | 0.320832 | 0.28 | 0.142839 | 0.475766 |
+| validation | state | MD | 0 | 1405 | 0.069538 | 0.076868 | 0.064064 | 0.09198 |
+| validation | state | MD | 1 | 1788 | 0.141715 | 0.161074 | 0.144764 | 0.178836 |
+| validation | state | MD | 2 | 431 | 0.233366 | 0.278422 | 0.238206 | 0.322554 |
+| validation | state | MD | 3 | 25 | 0.33125 | 0.24 | 0.114963 | 0.434297 |
+| validation | state | MD | 4 | 1 | 0.401897 | 1 | 0.206549 | 1 |
+| validation | state | ME | 1 | 1 | 0.193054 | 0 | 0 | 0.793451 |
+| validation | state | MI | 0 | 1360 | 0.070552 | 0.066176 | 0.054149 | 0.080648 |
+| validation | state | MI | 1 | 2282 | 0.143476 | 0.149869 | 0.135812 | 0.165101 |
+| validation | state | MI | 2 | 620 | 0.232744 | 0.217742 | 0.187047 | 0.251913 |
+| validation | state | MI | 3 | 45 | 0.321809 | 0.4 | 0.270249 | 0.545481 |
+| validation | state | MI | 4 | 1 | 0.449058 | 1 | 0.206549 | 1 |
+| validation | state | MN | 0 | 1002 | 0.069633 | 0.083832 | 0.068221 | 0.102622 |
+| validation | state | MN | 1 | 1533 | 0.143791 | 0.166993 | 0.14916 | 0.186491 |
+| validation | state | MN | 2 | 393 | 0.230715 | 0.251908 | 0.211532 | 0.297088 |
+| validation | state | MN | 3 | 21 | 0.320082 | 0.285714 | 0.138139 | 0.499564 |
+| validation | state | MO | 0 | 808 | 0.068606 | 0.082921 | 0.065823 | 0.103966 |
+| validation | state | MO | 1 | 1327 | 0.144658 | 0.184627 | 0.164672 | 0.206403 |
+| validation | state | MO | 2 | 384 | 0.231033 | 0.236979 | 0.197184 | 0.281984 |
+| validation | state | MO | 3 | 15 | 0.333373 | 0.4 | 0.198245 | 0.642532 |
+| validation | state | MO | 4 | 1 | 0.417495 | 1 | 0.206549 | 1 |
+| validation | state | MS | 0 | 198 | 0.074125 | 0.116162 | 0.078663 | 0.16827 |
+| validation | state | MS | 1 | 427 | 0.145607 | 0.175644 | 0.142489 | 0.214583 |
+| validation | state | MS | 2 | 124 | 0.232428 | 0.306452 | 0.232141 | 0.392394 |
+| validation | state | MS | 3 | 5 | 0.31841 | 0.2 | 0.036224 | 0.624465 |
+| validation | state | MT | 0 | 142 | 0.069453 | 0.077465 | 0.043803 | 0.133385 |
+| validation | state | MT | 1 | 265 | 0.143356 | 0.10566 | 0.07412 | 0.14847 |
+| validation | state | MT | 2 | 82 | 0.233279 | 0.170732 | 0.104516 | 0.266417 |
+| validation | state | MT | 3 | 2 | 0.33229 | 1 | 0.34238 | 1 |
+| validation | state | NC | 0 | 1389 | 0.070091 | 0.065515 | 0.053664 | 0.079763 |
+| validation | state | NC | 1 | 2189 | 0.144173 | 0.159434 | 0.144696 | 0.175364 |
+| validation | state | NC | 2 | 614 | 0.231645 | 0.214984 | 0.184314 | 0.249197 |
+| validation | state | NC | 3 | 41 | 0.318006 | 0.268293 | 0.15695 | 0.419335 |
+| validation | state | NH | 0 | 280 | 0.06716 | 0.057143 | 0.035476 | 0.090797 |
+| validation | state | NH | 1 | 389 | 0.143597 | 0.092545 | 0.067597 | 0.125462 |
+| validation | state | NH | 2 | 89 | 0.230273 | 0.213483 | 0.141148 | 0.309528 |
+| validation | state | NH | 3 | 12 | 0.327562 | 0.166667 | 0.046965 | 0.448031 |
+| validation | state | NJ | 0 | 2355 | 0.068564 | 0.072611 | 0.062812 | 0.083803 |
+| validation | state | NJ | 1 | 2913 | 0.14245 | 0.148301 | 0.135858 | 0.16167 |
+| validation | state | NJ | 2 | 706 | 0.2325 | 0.235127 | 0.205331 | 0.267791 |
+| validation | state | NJ | 3 | 42 | 0.327085 | 0.285714 | 0.17167 | 0.435672 |
+| validation | state | NJ | 4 | 1 | 0.423786 | 0 | 0 | 0.793451 |
+| validation | state | NM | 0 | 333 | 0.07081 | 0.105105 | 0.076549 | 0.142668 |
+| validation | state | NM | 1 | 489 | 0.142769 | 0.167689 | 0.137195 | 0.203364 |
+| validation | state | NM | 2 | 141 | 0.232298 | 0.248227 | 0.184237 | 0.325571 |
+| validation | state | NM | 3 | 8 | 0.321655 | 0 | 0 | 0.324408 |
+| validation | state | NV | 0 | 693 | 0.073308 | 0.092352 | 0.072986 | 0.116213 |
+| validation | state | NV | 1 | 1295 | 0.144354 | 0.166023 | 0.146751 | 0.187271 |
+| validation | state | NV | 2 | 343 | 0.23344 | 0.274052 | 0.229547 | 0.323563 |
+| validation | state | NV | 3 | 23 | 0.320922 | 0.434783 | 0.256346 | 0.631886 |
+| validation | state | NY | 0 | 4927 | 0.069863 | 0.08423 | 0.076795 | 0.092312 |
+| validation | state | NY | 1 | 7152 | 0.143419 | 0.169463 | 0.160946 | 0.178335 |
+| validation | state | NY | 2 | 1866 | 0.232895 | 0.255627 | 0.236351 | 0.275907 |
+| validation | state | NY | 3 | 128 | 0.32597 | 0.265625 | 0.196755 | 0.348153 |
+| validation | state | NY | 4 | 6 | 0.426022 | 0.5 | 0.187616 | 0.812384 |
+| validation | state | OH | 0 | 1644 | 0.0701 | 0.06691 | 0.055813 | 0.080026 |
+| validation | state | OH | 1 | 2769 | 0.145279 | 0.142651 | 0.13012 | 0.156172 |
+| validation | state | OH | 2 | 797 | 0.230458 | 0.287327 | 0.25699 | 0.319705 |
+| validation | state | OH | 3 | 37 | 0.328504 | 0.297297 | 0.174895 | 0.457831 |
+| validation | state | OH | 4 | 1 | 0.400289 | 0 | 0 | 0.793451 |
+| validation | state | OK | 0 | 435 | 0.069771 | 0.078161 | 0.056469 | 0.107238 |
+| validation | state | OK | 1 | 767 | 0.143968 | 0.189048 | 0.162914 | 0.218282 |
+| validation | state | OK | 2 | 180 | 0.23256 | 0.283333 | 0.222566 | 0.353156 |
+| validation | state | OK | 3 | 11 | 0.324367 | 0.363636 | 0.151665 | 0.646199 |
+| validation | state | OR | 0 | 659 | 0.069447 | 0.037936 | 0.025826 | 0.055402 |
+| validation | state | OR | 1 | 1077 | 0.144784 | 0.130919 | 0.112079 | 0.152383 |
+| validation | state | OR | 2 | 343 | 0.233268 | 0.233236 | 0.191587 | 0.280794 |
+| validation | state | OR | 3 | 21 | 0.324991 | 0.095238 | 0.026519 | 0.289141 |
+| validation | state | OR | 4 | 1 | 0.422904 | 1 | 0.206549 | 1 |
+| validation | state | PA | 0 | 1822 | 0.070273 | 0.072997 | 0.061929 | 0.085861 |
+| validation | state | PA | 1 | 2844 | 0.143838 | 0.145218 | 0.132748 | 0.158645 |
+| validation | state | PA | 2 | 799 | 0.23309 | 0.242804 | 0.214349 | 0.273719 |
+| validation | state | PA | 3 | 39 | 0.322866 | 0.358974 | 0.227421 | 0.515819 |
+| validation | state | RI | 0 | 219 | 0.068049 | 0.059361 | 0.035015 | 0.098898 |
+| validation | state | RI | 1 | 392 | 0.140704 | 0.135204 | 0.104874 | 0.172615 |
+| validation | state | RI | 2 | 80 | 0.23534 | 0.175 | 0.107206 | 0.272575 |
+| validation | state | RI | 3 | 6 | 0.3289 | 0.333333 | 0.096771 | 0.700007 |
+| validation | state | SC | 0 | 638 | 0.070135 | 0.056426 | 0.041034 | 0.077128 |
+| validation | state | SC | 1 | 1021 | 0.145119 | 0.112635 | 0.094677 | 0.133497 |
+| validation | state | SC | 2 | 290 | 0.232252 | 0.213793 | 0.170509 | 0.264561 |
+| validation | state | SC | 3 | 22 | 0.334668 | 0.318182 | 0.163606 | 0.526814 |
+| validation | state | SD | 0 | 93 | 0.07476 | 0.086022 | 0.044233 | 0.160653 |
+| validation | state | SD | 1 | 215 | 0.144076 | 0.15814 | 0.115428 | 0.212853 |
+| validation | state | SD | 2 | 48 | 0.235608 | 0.1875 | 0.101914 | 0.319399 |
+| validation | state | SD | 3 | 4 | 0.311613 | 0.25 | 0.045587 | 0.699358 |
+| validation | state | TN | 0 | 787 | 0.070443 | 0.072427 | 0.05632 | 0.092687 |
+| validation | state | TN | 1 | 1384 | 0.144799 | 0.183526 | 0.164018 | 0.204786 |
+| validation | state | TN | 2 | 383 | 0.232256 | 0.261097 | 0.219635 | 0.307303 |
+| validation | state | TN | 3 | 24 | 0.331598 | 0.375 | 0.211594 | 0.5729 |
+| validation | state | TX | 0 | 4935 | 0.069086 | 0.072746 | 0.065827 | 0.080329 |
+| validation | state | TX | 1 | 6736 | 0.143283 | 0.150386 | 0.142049 | 0.159121 |
+| validation | state | TX | 2 | 1618 | 0.233331 | 0.229913 | 0.210065 | 0.251042 |
+| validation | state | TX | 3 | 97 | 0.327588 | 0.268041 | 0.189976 | 0.363779 |
+| validation | state | TX | 4 | 2 | 0.413291 | 0 | 0 | 0.65762 |
+| validation | state | UT | 0 | 379 | 0.071016 | 0.058047 | 0.038643 | 0.086321 |
+| validation | state | UT | 1 | 576 | 0.14515 | 0.140625 | 0.11461 | 0.171401 |
+| validation | state | UT | 2 | 147 | 0.230304 | 0.204082 | 0.146861 | 0.276374 |
+| validation | state | UT | 3 | 8 | 0.323338 | 0.5 | 0.215216 | 0.784784 |
+| validation | state | VA | 0 | 1690 | 0.068235 | 0.086391 | 0.073917 | 0.10074 |
+| validation | state | VA | 1 | 2233 | 0.142564 | 0.153605 | 0.139246 | 0.169154 |
+| validation | state | VA | 2 | 565 | 0.232353 | 0.267257 | 0.232429 | 0.305228 |
+| validation | state | VA | 3 | 30 | 0.32295 | 0.466667 | 0.302324 | 0.638577 |
+| validation | state | VA | 4 | 2 | 0.413767 | 0.5 | 0.094531 | 0.905469 |
+| validation | state | VT | 0 | 124 | 0.069746 | 0.040323 | 0.017344 | 0.090926 |
+| validation | state | VT | 1 | 204 | 0.14645 | 0.117647 | 0.080346 | 0.169082 |
+| validation | state | VT | 2 | 42 | 0.227092 | 0.214286 | 0.117058 | 0.359398 |
+| validation | state | VT | 3 | 3 | 0.307128 | 0.333333 | 0.061492 | 0.79234 |
+| validation | state | WA | 0 | 1254 | 0.069603 | 0.055821 | 0.044418 | 0.069937 |
+| validation | state | WA | 1 | 1827 | 0.143836 | 0.124247 | 0.109906 | 0.140166 |
+| validation | state | WA | 2 | 451 | 0.234304 | 0.201774 | 0.167325 | 0.24126 |
+| validation | state | WA | 3 | 27 | 0.325281 | 0.148148 | 0.059159 | 0.324787 |
+| validation | state | WA | 4 | 3 | 0.435424 | 0.333333 | 0.061492 | 0.79234 |
+| validation | state | WI | 0 | 711 | 0.069566 | 0.067511 | 0.051295 | 0.088374 |
+| validation | state | WI | 1 | 1145 | 0.144242 | 0.139738 | 0.120858 | 0.161028 |
+| validation | state | WI | 2 | 287 | 0.231896 | 0.209059 | 0.166011 | 0.259793 |
+| validation | state | WI | 3 | 10 | 0.33541 | 0.3 | 0.107791 | 0.603222 |
+| validation | state | WV | 0 | 254 | 0.069953 | 0.035433 | 0.018751 | 0.065957 |
+| validation | state | WV | 1 | 407 | 0.141869 | 0.115479 | 0.087962 | 0.150187 |
+| validation | state | WV | 2 | 128 | 0.227123 | 0.140625 | 0.09084 | 0.211352 |
+| validation | state | WV | 3 | 7 | 0.316511 | 0 | 0 | 0.35433 |
+| validation | state | WV | 4 | 1 | 0.415447 | 1 | 0.206549 | 1 |
+| validation | state | WY | 0 | 144 | 0.070309 | 0.034722 | 0.014921 | 0.078703 |
+| validation | state | WY | 1 | 187 | 0.142785 | 0.139037 | 0.096681 | 0.195925 |
+| validation | state | WY | 2 | 52 | 0.233967 | 0.25 | 0.152332 | 0.382065 |
+| exploratory_test | application | Individual | 0 | 97661 | 0.069635 | 0.076704 | 0.075052 | 0.07839 |
+| exploratory_test | application | Individual | 1 | 143261 | 0.143598 | 0.164909 | 0.162996 | 0.166839 |
+| exploratory_test | application | Individual | 2 | 39321 | 0.233212 | 0.255716 | 0.251428 | 0.260052 |
+| exploratory_test | application | Individual | 3 | 2477 | 0.326509 | 0.358498 | 0.339845 | 0.377589 |
+| exploratory_test | application | Individual | 4 | 67 | 0.42834 | 0.447761 | 0.334764 | 0.566424 |
+| exploratory_test | application | Joint App | 0 | 36 | 0.077435 | 0.027778 | 0.00492 | 0.141697 |
+| exploratory_test | application | Joint App | 1 | 121 | 0.147146 | 0.173554 | 0.116409 | 0.250788 |
+| exploratory_test | application | Joint App | 2 | 66 | 0.242607 | 0.242424 | 0.155092 | 0.358091 |
+| exploratory_test | application | Joint App | 3 | 14 | 0.341739 | 0.357143 | 0.163447 | 0.612356 |
+| exploratory_test | application | Joint App | 4 | 2 | 0.431486 | 0 | 0 | 0.65762 |
+| validation | application | Individual | 0 | 56022 | 0.069814 | 0.070008 | 0.067925 | 0.072151 |
+| validation | application | Individual | 1 | 83144 | 0.143583 | 0.151917 | 0.149493 | 0.154373 |
+| validation | application | Individual | 2 | 22039 | 0.232513 | 0.242434 | 0.236821 | 0.248136 |
+| validation | application | Individual | 3 | 1333 | 0.325751 | 0.304576 | 0.280461 | 0.329815 |
+| validation | application | Individual | 4 | 32 | 0.423127 | 0.40625 | 0.255196 | 0.5774 |
+| exploratory_test | income_home | Missing / MORTGAGE | 1 | 2 | 0.1404 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | income_home | Q1_lowest / MORTGAGE | 0 | 2110 | 0.077745 | 0.066351 | 0.056499 | 0.077778 |
+| exploratory_test | income_home | Q1_lowest / MORTGAGE | 1 | 11535 | 0.152319 | 0.158734 | 0.152179 | 0.165516 |
+| exploratory_test | income_home | Q1_lowest / MORTGAGE | 2 | 3902 | 0.230249 | 0.239108 | 0.225986 | 0.252744 |
+| exploratory_test | income_home | Q1_lowest / MORTGAGE | 3 | 100 | 0.323921 | 0.29 | 0.210148 | 0.385389 |
+| exploratory_test | income_home | Q1_lowest / MORTGAGE | 4 | 2 | 0.41158 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | income_home | Q1_lowest / OWN | 0 | 917 | 0.079933 | 0.095965 | 0.078552 | 0.116749 |
+| exploratory_test | income_home | Q1_lowest / OWN | 1 | 5760 | 0.155856 | 0.164236 | 0.154893 | 0.174027 |
+| exploratory_test | income_home | Q1_lowest / OWN | 2 | 3480 | 0.234164 | 0.245402 | 0.231391 | 0.259975 |
+| exploratory_test | income_home | Q1_lowest / OWN | 3 | 179 | 0.324331 | 0.335196 | 0.270147 | 0.407169 |
+| exploratory_test | income_home | Q1_lowest / OWN | 4 | 4 | 0.439345 | 0.5 | 0.150039 | 0.849961 |
+| exploratory_test | income_home | Q1_lowest / RENT | 0 | 2161 | 0.083195 | 0.091624 | 0.080175 | 0.104523 |
+| exploratory_test | income_home | Q1_lowest / RENT | 1 | 20278 | 0.156342 | 0.170628 | 0.165513 | 0.175868 |
+| exploratory_test | income_home | Q1_lowest / RENT | 2 | 15322 | 0.237375 | 0.254797 | 0.247959 | 0.261758 |
+| exploratory_test | income_home | Q1_lowest / RENT | 3 | 1330 | 0.325858 | 0.350376 | 0.3252 | 0.376414 |
+| exploratory_test | income_home | Q1_lowest / RENT | 4 | 32 | 0.427305 | 0.5 | 0.336309 | 0.663691 |
+| exploratory_test | income_home | Q2 / MORTGAGE | 0 | 8608 | 0.07427 | 0.067263 | 0.062162 | 0.07275 |
+| exploratory_test | income_home | Q2 / MORTGAGE | 1 | 18772 | 0.142456 | 0.149638 | 0.144607 | 0.154812 |
+| exploratory_test | income_home | Q2 / MORTGAGE | 2 | 2774 | 0.225865 | 0.229632 | 0.214361 | 0.245651 |
+| exploratory_test | income_home | Q2 / MORTGAGE | 3 | 72 | 0.323507 | 0.361111 | 0.259817 | 0.476475 |
+| exploratory_test | income_home | Q2 / OWN | 0 | 1842 | 0.07496 | 0.082519 | 0.070805 | 0.09597 |
+| exploratory_test | income_home | Q2 / OWN | 1 | 5037 | 0.146314 | 0.161604 | 0.151697 | 0.172027 |
+| exploratory_test | income_home | Q2 / OWN | 2 | 1071 | 0.228833 | 0.264239 | 0.238708 | 0.291455 |
+| exploratory_test | income_home | Q2 / OWN | 3 | 30 | 0.322438 | 0.366667 | 0.218739 | 0.544864 |
+| exploratory_test | income_home | Q2 / RENT | 0 | 5891 | 0.078426 | 0.085384 | 0.078516 | 0.092794 |
+| exploratory_test | income_home | Q2 / RENT | 1 | 21087 | 0.146663 | 0.171812 | 0.166781 | 0.176963 |
+| exploratory_test | income_home | Q2 / RENT | 2 | 6660 | 0.232339 | 0.26006 | 0.249665 | 0.270732 |
+| exploratory_test | income_home | Q2 / RENT | 3 | 428 | 0.329881 | 0.36215 | 0.318029 | 0.408723 |
+| exploratory_test | income_home | Q2 / RENT | 4 | 14 | 0.431021 | 0.357143 | 0.163447 | 0.612356 |
+| exploratory_test | income_home | Q3 / ANY | 0 | 1 | 0.081994 | 0 | 0 | 0.793451 |
+| exploratory_test | income_home | Q3 / MORTGAGE | 0 | 16434 | 0.069652 | 0.071681 | 0.067836 | 0.075725 |
+| exploratory_test | income_home | Q3 / MORTGAGE | 1 | 17014 | 0.136219 | 0.150288 | 0.144997 | 0.155737 |
+| exploratory_test | income_home | Q3 / MORTGAGE | 2 | 1435 | 0.226583 | 0.273171 | 0.250745 | 0.296808 |
+| exploratory_test | income_home | Q3 / MORTGAGE | 3 | 35 | 0.322164 | 0.371429 | 0.231658 | 0.536631 |
+| exploratory_test | income_home | Q3 / MORTGAGE | 4 | 1 | 0.417283 | 1 | 0.206549 | 1 |
+| exploratory_test | income_home | Q3 / OWN | 0 | 2704 | 0.070864 | 0.089127 | 0.078963 | 0.100458 |
+| exploratory_test | income_home | Q3 / OWN | 1 | 3296 | 0.139001 | 0.164745 | 0.152473 | 0.177798 |
+| exploratory_test | income_home | Q3 / OWN | 2 | 401 | 0.229043 | 0.286783 | 0.244705 | 0.332907 |
+| exploratory_test | income_home | Q3 / OWN | 3 | 29 | 0.325398 | 0.517241 | 0.34431 | 0.686139 |
+| exploratory_test | income_home | Q3 / OWN | 4 | 2 | 0.408449 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | income_home | Q3 / RENT | 0 | 8505 | 0.073895 | 0.095591 | 0.089523 | 0.102024 |
+| exploratory_test | income_home | Q3 / RENT | 1 | 14827 | 0.140993 | 0.182235 | 0.176104 | 0.188531 |
+| exploratory_test | income_home | Q3 / RENT | 2 | 2602 | 0.231134 | 0.282859 | 0.265884 | 0.300475 |
+| exploratory_test | income_home | Q3 / RENT | 3 | 195 | 0.330034 | 0.410256 | 0.3436 | 0.48038 |
+| exploratory_test | income_home | Q3 / RENT | 4 | 11 | 0.435071 | 0.272727 | 0.097461 | 0.565645 |
+| exploratory_test | income_home | Q4_highest / MORTGAGE | 0 | 32672 | 0.063894 | 0.068193 | 0.06551 | 0.070977 |
+| exploratory_test | income_home | Q4_highest / MORTGAGE | 1 | 13645 | 0.129213 | 0.155735 | 0.149748 | 0.161916 |
+| exploratory_test | income_home | Q4_highest / MORTGAGE | 2 | 636 | 0.226384 | 0.264151 | 0.231376 | 0.299757 |
+| exploratory_test | income_home | Q4_highest / MORTGAGE | 3 | 13 | 0.31808 | 0.384615 | 0.177097 | 0.644771 |
+| exploratory_test | income_home | Q4_highest / OWN | 0 | 4544 | 0.064483 | 0.086488 | 0.07866 | 0.095014 |
+| exploratory_test | income_home | Q4_highest / OWN | 1 | 2333 | 0.131697 | 0.198028 | 0.182359 | 0.21469 |
+| exploratory_test | income_home | Q4_highest / OWN | 2 | 159 | 0.22864 | 0.314465 | 0.247395 | 0.390289 |
+| exploratory_test | income_home | Q4_highest / OWN | 3 | 11 | 0.329684 | 0.363636 | 0.151665 | 0.646199 |
+| exploratory_test | income_home | Q4_highest / OWN | 4 | 1 | 0.410358 | 1 | 0.206549 | 1 |
+| exploratory_test | income_home | Q4_highest / RENT | 0 | 11308 | 0.070876 | 0.086576 | 0.081532 | 0.0919 |
+| exploratory_test | income_home | Q4_highest / RENT | 1 | 9796 | 0.135156 | 0.180992 | 0.173493 | 0.188741 |
+| exploratory_test | income_home | Q4_highest / RENT | 2 | 945 | 0.230709 | 0.28254 | 0.254759 | 0.312081 |
+| exploratory_test | income_home | Q4_highest / RENT | 3 | 69 | 0.329335 | 0.42029 | 0.311061 | 0.537926 |
+| exploratory_test | income_home | Q4_highest / RENT | 4 | 2 | 0.42141 | 0 | 0 | 0.65762 |
+| validation | income_home | Q1_lowest / ANY | 1 | 1 | 0.136564 | 0 | 0 | 0.793451 |
+| validation | income_home | Q1_lowest / MORTGAGE | 0 | 1178 | 0.079116 | 0.081494 | 0.067197 | 0.098512 |
+| validation | income_home | Q1_lowest / MORTGAGE | 1 | 7160 | 0.15188 | 0.149302 | 0.141235 | 0.157745 |
+| validation | income_home | Q1_lowest / MORTGAGE | 2 | 2265 | 0.228167 | 0.229581 | 0.212727 | 0.24735 |
+| validation | income_home | Q1_lowest / MORTGAGE | 3 | 58 | 0.321872 | 0.241379 | 0.149589 | 0.3653 |
+| validation | income_home | Q1_lowest / OWN | 0 | 436 | 0.079025 | 0.077982 | 0.056339 | 0.106996 |
+| validation | income_home | Q1_lowest / OWN | 1 | 3300 | 0.156295 | 0.15697 | 0.144958 | 0.169779 |
+| validation | income_home | Q1_lowest / OWN | 2 | 1944 | 0.232355 | 0.230967 | 0.212774 | 0.250221 |
+| validation | income_home | Q1_lowest / OWN | 3 | 89 | 0.327037 | 0.258427 | 0.178815 | 0.358029 |
+| validation | income_home | Q1_lowest / RENT | 0 | 1152 | 0.083603 | 0.085069 | 0.070306 | 0.102591 |
+| validation | income_home | Q1_lowest / RENT | 1 | 12214 | 0.157053 | 0.170951 | 0.164379 | 0.177731 |
+| validation | income_home | Q1_lowest / RENT | 2 | 8987 | 0.236993 | 0.249694 | 0.240853 | 0.258748 |
+| validation | income_home | Q1_lowest / RENT | 3 | 735 | 0.324155 | 0.312925 | 0.280449 | 0.347346 |
+| validation | income_home | Q1_lowest / RENT | 4 | 19 | 0.428854 | 0.421053 | 0.231419 | 0.637241 |
+| validation | income_home | Q2 / MORTGAGE | 0 | 5074 | 0.075089 | 0.066023 | 0.059513 | 0.073189 |
+| validation | income_home | Q2 / MORTGAGE | 1 | 11340 | 0.141911 | 0.1403 | 0.134029 | 0.146814 |
+| validation | income_home | Q2 / MORTGAGE | 2 | 1543 | 0.224802 | 0.200259 | 0.181046 | 0.220961 |
+| validation | income_home | Q2 / MORTGAGE | 3 | 39 | 0.325845 | 0.435897 | 0.293048 | 0.590243 |
+| validation | income_home | Q2 / MORTGAGE | 4 | 1 | 0.425548 | 0 | 0 | 0.793451 |
+| validation | income_home | Q2 / OWN | 0 | 931 | 0.075731 | 0.083781 | 0.067649 | 0.103334 |
+| validation | income_home | Q2 / OWN | 1 | 2792 | 0.145193 | 0.150072 | 0.137305 | 0.163799 |
+| validation | income_home | Q2 / OWN | 2 | 496 | 0.226888 | 0.215726 | 0.181785 | 0.254036 |
+| validation | income_home | Q2 / OWN | 3 | 20 | 0.335297 | 0.25 | 0.111862 | 0.468701 |
+| validation | income_home | Q2 / RENT | 0 | 3267 | 0.078679 | 0.070707 | 0.062412 | 0.08001 |
+| validation | income_home | Q2 / RENT | 1 | 12641 | 0.146477 | 0.154972 | 0.148768 | 0.161385 |
+| validation | income_home | Q2 / RENT | 2 | 3717 | 0.23171 | 0.260156 | 0.246305 | 0.274502 |
+| validation | income_home | Q2 / RENT | 3 | 215 | 0.328551 | 0.306977 | 0.249161 | 0.371569 |
+| validation | income_home | Q2 / RENT | 4 | 6 | 0.420258 | 0.333333 | 0.096771 | 0.700007 |
+| validation | income_home | Q3 / MORTGAGE | 0 | 10198 | 0.070119 | 0.067758 | 0.063041 | 0.072801 |
+| validation | income_home | Q3 / MORTGAGE | 1 | 10055 | 0.135382 | 0.139135 | 0.132508 | 0.146037 |
+| validation | income_home | Q3 / MORTGAGE | 2 | 767 | 0.224543 | 0.241199 | 0.212261 | 0.272717 |
+| validation | income_home | Q3 / MORTGAGE | 3 | 30 | 0.322735 | 0.3 | 0.166647 | 0.478758 |
+| validation | income_home | Q3 / OWN | 0 | 1389 | 0.071203 | 0.082073 | 0.068765 | 0.097687 |
+| validation | income_home | Q3 / OWN | 1 | 1666 | 0.139227 | 0.157263 | 0.140573 | 0.17553 |
+| validation | income_home | Q3 / OWN | 2 | 164 | 0.230977 | 0.213415 | 0.157643 | 0.282304 |
+| validation | income_home | Q3 / OWN | 3 | 9 | 0.314246 | 0.333333 | 0.120584 | 0.645798 |
+| validation | income_home | Q3 / RENT | 0 | 4929 | 0.074122 | 0.080949 | 0.073657 | 0.088894 |
+| validation | income_home | Q3 / RENT | 1 | 8382 | 0.140359 | 0.15748 | 0.14984 | 0.165435 |
+| validation | income_home | Q3 / RENT | 2 | 1307 | 0.230611 | 0.244836 | 0.222294 | 0.268872 |
+| validation | income_home | Q3 / RENT | 3 | 105 | 0.329461 | 0.266667 | 0.191417 | 0.358387 |
+| validation | income_home | Q3 / RENT | 4 | 4 | 0.407411 | 0.5 | 0.150039 | 0.849961 |
+| validation | income_home | Q4_highest / MORTGAGE | 0 | 19094 | 0.063778 | 0.063266 | 0.0599 | 0.066808 |
+| validation | income_home | Q4_highest / MORTGAGE | 1 | 7191 | 0.12853 | 0.141844 | 0.133971 | 0.150099 |
+| validation | income_home | Q4_highest / MORTGAGE | 2 | 327 | 0.226851 | 0.259939 | 0.215383 | 0.31007 |
+| validation | income_home | Q4_highest / MORTGAGE | 3 | 6 | 0.331684 | 0.333333 | 0.096771 | 0.700007 |
+| validation | income_home | Q4_highest / OWN | 0 | 2158 | 0.06492 | 0.073679 | 0.063398 | 0.085475 |
+| validation | income_home | Q4_highest / OWN | 1 | 1035 | 0.131582 | 0.151691 | 0.131127 | 0.174831 |
+| validation | income_home | Q4_highest / OWN | 2 | 63 | 0.228878 | 0.269841 | 0.175838 | 0.390299 |
+| validation | income_home | Q4_highest / OWN | 3 | 1 | 0.313311 | 0 | 0 | 0.793451 |
+| validation | income_home | Q4_highest / RENT | 0 | 6216 | 0.071009 | 0.077059 | 0.070688 | 0.083953 |
+| validation | income_home | Q4_highest / RENT | 1 | 5367 | 0.134159 | 0.154462 | 0.145041 | 0.164378 |
+| validation | income_home | Q4_highest / RENT | 2 | 459 | 0.229225 | 0.228758 | 0.192677 | 0.269342 |
+| validation | income_home | Q4_highest / RENT | 3 | 26 | 0.336052 | 0.346154 | 0.194122 | 0.537794 |
+| validation | income_home | Q4_highest / RENT | 4 | 2 | 0.407547 | 0.5 | 0.094531 | 0.905469 |
+| exploratory_test | fico_delinquency | 680_to_719 / None | 0 | 34473 | 0.077904 | 0.08717 | 0.084238 | 0.090194 |
+| exploratory_test | fico_delinquency | 680_to_719 / None | 1 | 56144 | 0.140168 | 0.157274 | 0.154286 | 0.160309 |
+| exploratory_test | fico_delinquency | 680_to_719 / None | 2 | 9622 | 0.230906 | 0.239971 | 0.231543 | 0.248607 |
+| exploratory_test | fico_delinquency | 680_to_719 / None | 3 | 577 | 0.325687 | 0.341421 | 0.303893 | 0.381047 |
+| exploratory_test | fico_delinquency | 680_to_719 / None | 4 | 17 | 0.424291 | 0.470588 | 0.261651 | 0.690368 |
+| exploratory_test | fico_delinquency | 680_to_719 / One_or_more | 0 | 9413 | 0.077247 | 0.093063 | 0.087359 | 0.099099 |
+| exploratory_test | fico_delinquency | 680_to_719 / One_or_more | 1 | 13048 | 0.138135 | 0.158875 | 0.152703 | 0.165248 |
+| exploratory_test | fico_delinquency | 680_to_719 / One_or_more | 2 | 1650 | 0.230349 | 0.251515 | 0.231173 | 0.273011 |
+| exploratory_test | fico_delinquency | 680_to_719 / One_or_more | 3 | 86 | 0.324515 | 0.337209 | 0.246165 | 0.442174 |
+| exploratory_test | fico_delinquency | 680_to_719 / One_or_more | 4 | 3 | 0.452744 | 0.333333 | 0.061492 | 0.79234 |
+| exploratory_test | fico_delinquency | 720_to_759 / None | 0 | 26121 | 0.063746 | 0.06489 | 0.061967 | 0.067942 |
+| exploratory_test | fico_delinquency | 720_to_759 / None | 1 | 7625 | 0.127512 | 0.136393 | 0.128873 | 0.14428 |
+| exploratory_test | fico_delinquency | 720_to_759 / None | 2 | 326 | 0.226587 | 0.242331 | 0.198993 | 0.291672 |
+| exploratory_test | fico_delinquency | 720_to_759 / None | 3 | 12 | 0.331617 | 0.083333 | 0.014865 | 0.35388 |
+| exploratory_test | fico_delinquency | 720_to_759 / One_or_more | 0 | 2866 | 0.063299 | 0.072924 | 0.063966 | 0.083026 |
+| exploratory_test | fico_delinquency | 720_to_759 / One_or_more | 1 | 736 | 0.128276 | 0.154891 | 0.130551 | 0.182815 |
+| exploratory_test | fico_delinquency | 720_to_759 / One_or_more | 2 | 37 | 0.229153 | 0.405405 | 0.263465 | 0.56514 |
+| exploratory_test | fico_delinquency | 760_plus / None | 0 | 12922 | 0.042142 | 0.042021 | 0.038696 | 0.045619 |
+| exploratory_test | fico_delinquency | 760_plus / None | 1 | 455 | 0.12283 | 0.186813 | 0.153676 | 0.225194 |
+| exploratory_test | fico_delinquency | 760_plus / None | 2 | 26 | 0.224732 | 0.230769 | 0.110338 | 0.420516 |
+| exploratory_test | fico_delinquency | 760_plus / One_or_more | 0 | 324 | 0.044725 | 0.055556 | 0.035427 | 0.0861 |
+| exploratory_test | fico_delinquency | 760_plus / One_or_more | 1 | 11 | 0.13034 | 0.272727 | 0.097461 | 0.565645 |
+| exploratory_test | fico_delinquency | Below_680 / None | 0 | 7373 | 0.085192 | 0.093042 | 0.086622 | 0.099886 |
+| exploratory_test | fico_delinquency | Below_680 / None | 1 | 45363 | 0.15074 | 0.177039 | 0.173553 | 0.180578 |
+| exploratory_test | fico_delinquency | Below_680 / None | 2 | 21443 | 0.235158 | 0.261624 | 0.255784 | 0.267549 |
+| exploratory_test | fico_delinquency | Below_680 / None | 3 | 1513 | 0.326911 | 0.368804 | 0.344853 | 0.393419 |
+| exploratory_test | fico_delinquency | Below_680 / None | 4 | 40 | 0.42717 | 0.475 | 0.329355 | 0.625026 |
+| exploratory_test | fico_delinquency | Below_680 / One_or_more | 0 | 4205 | 0.084891 | 0.109394 | 0.100313 | 0.119187 |
+| exploratory_test | fico_delinquency | Below_680 / One_or_more | 1 | 20000 | 0.147789 | 0.1735 | 0.168315 | 0.178811 |
+| exploratory_test | fico_delinquency | Below_680 / One_or_more | 2 | 6283 | 0.231359 | 0.260544 | 0.24984 | 0.271542 |
+| exploratory_test | fico_delinquency | Below_680 / One_or_more | 3 | 303 | 0.327136 | 0.356436 | 0.304614 | 0.411852 |
+| exploratory_test | fico_delinquency | Below_680 / One_or_more | 4 | 9 | 0.43375 | 0.222222 | 0.063225 | 0.547411 |
+| validation | fico_delinquency | 680_to_719 / None | 0 | 20158 | 0.077796 | 0.076645 | 0.073052 | 0.080398 |
+| validation | fico_delinquency | 680_to_719 / None | 1 | 32255 | 0.139826 | 0.148008 | 0.144175 | 0.151925 |
+| validation | fico_delinquency | 680_to_719 / None | 2 | 5154 | 0.230606 | 0.232247 | 0.220921 | 0.243972 |
+| validation | fico_delinquency | 680_to_719 / None | 3 | 295 | 0.325293 | 0.318644 | 0.268095 | 0.373855 |
+| validation | fico_delinquency | 680_to_719 / None | 4 | 8 | 0.416655 | 0.5 | 0.215216 | 0.784784 |
+| validation | fico_delinquency | 680_to_719 / One_or_more | 0 | 5441 | 0.076918 | 0.082705 | 0.075678 | 0.090322 |
+| validation | fico_delinquency | 680_to_719 / One_or_more | 1 | 7140 | 0.137246 | 0.145238 | 0.137256 | 0.153602 |
+| validation | fico_delinquency | 680_to_719 / One_or_more | 2 | 893 | 0.23002 | 0.24972 | 0.222443 | 0.279141 |
+| validation | fico_delinquency | 680_to_719 / One_or_more | 3 | 58 | 0.32579 | 0.172414 | 0.096443 | 0.289083 |
+| validation | fico_delinquency | 680_to_719 / One_or_more | 4 | 1 | 0.42226 | 1 | 0.206549 | 1 |
+| validation | fico_delinquency | 720_to_759 / None | 0 | 15083 | 0.062863 | 0.05967 | 0.056001 | 0.063563 |
+| validation | fico_delinquency | 720_to_759 / None | 1 | 3770 | 0.125963 | 0.125729 | 0.115526 | 0.136695 |
+| validation | fico_delinquency | 720_to_759 / None | 2 | 147 | 0.225444 | 0.258503 | 0.194516 | 0.334791 |
+| validation | fico_delinquency | 720_to_759 / None | 3 | 9 | 0.343631 | 0.444444 | 0.188779 | 0.733349 |
+| validation | fico_delinquency | 720_to_759 / None | 4 | 1 | 0.404048 | 0 | 0 | 0.793451 |
+| validation | fico_delinquency | 720_to_759 / One_or_more | 0 | 1398 | 0.062652 | 0.071531 | 0.059163 | 0.086246 |
+| validation | fico_delinquency | 720_to_759 / One_or_more | 1 | 335 | 0.128557 | 0.134328 | 0.101929 | 0.175019 |
+| validation | fico_delinquency | 720_to_759 / One_or_more | 2 | 16 | 0.231714 | 0.25 | 0.101821 | 0.494983 |
+| validation | fico_delinquency | 720_to_759 / One_or_more | 3 | 1 | 0.320402 | 0 | 0 | 0.793451 |
+| validation | fico_delinquency | 760_plus / None | 0 | 6733 | 0.041781 | 0.042923 | 0.038337 | 0.04803 |
+| validation | fico_delinquency | 760_plus / None | 1 | 279 | 0.127003 | 0.136201 | 0.100864 | 0.181419 |
+| validation | fico_delinquency | 760_plus / None | 2 | 8 | 0.221942 | 0.5 | 0.215216 | 0.784784 |
+| validation | fico_delinquency | 760_plus / None | 3 | 1 | 0.31228 | 1 | 0.206549 | 1 |
+| validation | fico_delinquency | 760_plus / One_or_more | 0 | 194 | 0.044021 | 0.06701 | 0.039576 | 0.111259 |
+| validation | fico_delinquency | 760_plus / One_or_more | 1 | 12 | 0.121524 | 0.083333 | 0.014865 | 0.35388 |
+| validation | fico_delinquency | 760_plus / One_or_more | 2 | 1 | 0.2345 | 0 | 0 | 0.793451 |
+| validation | fico_delinquency | Below_680 / None | 0 | 4435 | 0.085569 | 0.086584 | 0.078661 | 0.095223 |
+| validation | fico_delinquency | Below_680 / None | 1 | 27322 | 0.150892 | 0.158334 | 0.154053 | 0.162711 |
+| validation | fico_delinquency | Below_680 / None | 2 | 12267 | 0.234007 | 0.246352 | 0.238807 | 0.254056 |
+| validation | fico_delinquency | Below_680 / None | 3 | 798 | 0.325434 | 0.313283 | 0.282061 | 0.346294 |
+| validation | fico_delinquency | Below_680 / None | 4 | 16 | 0.42944 | 0.375 | 0.184812 | 0.61359 |
+| validation | fico_delinquency | Below_680 / One_or_more | 0 | 2580 | 0.08499 | 0.093411 | 0.082778 | 0.105252 |
+| validation | fico_delinquency | Below_680 / One_or_more | 1 | 12031 | 0.147163 | 0.160918 | 0.15446 | 0.167592 |
+| validation | fico_delinquency | Below_680 / One_or_more | 2 | 3553 | 0.231065 | 0.240642 | 0.226871 | 0.254973 |
+| validation | fico_delinquency | Below_680 / One_or_more | 3 | 171 | 0.327175 | 0.274854 | 0.213442 | 0.346159 |
+| validation | fico_delinquency | Below_680 / One_or_more | 4 | 6 | 0.418245 | 0.333333 | 0.096771 | 0.700007 |
+
+### segment_temporal_drift
+
+| dimension | group | rows_2014 | supported_2014 | observed_rate_2014 | mean_probability_2014 | calibration_bias_2014 | tpr_2014 | fpr_2014 | roc_auc_2014 | rows_2015 | supported_2015 | observed_rate_2015 | mean_probability_2015 | calibration_bias_2015 | tpr_2015 | fpr_2015 | roc_auc_2015 | observed_rate_change_2015_minus_2014 | mean_probability_change_2015_minus_2014 | calibration_bias_change_2015_minus_2014 | tpr_change_2015_minus_2014 | fpr_change_2015_minus_2014 | roc_auc_change_2015_minus_2014 | supported_both_years |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| application | Individual | 162,570 | True | 0.137264 | 0.131767 | -0.005497 | 0.546942 | 0.331646 | 0.653889 | 282,787 | True | 0.148836 | 0.132185 | -0.016651 | 0.544703 | 0.330896 | 0.654348 | 0.011572 | 0.000418 | -0.011154 | -0.002239 | -0.00075 | 0.000459 | True |
+| application | Joint App | — | — | — | — | — | — | — | — | 239 | False | 0.179916 | 0.176785 | -0.003131 | 0.744186 | 0.545918 | 0.635501 | — | — | — | — | — | — | False |
+| bankruptcy | None | 140,359 | True | 0.134662 | 0.129963 | -0.004699 | 0.541082 | 0.322292 | 0.657808 | 246,951 | True | 0.144118 | 0.130072 | -0.014046 | 0.536049 | 0.318748 | 0.657939 | 0.009456 | 0.000109 | -0.009347 | -0.005033 | -0.003544 | 0.000131 | True |
+| bankruptcy | One_or_more | 22,211 | True | 0.153708 | 0.143166 | -0.010542 | 0.579379 | 0.392084 | 0.626236 | 36,075 | True | 0.181344 | 0.146946 | -0.034398 | 0.593091 | 0.41926 | 0.620676 | 0.027637 | 0.003781 | -0.023856 | 0.013712 | 0.027176 | -0.00556 | True |
+| delinquency | None | 128,739 | True | 0.134769 | 0.130372 | -0.004397 | 0.552911 | 0.325427 | 0.661235 | 224,052 | True | 0.145957 | 0.130835 | -0.015122 | 0.547918 | 0.324306 | 0.661336 | 0.011188 | 0.000463 | -0.010725 | -0.004993 | -0.001121 | 0.000101 | True |
+| delinquency | One_or_more | 33,831 | True | 0.146759 | 0.137073 | -0.009686 | 0.526083 | 0.355643 | 0.624233 | 58,974 | True | 0.159901 | 0.137493 | -0.022408 | 0.534464 | 0.357198 | 0.626456 | 0.013142 | 0.00042 | -0.012722 | 0.008382 | 0.001554 | 0.002223 | True |
+| employment | 10_plus_years | 51,146 | True | 0.12171 | 0.120963 | -0.000748 | 0.451406 | 0.266846 | 0.645713 | 89,647 | True | 0.133379 | 0.120627 | -0.012751 | 0.466505 | 0.259686 | 0.660094 | 0.011668 | -0.000335 | -0.012004 | 0.015099 | -0.00716 | 0.014381 | True |
+| employment | 2_to_5_years | 46,593 | True | 0.13781 | 0.131776 | -0.006035 | 0.557234 | 0.33603 | 0.658106 | 82,602 | True | 0.148447 | 0.132575 | -0.015872 | 0.540287 | 0.33884 | 0.645657 | 0.010636 | 0.000799 | -0.009837 | -0.016947 | 0.00281 | -0.012449 | True |
+| employment | 6_to_9_years | 31,558 | True | 0.135972 | 0.13087 | -0.005102 | 0.535306 | 0.324898 | 0.650227 | 48,507 | True | 0.147092 | 0.131405 | -0.015688 | 0.539874 | 0.325147 | 0.654233 | 0.01112 | 0.000534 | -0.010586 | 0.004567 | 0.000249 | 0.004006 | True |
+| employment | Below_2_years | 23,627 | True | 0.1453 | 0.134539 | -0.010761 | 0.57559 | 0.353323 | 0.652749 | 43,310 | True | 0.154399 | 0.134963 | -0.019436 | 0.549723 | 0.357426 | 0.640087 | 0.009099 | 0.000424 | -0.008675 | -0.025867 | 0.004103 | -0.012662 | True |
+| employment | Missing | 9,646 | True | 0.201638 | 0.185149 | -0.016488 | 0.79383 | 0.653811 | 0.608445 | 18,960 | True | 0.21577 | 0.181346 | -0.034424 | 0.788805 | 0.618871 | 0.62804 | 0.014132 | -0.003803 | -0.017936 | -0.005026 | -0.03494 | 0.019595 | True |
+| fico | 680_to_719 | 71,403 | True | 0.130737 | 0.125896 | -0.004841 | 0.440279 | 0.265048 | 0.631237 | 125,033 | True | 0.141907 | 0.127254 | -0.014653 | 0.438483 | 0.274564 | 0.623679 | 0.01117 | 0.001358 | -0.009811 | -0.001796 | 0.009516 | -0.007558 | True |
+| fico | 720_to_759 | 20,760 | True | 0.075385 | 0.0768 | 0.001414 | 0.102236 | 0.03751 | 0.642517 | 37,723 | True | 0.083583 | 0.079515 | -0.004068 | 0.121472 | 0.045704 | 0.64754 | 0.008198 | 0.002715 | -0.005482 | 0.019235 | 0.008195 | 0.005023 | True |
+| fico | 760_plus | 7,228 | True | 0.047869 | 0.045527 | -0.002343 | 0.034682 | 0.007556 | 0.677239 | 13,738 | True | 0.047678 | 0.045292 | -0.002386 | 0.033588 | 0.005274 | 0.698891 | -0.000191 | -0.000235 | -0.000044 | -0.001094 | -0.002282 | 0.021652 | True |
+| fico | Below_680 | 63,179 | True | 0.175201 | 0.16633 | -0.008871 | 0.715783 | 0.562119 | 0.611434 | 106,532 | True | 0.193191 | 0.167928 | -0.025263 | 0.717798 | 0.565974 | 0.609717 | 0.01799 | 0.001599 | -0.016392 | 0.002015 | 0.003855 | -0.001718 | True |
+| fico_delinquency | 680_to_719 / None | 57,870 | True | 0.131571 | 0.127288 | -0.004283 | 0.456265 | 0.274674 | 0.632913 | 100,833 | True | 0.142305 | 0.128649 | -0.013655 | 0.449857 | 0.28381 | 0.624209 | 0.010734 | 0.001361 | -0.009372 | -0.006408 | 0.009136 | -0.008704 | True |
+| fico_delinquency | 680_to_719 / One_or_more | 13,533 | True | 0.127171 | 0.119942 | -0.007229 | 0.369553 | 0.224094 | 0.623895 | 24,200 | True | 0.140248 | 0.12144 | -0.018808 | 0.390395 | 0.236134 | 0.62148 | 0.013077 | 0.001498 | -0.011579 | 0.020842 | 0.01204 | -0.002415 | True |
+| fico_delinquency | 720_to_759 / None | 19,010 | True | 0.074487 | 0.076785 | 0.002298 | 0.105226 | 0.036603 | 0.643609 | 34,084 | True | 0.08259 | 0.079663 | -0.002927 | 0.119361 | 0.04602 | 0.648055 | 0.008103 | 0.002878 | -0.005225 | 0.014135 | 0.009417 | 0.004445 | True |
+| fico_delinquency | 720_to_759 / One_or_more | 1,750 | True | 0.085143 | 0.076961 | -0.008182 | 0.073826 | 0.04747 | 0.632625 | 3,639 | True | 0.092883 | 0.078127 | -0.014755 | 0.139053 | 0.042714 | 0.64427 | 0.00774 | 0.001167 | -0.006573 | 0.065228 | -0.004756 | 0.011645 | True |
+| fico_delinquency | 760_plus / None | 7,021 | True | 0.047287 | 0.045411 | -0.001875 | 0.036145 | 0.007624 | 0.675758 | 13,403 | True | 0.047303 | 0.045236 | -0.002067 | 0.033123 | 0.005247 | 0.698197 | 0.000016 | -0.000176 | -0.000192 | -0.003022 | -0.002377 | 0.022439 | True |
+| fico_delinquency | 760_plus / One_or_more | 207 | False | 0.067633 | 0.049434 | -0.018199 | 0 | 0.005181 | 0.705403 | 335 | False | 0.062687 | 0.047536 | -0.01515 | 0.047619 | 0.006369 | 0.717925 | -0.004946 | -0.001898 | 0.003048 | 0.047619 | 0.001188 | 0.012522 | False |
+| fico_delinquency | Below_680 / None | 44,838 | True | 0.178152 | 0.170376 | -0.007777 | 0.745869 | 0.590231 | 0.615108 | 75,732 | True | 0.196799 | 0.171926 | -0.024873 | 0.745169 | 0.591915 | 0.612236 | 0.018647 | 0.00155 | -0.017096 | -0.0007 | 0.001684 | -0.002872 | True |
+| fico_delinquency | Below_680 / One_or_more | 18,341 | True | 0.167984 | 0.156438 | -0.011547 | 0.63778 | 0.494233 | 0.600926 | 30,800 | True | 0.184318 | 0.158098 | -0.026221 | 0.64594 | 0.503164 | 0.600773 | 0.016334 | 0.00166 | -0.014674 | 0.00816 | 0.008931 | -0.000153 | True |
+| home | ANY | 1 | False | 0 | 0.136564 | 0.136564 | — | 0 | — | 1 | False | 0 | 0.081994 | 0.081994 | — | 0 | — | 0 | -0.05457 | -0.05457 | — | 0 | — | False |
+| home | MORTGAGE | 76,326 | True | 0.112019 | 0.111926 | -0.000094 | 0.396725 | 0.214397 | 0.653415 | 129,762 | True | 0.120629 | 0.112623 | -0.008005 | 0.410848 | 0.216942 | 0.660152 | 0.008609 | 0.000697 | -0.007912 | 0.014123 | 0.002544 | 0.006736 | True |
+| home | OWN | 16,493 | True | 0.144304 | 0.13877 | -0.005533 | 0.584034 | 0.393821 | 0.632223 | 31,800 | True | 0.158333 | 0.13736 | -0.020973 | 0.567825 | 0.375901 | 0.637941 | 0.01403 | -0.00141 | -0.01544 | -0.016208 | -0.01792 | 0.005718 | True |
+| home | RENT | 69,750 | True | 0.163226 | 0.151822 | -0.011404 | 0.651998 | 0.452771 | 0.637307 | 121,463 | True | 0.176548 | 0.151816 | -0.024731 | 0.637381 | 0.449285 | 0.63188 | 0.013322 | -0.000005 | -0.013327 | -0.014617 | -0.003487 | -0.005427 | True |
+| income | Missing | — | — | — | — | — | — | — | — | 2 | False | 0.5 | 0.1404 | -0.3596 | 0 | 1 | 0 | — | — | — | — | — | — | False |
+| income | Q1_lowest | 39,538 | True | 0.186934 | 0.180538 | -0.006396 | 0.817075 | 0.676766 | 0.608908 | 67,112 | True | 0.192633 | 0.180782 | -0.011851 | 0.813119 | 0.670604 | 0.614135 | 0.005699 | 0.000244 | -0.005455 | -0.003956 | -0.006162 | 0.005227 | True |
+| income | Q2 | 42,082 | True | 0.144622 | 0.142305 | -0.002317 | 0.579855 | 0.393183 | 0.632055 | 72,286 | True | 0.156725 | 0.143077 | -0.013648 | 0.589637 | 0.398264 | 0.636348 | 0.012102 | 0.000772 | -0.01133 | 0.009782 | 0.005082 | 0.004292 | True |
+| income | Q3 | 39,005 | True | 0.122215 | 0.115608 | -0.006608 | 0.382631 | 0.212133 | 0.642672 | 67,492 | True | 0.139128 | 0.117652 | -0.021475 | 0.411182 | 0.222041 | 0.65285 | 0.016912 | 0.002045 | -0.014868 | 0.028552 | 0.009908 | 0.010178 | True |
+| income | Q4_highest | 41,945 | True | 0.097056 | 0.090247 | -0.006808 | 0.199705 | 0.088266 | 0.660618 | 76,134 | True | 0.111435 | 0.092028 | -0.019407 | 0.22454 | 0.09221 | 0.669607 | 0.014379 | 0.001781 | -0.012599 | 0.024835 | 0.003944 | 0.008989 | True |
+| income_home | Missing / MORTGAGE | — | — | — | — | — | — | — | — | 2 | False | 0.5 | 0.1404 | -0.3596 | 0 | 1 | 0 | — | — | — | — | — | — | False |
+| income_home | Q1_lowest / ANY | 1 | False | 0 | 0.136564 | 0.136564 | — | 0 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | False |
+| income_home | Q1_lowest / MORTGAGE | 10,661 | True | 0.159366 | 0.160972 | 0.001607 | 0.727487 | 0.562932 | 0.615304 | 17,649 | True | 0.166242 | 0.161635 | -0.004607 | 0.739945 | 0.565545 | 0.620931 | 0.006876 | 0.000662 | -0.006214 | 0.012459 | 0.002613 | 0.005627 | True |
+| income_home | Q1_lowest / OWN | 5,769 | True | 0.1775 | 0.17872 | 0.001219 | 0.807617 | 0.682403 | 0.601591 | 10,340 | True | 0.188588 | 0.178504 | -0.010084 | 0.803077 | 0.668415 | 0.608835 | 0.011088 | -0.000215 | -0.011303 | -0.00454 | -0.013988 | 0.007244 | True |
+| income_home | Q1_lowest / RENT | 23,107 | True | 0.202017 | 0.190021 | -0.011996 | 0.851757 | 0.73068 | 0.599841 | 39,123 | True | 0.205608 | 0.190022 | -0.015586 | 0.842243 | 0.720937 | 0.607224 | 0.003591 | 0.000001 | -0.003591 | -0.009514 | -0.009743 | 0.007383 | True |
+| income_home | Q2 / MORTGAGE | 17,997 | True | 0.125132 | 0.130592 | 0.00546 | 0.488011 | 0.315021 | 0.625581 | 30,226 | True | 0.134024 | 0.131124 | -0.0029 | 0.516169 | 0.32042 | 0.640867 | 0.008892 | 0.000531 | -0.00836 | 0.028158 | 0.0054 | 0.015287 | True |
+| income_home | Q2 / OWN | 4,239 | True | 0.143666 | 0.140393 | -0.003273 | 0.553366 | 0.400551 | 0.60403 | 7,980 | True | 0.157895 | 0.14158 | -0.016314 | 0.574603 | 0.401786 | 0.628326 | 0.014229 | 0.001187 | -0.013042 | 0.021237 | 0.001235 | 0.024296 | True |
+| income_home | Q2 / RENT | 19,846 | True | 0.162501 | 0.153335 | -0.009166 | 0.648992 | 0.465616 | 0.632569 | 34,080 | True | 0.176585 | 0.154029 | -0.022556 | 0.64224 | 0.470031 | 0.624928 | 0.014083 | 0.000694 | -0.013389 | -0.006752 | 0.004415 | -0.007641 | True |
+| income_home | Q3 / ANY | — | — | — | — | — | — | — | — | 1 | False | 0 | 0.081994 | 0.081994 | — | 0 | — | — | — | — | — | — | — | False |
+| income_home | Q3 / MORTGAGE | 21,050 | True | 0.108504 | 0.10728 | -0.001223 | 0.313923 | 0.163221 | 0.643361 | 34,919 | True | 0.118589 | 0.108798 | -0.009791 | 0.340014 | 0.172071 | 0.654776 | 0.010085 | 0.001518 | -0.008567 | 0.026092 | 0.00885 | 0.011415 | True |
+| income_home | Q3 / OWN | 3,228 | True | 0.128253 | 0.115106 | -0.013147 | 0.381643 | 0.217839 | 0.633839 | 6,432 | True | 0.142257 | 0.116894 | -0.025364 | 0.40765 | 0.220047 | 0.644371 | 0.014005 | 0.001788 | -0.012217 | 0.026008 | 0.002208 | 0.010531 | True |
+| income_home | Q3 / RENT | 14,727 | True | 0.14049 | 0.12762 | -0.01287 | 0.458676 | 0.283378 | 0.632548 | 26,140 | True | 0.1658 | 0.129668 | -0.036131 | 0.479926 | 0.293084 | 0.638045 | 0.025309 | 0.002048 | -0.023261 | 0.02125 | 0.009706 | 0.005498 | True |
+| income_home | Q4_highest / MORTGAGE | 26,618 | True | 0.086971 | 0.083335 | -0.003636 | 0.146868 | 0.060198 | 0.663714 | 46,966 | True | 0.096368 | 0.085142 | -0.011225 | 0.16814 | 0.064774 | 0.666798 | 0.009396 | 0.001807 | -0.007589 | 0.021271 | 0.004575 | 0.003084 | True |
+| income_home | Q4_highest / OWN | 3,257 | True | 0.102241 | 0.089351 | -0.01289 | 0.204204 | 0.086525 | 0.657495 | 7,048 | True | 0.129115 | 0.090898 | -0.038217 | 0.215385 | 0.087814 | 0.673391 | 0.026873 | 0.001546 | -0.025327 | 0.01118 | 0.001288 | 0.015896 | True |
+| income_home | Q4_highest / RENT | 12,070 | True | 0.117896 | 0.105733 | -0.012163 | 0.28461 | 0.152813 | 0.639067 | 22,120 | True | 0.137794 | 0.107009 | -0.030785 | 0.311024 | 0.154677 | 0.653407 | 0.019898 | 0.001276 | -0.018622 | 0.026414 | 0.001864 | 0.01434 | True |
+| missingness | Any_missing | 9,717 | True | 0.2014 | 0.18461 | -0.016789 | 0.791518 | 0.650773 | 0.60904 | 19,083 | True | 0.215689 | 0.181115 | -0.034574 | 0.787658 | 0.617559 | 0.628297 | 0.01429 | -0.003495 | -0.017785 | -0.00386 | -0.033215 | 0.019256 | True |
+| missingness | Complete | 152,853 | True | 0.133187 | 0.128407 | -0.00478 | 0.523431 | 0.312955 | 0.653124 | 263,943 | True | 0.144031 | 0.128688 | -0.015343 | 0.518624 | 0.312092 | 0.652037 | 0.010844 | 0.00028 | -0.010564 | -0.004807 | -0.000863 | -0.001087 | True |
+| purpose | car | 1,516 | True | 0.115435 | 0.117775 | 0.00234 | 0.462857 | 0.255779 | 0.670216 | 2,768 | True | 0.132948 | 0.120479 | -0.012469 | 0.456522 | 0.244583 | 0.650834 | 0.017513 | 0.002704 | -0.014809 | -0.006335 | -0.011196 | -0.019382 | True |
+| purpose | credit_card | 40,100 | True | 0.115561 | 0.110592 | -0.004969 | 0.385844 | 0.192607 | 0.664295 | 70,650 | True | 0.122321 | 0.110063 | -0.012258 | 0.375492 | 0.18933 | 0.664214 | 0.00676 | -0.000529 | -0.00729 | -0.010352 | -0.003277 | -0.000081 | True |
+| purpose | debt_consolidation | 94,822 | True | 0.143595 | 0.136234 | -0.007362 | 0.573076 | 0.36267 | 0.647743 | 160,983 | True | 0.157327 | 0.137482 | -0.019845 | 0.574091 | 0.366338 | 0.647755 | 0.013732 | 0.001248 | -0.012484 | 0.001015 | 0.003668 | 0.000012 | True |
+| purpose | educational | — | — | — | — | — | — | — | — | 1 | False | 0 | 0.288019 | 0.288019 | — | 1 | — | — | — | — | — | — | — | False |
+| purpose | home_improvement | 8,654 | True | 0.118905 | 0.121347 | 0.002443 | 0.488824 | 0.278164 | 0.656216 | 17,160 | True | 0.135082 | 0.122253 | -0.012828 | 0.481018 | 0.278938 | 0.654285 | 0.016177 | 0.000906 | -0.015271 | -0.007806 | 0.000774 | -0.00193 | True |
+| purpose | house | 511 | True | 0.195695 | 0.15545 | -0.040245 | 0.67 | 0.498783 | 0.615888 | 1,004 | True | 0.216135 | 0.155945 | -0.06019 | 0.640553 | 0.495553 | 0.619871 | 0.020441 | 0.000495 | -0.019946 | -0.029447 | -0.003231 | 0.003983 | True |
+| purpose | major_purchase | 2,888 | True | 0.135042 | 0.113642 | -0.021399 | 0.392308 | 0.227382 | 0.655695 | 5,342 | True | 0.144515 | 0.116269 | -0.028247 | 0.42487 | 0.233042 | 0.649637 | 0.009474 | 0.002626 | -0.006847 | 0.032563 | 0.00566 | -0.006058 | True |
+| purpose | medical | 1,885 | True | 0.170292 | 0.165759 | -0.004533 | 0.750779 | 0.57289 | 0.625035 | 3,146 | True | 0.178322 | 0.168788 | -0.009534 | 0.775401 | 0.5853 | 0.645176 | 0.00803 | 0.003029 | -0.005001 | 0.024622 | 0.01241 | 0.020141 | True |
+| purpose | moving | 1,133 | True | 0.21271 | 0.165103 | -0.047607 | 0.771784 | 0.565022 | 0.641665 | 2,061 | True | 0.203299 | 0.16377 | -0.039529 | 0.706444 | 0.543849 | 0.637357 | -0.00941 | -0.001333 | 0.008077 | -0.06534 | -0.021173 | -0.004308 | True |
+| purpose | other | 8,252 | True | 0.152811 | 0.16849 | 0.015679 | 0.754956 | 0.586611 | 0.627811 | 15,227 | True | 0.168648 | 0.168506 | -0.000141 | 0.760125 | 0.584248 | 0.628114 | 0.015836 | 0.000017 | -0.01582 | 0.005168 | -0.002363 | 0.000303 | True |
+| purpose | renewable_energy | 102 | False | 0.156863 | 0.162106 | 0.005243 | 0.375 | 0.616279 | 0.374273 | 185 | False | 0.243243 | 0.167271 | -0.075972 | 0.688889 | 0.614286 | 0.571429 | 0.08638 | 0.005165 | -0.081215 | 0.313889 | -0.001993 | 0.197155 | False |
+| purpose | small_business | 1,634 | True | 0.225214 | 0.225026 | -0.000189 | 0.896739 | 0.818325 | 0.577448 | 2,425 | True | 0.229691 | 0.219695 | -0.009996 | 0.915619 | 0.791221 | 0.610429 | 0.004477 | -0.00533 | -0.009807 | 0.01888 | -0.027105 | 0.032981 | True |
+| purpose | vacation | 1,065 | True | 0.153991 | 0.147654 | -0.006336 | 0.579268 | 0.448391 | 0.61986 | 2,071 | True | 0.163206 | 0.147966 | -0.015241 | 0.588757 | 0.442585 | 0.607456 | 0.009216 | 0.000311 | -0.008904 | 0.009489 | -0.005806 | -0.012404 | True |
+| purpose | wedding | 8 | False | 0 | 0.110556 | 0.110556 | — | 0.25 | — | 3 | False | 0 | 0.13498 | 0.13498 | — | 0.333333 | — | 0 | 0.024424 | 0.024424 | — | 0.083333 | — | False |
+| state | AK | 417 | False | 0.11271 | 0.126182 | 0.013472 | 0.489362 | 0.308108 | 0.632605 | 650 | True | 0.163077 | 0.1308 | -0.032277 | 0.537736 | 0.3125 | 0.669274 | 0.050367 | 0.004618 | -0.045749 | 0.048374 | 0.004392 | 0.036669 | False |
+| state | AL | 1,935 | True | 0.166925 | 0.137102 | -0.029823 | 0.594427 | 0.362283 | 0.641163 | 3,373 | True | 0.17314 | 0.1397 | -0.03344 | 0.607877 | 0.37863 | 0.659227 | 0.006215 | 0.002598 | -0.003617 | 0.013449 | 0.016347 | 0.018064 | True |
+| state | AR | 1,243 | True | 0.158488 | 0.136732 | -0.021756 | 0.57868 | 0.369025 | 0.637798 | 2,037 | True | 0.19784 | 0.138665 | -0.059175 | 0.521092 | 0.383721 | 0.613321 | 0.039352 | 0.001933 | -0.03742 | -0.057588 | 0.014696 | -0.024477 | True |
+| state | AZ | 3,889 | True | 0.13911 | 0.133867 | -0.005243 | 0.573013 | 0.338112 | 0.659635 | 6,652 | True | 0.151684 | 0.135018 | -0.016666 | 0.560951 | 0.3507 | 0.655794 | 0.012573 | 0.00115 | -0.011423 | -0.012062 | 0.012588 | -0.00384 | True |
+| state | CA | 24,339 | True | 0.141337 | 0.131634 | -0.009703 | 0.563081 | 0.319872 | 0.670139 | 41,377 | True | 0.152597 | 0.130627 | -0.02197 | 0.54292 | 0.313692 | 0.664103 | 0.01126 | -0.001007 | -0.012267 | -0.020161 | -0.006179 | -0.006037 | True |
+| state | CO | 3,393 | True | 0.112585 | 0.128234 | 0.015649 | 0.560209 | 0.309532 | 0.671361 | 5,967 | True | 0.119155 | 0.128415 | 0.009259 | 0.551336 | 0.307458 | 0.678961 | 0.006571 | 0.000181 | -0.00639 | -0.008873 | -0.002074 | 0.0076 | True |
+| state | CT | 2,413 | True | 0.106921 | 0.125541 | 0.01862 | 0.453488 | 0.296984 | 0.635486 | 4,221 | True | 0.126747 | 0.126019 | -0.000728 | 0.484112 | 0.296799 | 0.645213 | 0.019826 | 0.000478 | -0.019348 | 0.030624 | -0.000185 | 0.009727 | True |
+| state | DC | 483 | False | 0.099379 | 0.115101 | 0.015722 | 0.520833 | 0.248276 | 0.708716 | 716 | True | 0.111732 | 0.119084 | 0.007352 | 0.55 | 0.240566 | 0.716136 | 0.012353 | 0.003983 | -0.00837 | 0.029167 | -0.00771 | 0.00742 | False |
+| state | DE | 414 | False | 0.13285 | 0.134489 | 0.001638 | 0.472727 | 0.370474 | 0.619347 | 800 | True | 0.14375 | 0.128688 | -0.015062 | 0.530435 | 0.308029 | 0.663789 | 0.0109 | -0.005801 | -0.0167 | 0.057708 | -0.062444 | 0.044443 | False |
+| state | FL | 11,163 | True | 0.14996 | 0.139585 | -0.010374 | 0.594385 | 0.38571 | 0.641893 | 20,374 | True | 0.161431 | 0.139845 | -0.021587 | 0.572818 | 0.377875 | 0.638764 | 0.011472 | 0.000259 | -0.011212 | -0.021566 | -0.007834 | -0.003129 | True |
+| state | GA | 5,169 | True | 0.120913 | 0.130679 | 0.009766 | 0.536 | 0.328785 | 0.648258 | 9,383 | True | 0.12853 | 0.131939 | 0.003409 | 0.575456 | 0.334719 | 0.667199 | 0.007617 | 0.001261 | -0.006356 | 0.039456 | 0.005934 | 0.01894 | True |
+| state | HI | 804 | True | 0.146766 | 0.146895 | 0.000128 | 0.576271 | 0.443149 | 0.604956 | 1,401 | True | 0.137045 | 0.146394 | 0.009349 | 0.619792 | 0.430108 | 0.633392 | -0.009721 | -0.000501 | 0.009221 | 0.04352 | -0.013041 | 0.028436 | True |
+| state | IA | 1 | False | 0 | 0.183322 | 0.183322 | — | 1 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | False |
+| state | ID | 1 | False | 0 | 0.074744 | 0.074744 | — | 0 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | False |
+| state | IL | 6,701 | True | 0.11461 | 0.125113 | 0.010503 | 0.53125 | 0.28451 | 0.673821 | 11,609 | True | 0.130933 | 0.128913 | -0.00202 | 0.515132 | 0.314303 | 0.657597 | 0.016323 | 0.003799 | -0.012524 | -0.016118 | 0.029792 | -0.016224 | True |
+| state | IN | 2,728 | True | 0.13893 | 0.134399 | -0.004531 | 0.569921 | 0.35249 | 0.663697 | 4,597 | True | 0.158799 | 0.135005 | -0.023794 | 0.567123 | 0.354021 | 0.65313 | 0.01987 | 0.000606 | -0.019264 | -0.002798 | 0.001531 | -0.010567 | True |
+| state | KS | 1,408 | True | 0.09304 | 0.130618 | 0.037579 | 0.618321 | 0.348473 | 0.668301 | 2,413 | True | 0.120182 | 0.132372 | 0.01219 | 0.558621 | 0.331606 | 0.657536 | 0.027143 | 0.001754 | -0.025389 | -0.0597 | -0.016867 | -0.010765 | True |
+| state | KY | 1,520 | True | 0.134211 | 0.135148 | 0.000938 | 0.612745 | 0.349544 | 0.67986 | 2,607 | True | 0.154967 | 0.133925 | -0.021042 | 0.549505 | 0.3468 | 0.650207 | 0.020757 | -0.001223 | -0.02198 | -0.06324 | -0.002744 | -0.029653 | True |
+| state | LA | 1,856 | True | 0.148168 | 0.131799 | -0.016369 | 0.556364 | 0.332068 | 0.653246 | 3,294 | True | 0.177292 | 0.132432 | -0.04486 | 0.52911 | 0.335055 | 0.643285 | 0.029124 | 0.000634 | -0.02849 | -0.027254 | 0.002987 | -0.009961 | True |
+| state | MA | 3,443 | True | 0.128086 | 0.120815 | -0.007271 | 0.498866 | 0.258161 | 0.669103 | 6,370 | True | 0.130298 | 0.121726 | -0.008572 | 0.50241 | 0.269495 | 0.676917 | 0.002212 | 0.00091 | -0.001302 | 0.003543 | 0.011333 | 0.007815 | True |
+| state | MD | 3,650 | True | 0.143288 | 0.126124 | -0.017164 | 0.481836 | 0.288136 | 0.654033 | 6,467 | True | 0.151539 | 0.125877 | -0.025661 | 0.497959 | 0.288136 | 0.658626 | 0.008251 | -0.000246 | -0.008497 | 0.016124 | 0 | 0.004592 | True |
+| state | ME | 1 | False | 0 | 0.193054 | 0.193054 | — | 1 | — | 334 | False | 0.10479 | 0.138137 | 0.033347 | 0.571429 | 0.374582 | 0.694314 | 0.10479 | -0.054917 | -0.159707 | — | -0.625418 | — | False |
+| state | MI | 4,308 | True | 0.136026 | 0.135235 | -0.000791 | 0.552901 | 0.350618 | 0.648444 | 7,737 | True | 0.145534 | 0.136468 | -0.009067 | 0.580817 | 0.355771 | 0.657029 | 0.009508 | 0.001232 | -0.008276 | 0.027916 | 0.005153 | 0.008584 | True |
+| state | MN | 2,949 | True | 0.150899 | 0.131434 | -0.019465 | 0.54382 | 0.332668 | 0.644075 | 5,094 | True | 0.147821 | 0.130566 | -0.017255 | 0.519256 | 0.32504 | 0.653171 | -0.003078 | -0.000867 | 0.00221 | -0.024564 | -0.007627 | 0.009096 | True |
+| state | MO | 2,535 | True | 0.161736 | 0.134726 | -0.02701 | 0.565854 | 0.360941 | 0.647063 | 4,378 | True | 0.158748 | 0.133159 | -0.025589 | 0.598561 | 0.329894 | 0.684441 | -0.002987 | -0.001566 | 0.001421 | 0.032707 | -0.031047 | 0.037378 | True |
+| state | MS | 754 | True | 0.181698 | 0.14226 | -0.039438 | 0.613139 | 0.406807 | 0.645258 | 1,718 | True | 0.189756 | 0.142731 | -0.047025 | 0.604294 | 0.395115 | 0.626558 | 0.008058 | 0.000471 | -0.007587 | -0.008844 | -0.011692 | -0.0187 | True |
+| state | MT | 491 | False | 0.112016 | 0.13777 | 0.025754 | 0.490909 | 0.380734 | 0.610842 | 796 | True | 0.134422 | 0.133238 | -0.001184 | 0.485981 | 0.359942 | 0.609633 | 0.022406 | -0.004532 | -0.026937 | -0.004928 | -0.020792 | -0.001209 | False |
+| state | NC | 4,233 | True | 0.137727 | 0.134236 | -0.003492 | 0.564322 | 0.347945 | 0.640999 | 7,644 | True | 0.152538 | 0.133298 | -0.01924 | 0.536021 | 0.334826 | 0.645227 | 0.014811 | -0.000938 | -0.015748 | -0.028302 | -0.01312 | 0.004228 | True |
+| state | ND | — | — | — | — | — | — | — | — | 311 | False | 0.157556 | 0.142873 | -0.014683 | 0.612245 | 0.431298 | 0.620891 | — | — | — | — | — | — | False |
+| state | NE | — | — | — | — | — | — | — | — | 754 | True | 0.192308 | 0.142625 | -0.049683 | 0.627586 | 0.390805 | 0.679203 | — | — | — | — | — | — | False |
+| state | NH | 770 | True | 0.094805 | 0.128687 | 0.033882 | 0.534247 | 0.328551 | 0.635876 | 1,384 | True | 0.093208 | 0.12668 | 0.033472 | 0.51938 | 0.305179 | 0.65015 | -0.001597 | -0.002007 | -0.00041 | -0.014867 | -0.023372 | 0.014274 | True |
+| state | NJ | 6,017 | True | 0.129799 | 0.125433 | -0.004366 | 0.487836 | 0.298892 | 0.640287 | 10,088 | True | 0.157613 | 0.12711 | -0.030503 | 0.477987 | 0.304542 | 0.641248 | 0.027814 | 0.001676 | -0.026138 | -0.009849 | 0.00565 | 0.000961 | True |
+| state | NM | 971 | True | 0.15654 | 0.132566 | -0.023974 | 0.447368 | 0.338217 | 0.601913 | 1,588 | True | 0.15806 | 0.139275 | -0.018785 | 0.561753 | 0.373972 | 0.635647 | 0.001521 | 0.00671 | 0.005189 | 0.114385 | 0.035754 | 0.033734 | True |
+| state | NV | 2,354 | True | 0.162702 | 0.138144 | -0.024558 | 0.569191 | 0.352106 | 0.642001 | 4,250 | True | 0.182353 | 0.142082 | -0.040271 | 0.572903 | 0.392518 | 0.634593 | 0.019651 | 0.003938 | -0.015713 | 0.003713 | 0.040412 | -0.007408 | True |
+| state | NY | 14,079 | True | 0.15207 | 0.131317 | -0.020754 | 0.515647 | 0.330541 | 0.641273 | 23,386 | True | 0.163816 | 0.131644 | -0.032172 | 0.523362 | 0.322526 | 0.647504 | 0.011745 | 0.000327 | -0.011419 | 0.007715 | -0.008015 | 0.006231 | True |
+| state | OH | 5,248 | True | 0.141959 | 0.136004 | -0.005954 | 0.606711 | 0.364202 | 0.672042 | 9,168 | True | 0.156305 | 0.136127 | -0.020178 | 0.589672 | 0.355268 | 0.666486 | 0.014346 | 0.000123 | -0.014223 | -0.017039 | -0.008933 | -0.005557 | True |
+| state | OK | 1,393 | True | 0.167983 | 0.13367 | -0.034312 | 0.559829 | 0.339948 | 0.660468 | 2,596 | True | 0.1849 | 0.133125 | -0.051775 | 0.545833 | 0.322306 | 0.647949 | 0.016917 | -0.000545 | -0.017462 | -0.013996 | -0.017642 | -0.012519 | True |
+| state | OR | 2,101 | True | 0.118515 | 0.137533 | 0.019018 | 0.618474 | 0.37311 | 0.67775 | 3,399 | True | 0.102971 | 0.136774 | 0.033802 | 0.62 | 0.364054 | 0.66787 | -0.015544 | -0.000759 | 0.014784 | 0.001526 | -0.009056 | -0.00988 | True |
+| state | PA | 5,504 | True | 0.136991 | 0.133711 | -0.003281 | 0.545093 | 0.347789 | 0.649448 | 9,505 | True | 0.150868 | 0.133653 | -0.017215 | 0.534868 | 0.348284 | 0.637539 | 0.013877 | -0.000057 | -0.013934 | -0.010225 | 0.000495 | -0.011909 | True |
+| state | RI | 697 | True | 0.117647 | 0.130358 | 0.012711 | 0.463415 | 0.315447 | 0.614614 | 1,228 | True | 0.137622 | 0.127807 | -0.009815 | 0.538462 | 0.313503 | 0.644831 | 0.019975 | -0.002551 | -0.022526 | 0.075047 | -0.001944 | 0.030216 | True |
+| state | SC | 1,971 | True | 0.111618 | 0.135783 | 0.024165 | 0.577273 | 0.359794 | 0.671022 | 3,182 | True | 0.116279 | 0.13828 | 0.022001 | 0.597297 | 0.380512 | 0.663437 | 0.004661 | 0.002497 | -0.002163 | 0.020025 | 0.020718 | -0.007585 | True |
+| state | SD | 360 | False | 0.144444 | 0.140235 | -0.00421 | 0.596154 | 0.37013 | 0.619755 | 550 | True | 0.176364 | 0.135706 | -0.040657 | 0.597938 | 0.346578 | 0.660613 | 0.031919 | -0.004529 | -0.036448 | 0.001784 | -0.023552 | 0.040858 | False |
+| state | TN | 2,578 | True | 0.162917 | 0.136832 | -0.026085 | 0.564286 | 0.366543 | 0.651891 | 4,428 | True | 0.159666 | 0.136983 | -0.022683 | 0.618105 | 0.349637 | 0.679082 | -0.003251 | 0.000151 | 0.003402 | 0.053819 | -0.016906 | 0.027191 | True |
+| state | TX | 13,388 | True | 0.132208 | 0.128191 | -0.004017 | 0.50565 | 0.314426 | 0.645204 | 23,530 | True | 0.149384 | 0.128547 | -0.020837 | 0.511807 | 0.312566 | 0.643621 | 0.017176 | 0.000355 | -0.01682 | 0.006157 | -0.00186 | -0.001583 | True |
+| state | UT | 1,110 | True | 0.123423 | 0.132399 | 0.008975 | 0.518248 | 0.353546 | 0.634609 | 1,802 | True | 0.13485 | 0.135382 | 0.000532 | 0.580247 | 0.358563 | 0.672973 | 0.011427 | 0.002983 | -0.008443 | 0.061999 | 0.005017 | 0.038364 | True |
+| state | VA | 4,520 | True | 0.144912 | 0.127314 | -0.017598 | 0.526718 | 0.302717 | 0.653906 | 7,659 | True | 0.138791 | 0.126592 | -0.012199 | 0.52587 | 0.296392 | 0.665496 | -0.006121 | -0.000722 | 0.005399 | -0.000847 | -0.006325 | 0.01159 | True |
+| state | VT | 373 | False | 0.104558 | 0.131323 | 0.026766 | 0.538462 | 0.338323 | 0.680715 | 588 | True | 0.093537 | 0.129865 | 0.036328 | 0.618182 | 0.324578 | 0.634522 | -0.01102 | -0.001458 | 0.009562 | 0.07972 | -0.013745 | -0.046194 | False |
+| state | WA | 3,562 | True | 0.110331 | 0.130778 | 0.020447 | 0.549618 | 0.328495 | 0.651353 | 6,017 | True | 0.113678 | 0.133061 | 0.019383 | 0.561404 | 0.341271 | 0.652241 | 0.003347 | 0.002283 | -0.001064 | 0.011785 | 0.012777 | 0.000888 | True |
+| state | WI | 2,153 | True | 0.125871 | 0.132154 | 0.006283 | 0.553506 | 0.337938 | 0.650915 | 3,827 | True | 0.118631 | 0.130552 | 0.011921 | 0.570485 | 0.319893 | 0.672134 | -0.00724 | -0.001602 | 0.005638 | 0.016979 | -0.018045 | 0.021219 | True |
+| state | WV | 797 | True | 0.094103 | 0.134519 | 0.040416 | 0.52 | 0.357341 | 0.637673 | 1,182 | True | 0.121827 | 0.134324 | 0.012496 | 0.604167 | 0.353565 | 0.662452 | 0.027725 | -0.000195 | -0.02792 | 0.084167 | -0.003776 | 0.024779 | True |
+| state | WY | 383 | False | 0.114883 | 0.127915 | 0.013033 | 0.636364 | 0.280236 | 0.728479 | 595 | True | 0.12437 | 0.128555 | 0.004185 | 0.540541 | 0.335893 | 0.641671 | 0.009487 | 0.000639 | -0.008848 | -0.095823 | 0.055657 | -0.086808 | False |
+
+### training_count_feature_support
+
+| feature | training_value | rows |
+| --- | --- | --- |
+| delinq_2yrs | 0.0 | 134211 |
+| delinq_2yrs | 1.0 | 16709 |
+| delinq_2yrs | 2.0 | 4505 |
+| delinq_2yrs | 3.0 | 1404 |
+| delinq_2yrs | 4.0 | 576 |
+| delinq_2yrs | 5.0 | 273 |
+| delinq_2yrs | 6.0 | 146 |
+| delinq_2yrs | 7.0 | 68 |
+| delinq_2yrs | 8.0 | 32 |
+| delinq_2yrs | 9.0 | 25 |
+| delinq_2yrs | 10.0 | 15 |
+| delinq_2yrs | 11.0 | 12 |
+| delinq_2yrs | 12.0 | 7 |
+| delinq_2yrs | 18.0 | 3 |
+| delinq_2yrs | 13.0 | 2 |
+| delinq_2yrs | 15.0 | 2 |
+| delinq_2yrs | 14.0 | 1 |
+| delinq_2yrs | 24.0 | 1 |
+| delinq_2yrs | 29.0 | 1 |
+| pub_rec_bankruptcies | 0.0 | 145029 |
+| pub_rec_bankruptcies | 1.0 | 12701 |
+| pub_rec_bankruptcies | 2.0 | 210 |
+| pub_rec_bankruptcies | 3.0 | 33 |
+| pub_rec_bankruptcies | 4.0 | 11 |
+| pub_rec_bankruptcies | 5.0 | 4 |
+| pub_rec_bankruptcies | 6.0 | 3 |
+| pub_rec_bankruptcies | 7.0 | 1 |
+| pub_rec_bankruptcies | 8.0 | 1 |
+
+### local_cases
+
+| case_id | selection | validation_row_position | observed_charged_off | model_probability | flagged_risk | background_probability | contribution_sum | additivity_residual |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| case_000 | random_sample | 1222 | 0 | 0.08914 | False | 0.123649 | -0.034509 | 0 |
+| case_001 | random_sample | 3408 | 0 | 0.136658 | False | 0.123649 | 0.013009 | 0 |
+| case_002 | random_sample | 3778 | 0 | 0.075942 | False | 0.123649 | -0.047706 | 0 |
+| case_003 | random_sample | 4291 | 0 | 0.205226 | True | 0.123649 | 0.081577 | -0 |
+| case_004 | random_sample | 6379 | 0 | 0.072452 | False | 0.123649 | -0.051197 | 0 |
+| case_005 | random_sample | 10473 | 0 | 0.127522 | False | 0.123649 | 0.003873 | 0 |
+| case_006 | random_sample | 11359 | 0 | 0.033227 | False | 0.123649 | -0.090422 | 0 |
+| case_007 | random_sample | 17256 | 0 | 0.208063 | True | 0.123649 | 0.084414 | 0 |
+| case_008 | random_sample | 18363 | 0 | 0.109812 | False | 0.123649 | -0.013837 | 0 |
+| case_009 | random_sample | 18919 | 0 | 0.083803 | False | 0.123649 | -0.039846 | 0 |
+| case_010 | random_sample | 18976 | 0 | 0.129386 | False | 0.123649 | 0.005737 | 0 |
+| case_011 | random_sample | 21991 | 0 | 0.255064 | True | 0.123649 | 0.131415 | 0 |
+| case_012 | random_sample | 22585 | 0 | 0.079177 | False | 0.123649 | -0.044472 | 0 |
+| case_013 | random_sample | 22632 | 0 | 0.154747 | True | 0.123649 | 0.031099 | 0 |
+| case_014 | random_sample | 25197 | 0 | 0.12806 | False | 0.123649 | 0.004412 | -0 |
+| case_015 | random_sample | 25488 | 0 | 0.131795 | False | 0.123649 | 0.008147 | 0 |
+| case_016 | random_sample | 27450 | 0 | 0.078336 | False | 0.123649 | -0.045313 | 0 |
+| case_017 | random_sample | 28884 | 1 | 0.078395 | False | 0.123649 | -0.045254 | 0 |
+| case_018 | random_sample | 28886 | 0 | 0.154823 | True | 0.123649 | 0.031175 | 0 |
+| case_019 | random_sample | 31517 | 0 | 0.097266 | False | 0.123649 | -0.026382 | 0 |
+| case_020 | random_sample | 35773 | 0 | 0.262466 | True | 0.123649 | 0.138817 | 0 |
+| case_021 | random_sample | 36561 | 1 | 0.153122 | True | 0.123649 | 0.029474 | 0 |
+| case_022 | random_sample | 38104 | 0 | 0.093304 | False | 0.123649 | -0.030344 | 0 |
+| case_023 | random_sample | 38330 | 0 | 0.217789 | True | 0.123649 | 0.09414 | 0 |
+| case_024 | random_sample | 39266 | 0 | 0.08229 | False | 0.123649 | -0.041359 | 0 |
+| case_025 | random_sample | 39844 | 0 | 0.102818 | False | 0.123649 | -0.020831 | 0 |
+| case_026 | random_sample | 39908 | 1 | 0.188176 | True | 0.123649 | 0.064527 | 0 |
+| case_027 | random_sample | 40776 | 0 | 0.139031 | False | 0.123649 | 0.015382 | 0 |
+| case_028 | random_sample | 42120 | 0 | 0.195785 | True | 0.123649 | 0.072136 | 0 |
+| case_029 | random_sample | 44247 | 0 | 0.105172 | False | 0.123649 | -0.018477 | 0 |
+| case_030 | random_sample | 46784 | 0 | 0.122246 | False | 0.123649 | -0.001402 | 0 |
+| case_031 | random_sample | 46803 | 0 | 0.131298 | False | 0.123649 | 0.007649 | 0 |
+| case_032 | random_sample | 47254 | 0 | 0.08689 | False | 0.123649 | -0.036759 | 0 |
+| case_033 | random_sample | 47317 | 0 | 0.066289 | False | 0.123649 | -0.05736 | 0 |
+| case_034 | random_sample | 47474 | 0 | 0.085297 | False | 0.123649 | -0.038352 | 0 |
+| case_035 | random_sample | 49886 | 0 | 0.111363 | False | 0.123649 | -0.012286 | 0 |
+| case_036 | random_sample | 50246 | 1 | 0.281554 | True | 0.123649 | 0.157905 | 0 |
+| case_037 | random_sample | 51600 | 0 | 0.161215 | True | 0.123649 | 0.037566 | 0 |
+| case_038 | random_sample | 52311 | 0 | 0.105749 | False | 0.123649 | -0.0179 | 0 |
+| case_039 | random_sample | 52593 | 0 | 0.120638 | False | 0.123649 | -0.003011 | 0 |
+| case_040 | random_sample | 53534 | 0 | 0.09857 | False | 0.123649 | -0.025078 | 0 |
+| case_041 | random_sample | 54494 | 0 | 0.148136 | True | 0.123649 | 0.024487 | 0 |
+| case_042 | random_sample | 54837 | 0 | 0.077638 | False | 0.123649 | -0.046011 | 0 |
+| case_043 | random_sample | 59072 | 0 | 0.090802 | False | 0.123649 | -0.032846 | 0 |
+| case_044 | random_sample | 59087 | 0 | 0.065895 | False | 0.123649 | -0.057753 | -0 |
+| case_045 | random_sample | 59641 | 0 | 0.133869 | False | 0.123649 | 0.01022 | -0 |
+| case_046 | random_sample | 63564 | 1 | 0.118996 | False | 0.123649 | -0.004653 | 0 |
+| case_047 | random_sample | 65081 | 0 | 0.156391 | True | 0.123649 | 0.032742 | 0 |
+| case_048 | random_sample | 65147 | 0 | 0.042581 | False | 0.123649 | -0.081068 | 0 |
+| case_049 | random_sample | 65349 | 0 | 0.115042 | False | 0.123649 | -0.008606 | 0 |
+| case_050 | random_sample | 65602 | 1 | 0.208219 | True | 0.123649 | 0.08457 | 0 |
+| case_051 | random_sample | 66759 | 0 | 0.107651 | False | 0.123649 | -0.015998 | 0 |
+| case_052 | random_sample | 68831 | 0 | 0.081952 | False | 0.123649 | -0.041697 | 0 |
+| case_053 | random_sample | 68955 | 0 | 0.180006 | True | 0.123649 | 0.056357 | 0 |
+| case_054 | random_sample | 71602 | 0 | 0.203023 | True | 0.123649 | 0.079374 | 0 |
+| case_055 | random_sample | 71989 | 0 | 0.092416 | False | 0.123649 | -0.031233 | -0 |
+| case_056 | random_sample | 72171 | 1 | 0.163754 | True | 0.123649 | 0.040105 | 0 |
+| case_057 | random_sample | 73264 | 0 | 0.148994 | True | 0.123649 | 0.025345 | -0 |
+| case_058 | random_sample | 73603 | 1 | 0.094356 | False | 0.123649 | -0.029293 | 0 |
+| case_059 | random_sample | 73889 | 0 | 0.119072 | False | 0.123649 | -0.004577 | -0 |
+| case_060 | random_sample | 74202 | 1 | 0.062629 | False | 0.123649 | -0.06102 | 0 |
+| case_061 | random_sample | 75066 | 0 | 0.040019 | False | 0.123649 | -0.08363 | 0 |
+| case_062 | random_sample | 77407 | 1 | 0.152626 | True | 0.123649 | 0.028977 | -0 |
+| case_063 | random_sample | 78096 | 0 | 0.045905 | False | 0.123649 | -0.077744 | 0 |
+| case_064 | random_sample | 79554 | 0 | 0.085748 | False | 0.123649 | -0.037901 | 0 |
+| case_065 | random_sample | 81371 | 0 | 0.170072 | True | 0.123649 | 0.046423 | 0 |
+| case_066 | random_sample | 82278 | 0 | 0.047899 | False | 0.123649 | -0.075749 | -0 |
+| case_067 | random_sample | 84333 | 0 | 0.09486 | False | 0.123649 | -0.028789 | 0 |
+| case_068 | random_sample | 87499 | 0 | 0.165913 | True | 0.123649 | 0.042265 | 0 |
+| case_069 | random_sample | 88335 | 0 | 0.091545 | False | 0.123649 | -0.032103 | 0 |
+| case_070 | random_sample | 88357 | 0 | 0.102215 | False | 0.123649 | -0.021434 | 0 |
+| case_071 | random_sample | 89634 | 1 | 0.229464 | True | 0.123649 | 0.105815 | 0 |
+| case_072 | random_sample | 92583 | 0 | 0.133238 | False | 0.123649 | 0.00959 | 0 |
+| case_073 | random_sample | 93404 | 0 | 0.153822 | True | 0.123649 | 0.030173 | 0 |
+| case_074 | random_sample | 95061 | 0 | 0.170562 | True | 0.123649 | 0.046914 | 0 |
+| case_075 | random_sample | 95520 | 0 | 0.116342 | False | 0.123649 | -0.007307 | 0 |
+| case_076 | random_sample | 98127 | 0 | 0.139861 | False | 0.123649 | 0.016212 | 0 |
+| case_077 | random_sample | 98315 | 0 | 0.100675 | False | 0.123649 | -0.022974 | 0 |
+| case_078 | random_sample | 98934 | 0 | 0.192755 | True | 0.123649 | 0.069106 | 0 |
+| case_079 | random_sample | 100519 | 0 | 0.158899 | True | 0.123649 | 0.03525 | 0 |
+| case_080 | random_sample | 101400 | 0 | 0.042183 | False | 0.123649 | -0.081466 | 0 |
+| case_081 | random_sample | 101556 | 0 | 0.256439 | True | 0.123649 | 0.13279 | 0 |
+| case_082 | random_sample | 102503 | 0 | 0.229818 | True | 0.123649 | 0.106169 | 0 |
+| case_083 | random_sample | 102622 | 0 | 0.132688 | False | 0.123649 | 0.009039 | 0 |
+| case_084 | random_sample | 102773 | 0 | 0.164071 | True | 0.123649 | 0.040422 | 0 |
+| case_085 | random_sample | 104552 | 0 | 0.057461 | False | 0.123649 | -0.066188 | 0 |
+| case_086 | random_sample | 106642 | 0 | 0.112694 | False | 0.123649 | -0.010955 | 0 |
+| case_087 | random_sample | 107638 | 0 | 0.093722 | False | 0.123649 | -0.029927 | 0 |
+| case_088 | random_sample | 111111 | 0 | 0.117272 | False | 0.123649 | -0.006377 | 0 |
+| case_089 | random_sample | 113461 | 0 | 0.051437 | False | 0.123649 | -0.072212 | 0 |
+| case_090 | random_sample | 113495 | 0 | 0.224635 | True | 0.123649 | 0.100986 | 0 |
+| case_091 | random_sample | 113589 | 0 | 0.135455 | False | 0.123649 | 0.011807 | 0 |
+| case_092 | random_sample | 114246 | 0 | 0.060226 | False | 0.123649 | -0.063423 | 0 |
+| case_093 | random_sample | 115341 | 0 | 0.116944 | False | 0.123649 | -0.006705 | 0 |
+| case_094 | random_sample | 116409 | 0 | 0.094005 | False | 0.123649 | -0.029644 | -0 |
+| case_095 | random_sample | 120864 | 0 | 0.198401 | True | 0.123649 | 0.074752 | 0 |
+| case_096 | random_sample | 123719 | 0 | 0.160311 | True | 0.123649 | 0.036662 | -0 |
+| case_097 | random_sample | 124051 | 0 | 0.073073 | False | 0.123649 | -0.050576 | -0 |
+| case_098 | random_sample | 125665 | 0 | 0.347723 | True | 0.123649 | 0.224074 | 0 |
+| case_099 | random_sample | 128357 | 0 | 0.159687 | True | 0.123649 | 0.036038 | 0 |
+| case_100 | random_sample | 129447 | 0 | 0.10563 | False | 0.123649 | -0.018019 | 0 |
+| case_101 | random_sample | 131330 | 0 | 0.216344 | True | 0.123649 | 0.092695 | -0 |
+| case_102 | random_sample | 131955 | 0 | 0.19537 | True | 0.123649 | 0.071721 | 0 |
+| case_103 | random_sample | 132494 | 0 | 0.180977 | True | 0.123649 | 0.057329 | 0 |
+| case_104 | random_sample | 135217 | 0 | 0.097223 | False | 0.123649 | -0.026426 | 0 |
+| case_105 | random_sample | 136262 | 0 | 0.128802 | False | 0.123649 | 0.005153 | 0 |
+| case_106 | random_sample | 136898 | 1 | 0.167191 | True | 0.123649 | 0.043542 | 0 |
+| case_107 | random_sample | 137516 | 0 | 0.125652 | False | 0.123649 | 0.002003 | 0 |
+| case_108 | random_sample | 138585 | 0 | 0.133146 | False | 0.123649 | 0.009498 | 0 |
+| case_109 | random_sample | 139003 | 0 | 0.120399 | False | 0.123649 | -0.00325 | 0 |
+| case_110 | random_sample | 139709 | 0 | 0.080256 | False | 0.123649 | -0.043393 | 0 |
+| case_111 | random_sample | 142090 | 0 | 0.041898 | False | 0.123649 | -0.08175 | 0 |
+| case_112 | random_sample | 142607 | 1 | 0.12262 | False | 0.123649 | -0.001029 | 0 |
+| case_113 | random_sample | 143797 | 0 | 0.09245 | False | 0.123649 | -0.031198 | 0 |
+| case_114 | random_sample | 148260 | 1 | 0.237411 | True | 0.123649 | 0.113762 | 0 |
+| case_115 | random_sample | 150082 | 0 | 0.11344 | False | 0.123649 | -0.010208 | 0 |
+| case_116 | random_sample | 151613 | 0 | 0.036586 | False | 0.123649 | -0.087063 | 0 |
+| case_117 | random_sample | 152029 | 0 | 0.093492 | False | 0.123649 | -0.030156 | 0 |
+| case_118 | random_sample | 152076 | 0 | 0.141061 | False | 0.123649 | 0.017413 | 0 |
+| case_119 | random_sample | 152532 | 0 | 0.122341 | False | 0.123649 | -0.001308 | 0 |
+| case_120 | random_sample | 153721 | 0 | 0.057972 | False | 0.123649 | -0.065677 | 0 |
+| case_121 | random_sample | 155045 | 1 | 0.125397 | False | 0.123649 | 0.001749 | 0 |
+| case_122 | random_sample | 156331 | 0 | 0.20022 | True | 0.123649 | 0.076571 | 0 |
+| case_123 | random_sample | 158556 | 0 | 0.083601 | False | 0.123649 | -0.040048 | 0 |
+| case_124 | random_sample | 158936 | 0 | 0.072924 | False | 0.123649 | -0.050725 | 0 |
+| case_125 | random_sample | 159429 | 0 | 0.078902 | False | 0.123649 | -0.044746 | 0 |
+| case_126 | random_sample | 161962 | 0 | 0.046507 | False | 0.123649 | -0.077142 | 0 |
+| case_127 | random_sample | 162308 | 0 | 0.097942 | False | 0.123649 | -0.025706 | -0 |
+| case_128 | curated_TP | 149040 | 1 | 0.170711 | True | 0.123649 | 0.047062 | 0 |
+| case_129 | curated_TP | 79449 | 1 | 0.236712 | True | 0.123649 | 0.113063 | 0 |
+| case_130 | curated_TN | 28909 | 0 | 0.093474 | False | 0.123649 | -0.030175 | 0 |
+| case_131 | curated_TN | 141802 | 0 | 0.020065 | False | 0.123649 | -0.103584 | 0 |
+| case_132 | curated_FP | 158214 | 0 | 0.176032 | True | 0.123649 | 0.052383 | 0 |
+| case_133 | curated_FP | 154895 | 0 | 0.164214 | True | 0.123649 | 0.040565 | 0 |
+| case_134 | curated_FN | 73272 | 1 | 0.114896 | False | 0.123649 | -0.008753 | 0 |
+| case_135 | curated_FN | 31708 | 1 | 0.104794 | False | 0.123649 | -0.018854 | 0 |
+
+### local_contributions
+
+| case_id | selection | feature | feature_value | contribution_probability_units |
+| --- | --- | --- | --- | --- |
+| case_000 | random_sample | loan_amnt | 25000.0 | 0.03514 |
+| case_000 | random_sample | annual_inc | 130000.0 | -0.058236 |
+| case_000 | random_sample | dti | 27.28 | 0.013587 |
+| case_000 | random_sample | revol_util | 96.0 | 0.028345 |
+| case_000 | random_sample | revol_bal | 56423.0 | -0.008142 |
+| case_000 | random_sample | open_acc | 17.0 | 0.007416 |
+| case_000 | random_sample | delinq_2yrs | 0.0 | 0.001574 |
+| case_000 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000131 |
+| case_000 | random_sample | emp_length_years | 10.0 | 0.000865 |
+| case_000 | random_sample | fico_mid | 692.0 | -0.005646 |
+| case_000 | random_sample | credit_history_years | 24.166666666666668 | -0.017957 |
+| case_000 | random_sample | home_ownership | MORTGAGE | -0.014545 |
+| case_000 | random_sample | purpose | credit_card | -0.017041 |
+| case_001 | random_sample | loan_amnt | 20000.0 | 0.017536 |
+| case_001 | random_sample | annual_inc | 119100.0 | -0.043235 |
+| case_001 | random_sample | dti | 14.45 | -0.005132 |
+| case_001 | random_sample | revol_util | 85.3 | 0.007926 |
+| case_001 | random_sample | revol_bal | 23639.0 | -0.010223 |
+| case_001 | random_sample | open_acc | 11.0 | 0.00183 |
+| case_001 | random_sample | delinq_2yrs | 0.0 | 0.00295 |
+| case_001 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00078 |
+| case_001 | random_sample | emp_length_years | 10.0 | 0.003446 |
+| case_001 | random_sample | fico_mid | 667.0 | 0.032476 |
+| case_001 | random_sample | credit_history_years | 18.083333333333332 | -0.00875 |
+| case_001 | random_sample | home_ownership | RENT | 0.012739 |
+| case_001 | random_sample | purpose | debt_consolidation | 0.000666 |
+| case_002 | random_sample | loan_amnt | 8000.0 | -0.003876 |
+| case_002 | random_sample | annual_inc | 150000.0 | -0.036891 |
+| case_002 | random_sample | dti | 6.29 | -0.019087 |
+| case_002 | random_sample | revol_util | 0.0 | -0.008195 |
+| case_002 | random_sample | revol_bal | 0.0 | 0.026571 |
+| case_002 | random_sample | open_acc | 10.0 | -0.000217 |
+| case_002 | random_sample | delinq_2yrs | 0.0 | 0.001371 |
+| case_002 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00073 |
+| case_002 | random_sample | emp_length_years | 8.0 | 0.000908 |
+| case_002 | random_sample | fico_mid | 692.0 | -0.003854 |
+| case_002 | random_sample | credit_history_years | 21.0 | -0.009878 |
+| case_002 | random_sample | home_ownership | RENT | 0.013188 |
+| case_002 | random_sample | purpose | major_purchase | -0.008476 |
+| case_003 | random_sample | loan_amnt | 9375.0 | 0.000719 |
+| case_003 | random_sample | annual_inc | 34840.0 | 0.040126 |
+| case_003 | random_sample | dti | 18.6 | 0.00174 |
+| case_003 | random_sample | revol_util | 31.0 | -0.003303 |
+| case_003 | random_sample | revol_bal | 4057.0 | 0.005819 |
+| case_003 | random_sample | open_acc | 9.0 | 0.000564 |
+| case_003 | random_sample | delinq_2yrs | 0.0 | 0.001875 |
+| case_003 | random_sample | pub_rec_bankruptcies | 1.0 | -0.013215 |
+| case_003 | random_sample | emp_length_years | 5.0 | -0.000039 |
+| case_003 | random_sample | fico_mid | 672.0 | 0.031464 |
+| case_003 | random_sample | credit_history_years | 10.25 | 0.003673 |
+| case_003 | random_sample | home_ownership | RENT | 0.010927 |
+| case_003 | random_sample | purpose | debt_consolidation | 0.001229 |
+| case_004 | random_sample | loan_amnt | 8000.0 | -0.00234 |
+| case_004 | random_sample | annual_inc | 70000.0 | -0.012642 |
+| case_004 | random_sample | dti | 14.37 | -0.006188 |
+| case_004 | random_sample | revol_util | 57.6 | -0.003869 |
+| case_004 | random_sample | revol_bal | 9737.0 | 0.000754 |
+| case_004 | random_sample | open_acc | 8.0 | -0.003103 |
+| case_004 | random_sample | delinq_2yrs | 0.0 | 0.001547 |
+| case_004 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000366 |
+| case_004 | random_sample | emp_length_years | 3.0 | -0.004592 |
+| case_004 | random_sample | fico_mid | 697.0 | -0.008907 |
+| case_004 | random_sample | credit_history_years | 8.333333333333334 | -0.000057 |
+| case_004 | random_sample | home_ownership | RENT | 0.005161 |
+| case_004 | random_sample | purpose | credit_card | -0.017327 |
+| case_005 | random_sample | loan_amnt | 9000.0 | 0.002886 |
+| case_005 | random_sample | annual_inc | 38000.0 | 0.030812 |
+| case_005 | random_sample | dti | 13.77 | -0.006472 |
+| case_005 | random_sample | revol_util | 39.0 | -0.004135 |
+| case_005 | random_sample | revol_bal | 12922.0 | 0.001867 |
+| case_005 | random_sample | open_acc | 9.0 | 0.0026 |
+| case_005 | random_sample | delinq_2yrs | 0.0 | 0.001514 |
+| case_005 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000234 |
+| case_005 | random_sample | emp_length_years | 4.0 | -0.001546 |
+| case_005 | random_sample | fico_mid | 687.0 | 0.004238 |
+| case_005 | random_sample | credit_history_years | 21.416666666666668 | -0.005908 |
+| case_005 | random_sample | home_ownership | MORTGAGE | -0.008328 |
+| case_005 | random_sample | purpose | credit_card | -0.01389 |
+| case_006 | random_sample | loan_amnt | 21000.0 | 0.010277 |
+| case_006 | random_sample | annual_inc | 130000.0 | -0.030252 |
+| case_006 | random_sample | dti | 12.16 | -0.005784 |
+| case_006 | random_sample | revol_util | 76.0 | 0.001412 |
+| case_006 | random_sample | revol_bal | 22647.0 | -0.004647 |
+| case_006 | random_sample | open_acc | 7.0 | -0.006858 |
+| case_006 | random_sample | delinq_2yrs | 0.0 | 0.0006 |
+| case_006 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000257 |
+| case_006 | random_sample | emp_length_years | 10.0 | 0.001171 |
+| case_006 | random_sample | fico_mid | 737.0 | -0.032114 |
+| case_006 | random_sample | credit_history_years | 22.166666666666668 | -0.006882 |
+| case_006 | random_sample | home_ownership | MORTGAGE | -0.006461 |
+| case_006 | random_sample | purpose | credit_card | -0.011139 |
+| case_007 | random_sample | loan_amnt | 14350.0 | 0.013428 |
+| case_007 | random_sample | annual_inc | 36000.0 | 0.049807 |
+| case_007 | random_sample | dti | 23.63 | 0.014084 |
+| case_007 | random_sample | revol_util | 49.2 | -0.004521 |
+| case_007 | random_sample | revol_bal | 15594.0 | -0.003127 |
+| case_007 | random_sample | open_acc | 13.0 | 0.004798 |
+| case_007 | random_sample | delinq_2yrs | 1.0 | -0.005559 |
+| case_007 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000261 |
+| case_007 | random_sample | emp_length_years | 4.0 | -0.005215 |
+| case_007 | random_sample | fico_mid | 687.0 | 0.008568 |
+| case_007 | random_sample | credit_history_years | 7.333333333333333 | 0.002246 |
+| case_007 | random_sample | home_ownership | RENT | 0.009761 |
+| case_007 | random_sample | purpose | debt_consolidation | -0.000118 |
+| case_008 | random_sample | loan_amnt | 10000.0 | 0.003136 |
+| case_008 | random_sample | annual_inc | 60000.0 | 0.001873 |
+| case_008 | random_sample | dti | 13.24 | -0.01088 |
+| case_008 | random_sample | revol_util | 73.7 | 0.001516 |
+| case_008 | random_sample | revol_bal | 21734.0 | 0.00075 |
+| case_008 | random_sample | open_acc | 14.0 | 0.003805 |
+| case_008 | random_sample | delinq_2yrs | 0.0 | 0.001023 |
+| case_008 | random_sample | pub_rec_bankruptcies | 0.0 | 0.0003 |
+| case_008 | random_sample | emp_length_years | 0.0 | -0.002689 |
+| case_008 | random_sample | fico_mid | 697.0 | -0.009018 |
+| case_008 | random_sample | credit_history_years | 11.583333333333334 | -0.000541 |
+| case_008 | random_sample | home_ownership | MORTGAGE | -0.003694 |
+| case_008 | random_sample | purpose | debt_consolidation | 0.000582 |
+| case_009 | random_sample | loan_amnt | 21075.0 | 0.014273 |
+| case_009 | random_sample | annual_inc | 47000.0 | 0.016737 |
+| case_009 | random_sample | dti | 11.11 | -0.009908 |
+| case_009 | random_sample | revol_util | 30.6 | -0.005616 |
+| case_009 | random_sample | revol_bal | 18862.0 | -0.00804 |
+| case_009 | random_sample | open_acc | 11.0 | 0.00122 |
+| case_009 | random_sample | delinq_2yrs | 2.0 | -0.001691 |
+| case_009 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000448 |
+| case_009 | random_sample | emp_length_years | 1.0 | 0.002426 |
+| case_009 | random_sample | fico_mid | 732.0 | -0.041245 |
+| case_009 | random_sample | credit_history_years | 24.666666666666668 | -0.003505 |
+| case_009 | random_sample | home_ownership | MORTGAGE | -0.003351 |
+| case_009 | random_sample | purpose | debt_consolidation | -0.001593 |
+| case_010 | random_sample | loan_amnt | 16750.0 | 0.017188 |
+| case_010 | random_sample | annual_inc | 42000.0 | 0.020207 |
+| case_010 | random_sample | dti | 20.37 | 0.004012 |
+| case_010 | random_sample | revol_util | 82.1 | 0.001994 |
+| case_010 | random_sample | revol_bal | 8370.0 | 0.003106 |
+| case_010 | random_sample | open_acc | 6.0 | -0.015292 |
+| case_010 | random_sample | delinq_2yrs | 0.0 | 0.001042 |
+| case_010 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000387 |
+| case_010 | random_sample | emp_length_years | 1.0 | 0.00064 |
+| case_010 | random_sample | fico_mid | 702.0 | -0.02354 |
+| case_010 | random_sample | credit_history_years | 12.5 | 0.00132 |
+| case_010 | random_sample | home_ownership | MORTGAGE | -0.004357 |
+| case_010 | random_sample | purpose | debt_consolidation | -0.000971 |
+| case_011 | random_sample | loan_amnt | 4675.0 | -0.031213 |
+| case_011 | random_sample | annual_inc | 58240.0 | 0.018638 |
+| case_011 | random_sample | dti | 19.84 | 0.004805 |
+| case_011 | random_sample | revol_util | 84.0 | 0.000231 |
+| case_011 | random_sample | revol_bal | 2435.0 | 0.010259 |
+| case_011 | random_sample | open_acc | 9.0 | 0.000904 |
+| case_011 | random_sample | delinq_2yrs | 0.0 | 0.001619 |
+| case_011 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000198 |
+| case_011 | random_sample | emp_length_years | 3.0 | -0.001348 |
+| case_011 | random_sample | fico_mid | 672.0 | 0.028315 |
+| case_011 | random_sample | credit_history_years | 5.5 | 0.008056 |
+| case_011 | random_sample | home_ownership | MORTGAGE | -0.008996 |
+| case_011 | random_sample | purpose | small_business | 0.099944 |
+| case_012 | random_sample | loan_amnt | 8000.0 | 0.000396 |
+| case_012 | random_sample | annual_inc | 72000.0 | -0.011532 |
+| case_012 | random_sample | dti | 12.57 | -0.011125 |
+| case_012 | random_sample | revol_util | 61.2 | -0.004537 |
+| case_012 | random_sample | revol_bal | 20139.0 | 0.000843 |
+| case_012 | random_sample | open_acc | 17.0 | 0.006558 |
+| case_012 | random_sample | delinq_2yrs | 0.0 | 0.000722 |
+| case_012 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000162 |
+| case_012 | random_sample | emp_length_years | 5.0 | -0.002123 |
+| case_012 | random_sample | fico_mid | 702.0 | -0.016541 |
+| case_012 | random_sample | credit_history_years | 27.333333333333332 | -0.003405 |
+| case_012 | random_sample | home_ownership | MORTGAGE | -0.004787 |
+| case_012 | random_sample | purpose | debt_consolidation | 0.000897 |
+| case_013 | random_sample | loan_amnt | 5000.0 | -0.010445 |
+| case_013 | random_sample | annual_inc | 46970.0 | 0.016116 |
+| case_013 | random_sample | dti | 22.36 | 0.014449 |
+| case_013 | random_sample | revol_util | 37.7 | -0.00052 |
+| case_013 | random_sample | revol_bal | 12450.0 | 0.002601 |
+| case_013 | random_sample | open_acc | 16.0 | 0.008042 |
+| case_013 | random_sample | delinq_2yrs | 4.0 | -0.008381 |
+| case_013 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000587 |
+| case_013 | random_sample | emp_length_years | 3.0 | -0.000397 |
+| case_013 | random_sample | fico_mid | 662.0 | 0.034761 |
+| case_013 | random_sample | credit_history_years | 24.5 | -0.005272 |
+| case_013 | random_sample | home_ownership | RENT | 0.008345 |
+| case_013 | random_sample | purpose | credit_card | -0.028788 |
+| case_014 | random_sample | loan_amnt | 9200.0 | 0.003454 |
+| case_014 | random_sample | annual_inc | 25000.0 | 0.060166 |
+| case_014 | random_sample | dti | 27.75 | 0.019486 |
+| case_014 | random_sample | revol_util | 29.3 | -0.001357 |
+| case_014 | random_sample | revol_bal | 8597.0 | 0.001434 |
+| case_014 | random_sample | open_acc | 3.0 | -0.010757 |
+| case_014 | random_sample | delinq_2yrs | 0.0 | 0.001224 |
+| case_014 | random_sample | pub_rec_bankruptcies | 0.0 | 0.001235 |
+| case_014 | random_sample | emp_length_years | 7.0 | 0.001572 |
+| case_014 | random_sample | fico_mid | 752.0 | -0.085637 |
+| case_014 | random_sample | credit_history_years | 25.75 | 0.000294 |
+| case_014 | random_sample | home_ownership | RENT | 0.012852 |
+| case_014 | random_sample | purpose | debt_consolidation | 0.000446 |
+| case_015 | random_sample | loan_amnt | 6500.0 | -0.012292 |
+| case_015 | random_sample | annual_inc | 41000.0 | 0.027554 |
+| case_015 | random_sample | dti | 22.92 | 0.011089 |
+| case_015 | random_sample | revol_util | 60.0 | -0.003414 |
+| case_015 | random_sample | revol_bal | 9599.0 | 0.000938 |
+| case_015 | random_sample | open_acc | 9.0 | 0.000728 |
+| case_015 | random_sample | delinq_2yrs | 0.0 | 0.002203 |
+| case_015 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000379 |
+| case_015 | random_sample | emp_length_years | 2.0 | -0.002656 |
+| case_015 | random_sample | fico_mid | 692.0 | -0.006467 |
+| case_015 | random_sample | credit_history_years | 13.083333333333334 | 0.002724 |
+| case_015 | random_sample | home_ownership | RENT | 0.00648 |
+| case_015 | random_sample | purpose | credit_card | -0.019121 |
+| case_016 | random_sample | loan_amnt | 12000.0 | 0.00264 |
+| case_016 | random_sample | annual_inc | 72000.0 | -0.013515 |
+| case_016 | random_sample | dti | 9.75 | -0.015024 |
+| case_016 | random_sample | revol_util | 42.5 | -0.005251 |
+| case_016 | random_sample | revol_bal | 6505.0 | 0.005284 |
+| case_016 | random_sample | open_acc | 11.0 | 0.00199 |
+| case_016 | random_sample | delinq_2yrs | 0.0 | 0.000923 |
+| case_016 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000291 |
+| case_016 | random_sample | emp_length_years | 0.0 | -0.002832 |
+| case_016 | random_sample | fico_mid | 712.0 | -0.026446 |
+| case_016 | random_sample | credit_history_years | 12.166666666666666 | 0.001836 |
+| case_016 | random_sample | home_ownership | RENT | 0.005175 |
+| case_016 | random_sample | purpose | debt_consolidation | -0.000383 |
+| case_017 | random_sample | loan_amnt | 2500.0 | -0.014374 |
+| case_017 | random_sample | annual_inc | 190000.0 | -0.04579 |
+| case_017 | random_sample | dti | 6.49 | -0.009352 |
+| case_017 | random_sample | revol_util | 87.6 | 0.012692 |
+| case_017 | random_sample | revol_bal | 34618.0 | -0.003895 |
+| case_017 | random_sample | open_acc | 7.0 | -0.005284 |
+| case_017 | random_sample | delinq_2yrs | 0.0 | 0.001173 |
+| case_017 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000078 |
+| case_017 | random_sample | emp_length_years | 7.0 | 0.000502 |
+| case_017 | random_sample | fico_mid | 687.0 | 0.000035 |
+| case_017 | random_sample | credit_history_years | 15.916666666666666 | -0.005589 |
+| case_017 | random_sample | home_ownership | OWN | -0.004342 |
+| case_017 | random_sample | purpose | other | 0.028891 |
+| case_018 | random_sample | loan_amnt | 32000.0 | 0.060407 |
+| case_018 | random_sample | annual_inc | 72000.0 | -0.016568 |
+| case_018 | random_sample | dti | 14.39 | -0.007085 |
+| case_018 | random_sample | revol_util | 44.0 | -0.006064 |
+| case_018 | random_sample | revol_bal | 15954.0 | -0.00968 |
+| case_018 | random_sample | open_acc | 5.0 | -0.020641 |
+| case_018 | random_sample | delinq_2yrs | 0.0 | 0.002257 |
+| case_018 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000705 |
+| case_018 | random_sample | emp_length_years | 0.0 | -0.001248 |
+| case_018 | random_sample | fico_mid | 662.0 | 0.040952 |
+| case_018 | random_sample | credit_history_years | 14.5 | 0.004318 |
+| case_018 | random_sample | home_ownership | RENT | 0.01017 |
+| case_018 | random_sample | purpose | credit_card | -0.026348 |
+| case_019 | random_sample | loan_amnt | 7500.0 | -0.006182 |
+| case_019 | random_sample | annual_inc | 33000.0 | 0.036906 |
+| case_019 | random_sample | dti | 5.13 | -0.015676 |
+| case_019 | random_sample | revol_util | 60.1 | -0.005139 |
+| case_019 | random_sample | revol_bal | 4566.0 | 0.000436 |
+| case_019 | random_sample | open_acc | 7.0 | -0.010793 |
+| case_019 | random_sample | delinq_2yrs | 0.0 | 0.000763 |
+| case_019 | random_sample | pub_rec_bankruptcies | 1.0 | -0.012147 |
+| case_019 | random_sample | emp_length_years | 10.0 | 0.000013 |
+| case_019 | random_sample | fico_mid | 662.0 | 0.022691 |
+| case_019 | random_sample | credit_history_years | 27.75 | -0.012296 |
+| case_019 | random_sample | home_ownership | MORTGAGE | -0.00885 |
+| case_019 | random_sample | purpose | credit_card | -0.01611 |
+| case_020 | random_sample | loan_amnt | 10000.0 | 0.007429 |
+| case_020 | random_sample | annual_inc | 25000.0 | 0.073431 |
+| case_020 | random_sample | dti | 27.94 | 0.024608 |
+| case_020 | random_sample | revol_util | 43.2 | -0.004631 |
+| case_020 | random_sample | revol_bal | 7438.0 | 0.000545 |
+| case_020 | random_sample | open_acc | 13.0 | 0.003392 |
+| case_020 | random_sample | delinq_2yrs | 0.0 | 0.001378 |
+| case_020 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000695 |
+| case_020 | random_sample | emp_length_years | 2.0 | -0.003036 |
+| case_020 | random_sample | fico_mid | 687.0 | 0.011748 |
+| case_020 | random_sample | credit_history_years | 13.416666666666666 | 0.007614 |
+| case_020 | random_sample | home_ownership | RENT | 0.0138 |
+| case_020 | random_sample | purpose | debt_consolidation | 0.001844 |
+| case_021 | random_sample | loan_amnt | 2425.0 | -0.042394 |
+| case_021 | random_sample | annual_inc | 40000.0 | 0.026369 |
+| case_021 | random_sample | dti | 31.8 | 0.018012 |
+| case_021 | random_sample | revol_util | 85.6 | 0.003016 |
+| case_021 | random_sample | revol_bal | 4795.0 | 0.002286 |
+| case_021 | random_sample | open_acc | 24.0 | 0.015975 |
+| case_021 | random_sample | delinq_2yrs | 1.0 | -0.000222 |
+| case_021 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000544 |
+| case_021 | random_sample | emp_length_years | 2.0 | -0.012161 |
+| case_021 | random_sample | fico_mid | 682.0 | 0.011004 |
+| case_021 | random_sample | credit_history_years | 6.25 | -0.002585 |
+| case_021 | random_sample | home_ownership | RENT | 0.007493 |
+| case_021 | random_sample | purpose | debt_consolidation | 0.002135 |
+| case_022 | random_sample | loan_amnt | 20000.0 | 0.016044 |
+| case_022 | random_sample | annual_inc | 70000.0 | -0.013304 |
+| case_022 | random_sample | dti | 22.56 | 0.009335 |
+| case_022 | random_sample | revol_util | 46.9 | -0.005696 |
+| case_022 | random_sample | revol_bal | 44263.0 | -0.002371 |
+| case_022 | random_sample | open_acc | 22.0 | 0.013368 |
+| case_022 | random_sample | delinq_2yrs | 0.0 | 0.000711 |
+| case_022 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00018 |
+| case_022 | random_sample | emp_length_years | 3.0 | -0.000714 |
+| case_022 | random_sample | fico_mid | 712.0 | -0.038345 |
+| case_022 | random_sample | credit_history_years | 27.0 | -0.002978 |
+| case_022 | random_sample | home_ownership | MORTGAGE | -0.00672 |
+| case_022 | random_sample | purpose | debt_consolidation | 0.000145 |
+| case_023 | random_sample | loan_amnt | 5975.0 | -0.036175 |
+| case_023 | random_sample | annual_inc | 20000.0 | 0.070741 |
+| case_023 | random_sample | dti | 14.53 | -0.004059 |
+| case_023 | random_sample | revol_util | 50.8 | -0.004404 |
+| case_023 | random_sample | revol_bal | 6151.0 | 0.004571 |
+| case_023 | random_sample | open_acc | 8.0 | -0.00419 |
+| case_023 | random_sample | delinq_2yrs | 1.0 | -0.002514 |
+| case_023 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000333 |
+| case_023 | random_sample | emp_length_years | 2.0 | 0.002622 |
+| case_023 | random_sample | fico_mid | 672.0 | 0.022675 |
+| case_023 | random_sample | credit_history_years | 9.75 | 0.002014 |
+| case_023 | random_sample | home_ownership | OWN | 0.001018 |
+| case_023 | random_sample | purpose | other | 0.041508 |
+| case_024 | random_sample | loan_amnt | 8000.0 | -0.002849 |
+| case_024 | random_sample | annual_inc | 40000.0 | 0.023323 |
+| case_024 | random_sample | dti | 24.86 | 0.008786 |
+| case_024 | random_sample | revol_util | 65.9 | -0.006115 |
+| case_024 | random_sample | revol_bal | 10484.0 | -0.000108 |
+| case_024 | random_sample | open_acc | 11.0 | 0.002553 |
+| case_024 | random_sample | delinq_2yrs | 0.0 | 0.000772 |
+| case_024 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000327 |
+| case_024 | random_sample | emp_length_years | 1.0 | -0.000621 |
+| case_024 | random_sample | fico_mid | 742.0 | -0.063791 |
+| case_024 | random_sample | credit_history_years | 9.666666666666666 | 0.000963 |
+| case_024 | random_sample | home_ownership | MORTGAGE | -0.005016 |
+| case_024 | random_sample | purpose | car | 0.000419 |
+| case_025 | random_sample | loan_amnt | 5000.0 | -0.016096 |
+| case_025 | random_sample | annual_inc | 34000.0 | 0.03754 |
+| case_025 | random_sample | dti | 2.58 | -0.016921 |
+| case_025 | random_sample | revol_util | 18.3 | -0.00789 |
+| case_025 | random_sample | revol_bal | 2270.0 | 0.008264 |
+| case_025 | random_sample | open_acc | 10.0 | 0.001118 |
+| case_025 | random_sample | delinq_2yrs | 0.0 | 0.000858 |
+| case_025 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000689 |
+| case_025 | random_sample | emp_length_years | 5.0 | -0.001491 |
+| case_025 | random_sample | fico_mid | 687.0 | 0.004859 |
+| case_025 | random_sample | credit_history_years | 22.833333333333332 | -0.005045 |
+| case_025 | random_sample | home_ownership | MORTGAGE | -0.008658 |
+| case_025 | random_sample | purpose | credit_card | -0.018058 |
+| case_026 | random_sample | loan_amnt | 19800.0 | 0.028484 |
+| case_026 | random_sample | annual_inc | 60000.0 | 0.004993 |
+| case_026 | random_sample | dti | 16.68 | -0.002942 |
+| case_026 | random_sample | revol_util | 79.5 | 0.002322 |
+| case_026 | random_sample | revol_bal | 10490.0 | 0.00182 |
+| case_026 | random_sample | open_acc | 8.0 | -0.007384 |
+| case_026 | random_sample | delinq_2yrs | 0.0 | 0.00252 |
+| case_026 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000652 |
+| case_026 | random_sample | emp_length_years | 9.0 | 0.004287 |
+| case_026 | random_sample | fico_mid | 682.0 | 0.014137 |
+| case_026 | random_sample | credit_history_years | 10.916666666666666 | 0.001399 |
+| case_026 | random_sample | home_ownership | RENT | 0.012965 |
+| case_026 | random_sample | purpose | debt_consolidation | 0.001274 |
+| case_027 | random_sample | loan_amnt | 15000.0 | 0.026003 |
+| case_027 | random_sample | annual_inc | 70500.0 | -0.013163 |
+| case_027 | random_sample | dti | 16.14 | -0.003303 |
+| case_027 | random_sample | revol_util | 30.7 | -0.002838 |
+| case_027 | random_sample | revol_bal | 5103.0 | 0.016014 |
+| case_027 | random_sample | open_acc | 14.0 | 0.008548 |
+| case_027 | random_sample | delinq_2yrs | 0.0 | 0.001244 |
+| case_027 | random_sample | pub_rec_bankruptcies | 1.0 | -0.008172 |
+| case_027 | random_sample | emp_length_years | 10.0 | 0.006708 |
+| case_027 | random_sample | fico_mid | 702.0 | -0.027197 |
+| case_027 | random_sample | credit_history_years | 10.333333333333334 | 0.001418 |
+| case_027 | random_sample | home_ownership | RENT | 0.008809 |
+| case_027 | random_sample | purpose | debt_consolidation | 0.001311 |
+| case_028 | random_sample | loan_amnt | 1000.0 | -0.055545 |
+| case_028 | random_sample | annual_inc | 36000.0 | 0.053855 |
+| case_028 | random_sample | dti | 26.07 | 0.009365 |
+| case_028 | random_sample | revol_util | 79.2 | 0.001881 |
+| case_028 | random_sample | revol_bal | 18931.0 | 0.004356 |
+| case_028 | random_sample | open_acc | 8.0 | -0.003841 |
+| case_028 | random_sample | delinq_2yrs | 0.0 | 0.002283 |
+| case_028 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000319 |
+| case_028 | random_sample | emp_length_years | 10.0 | 0.002556 |
+| case_028 | random_sample | fico_mid | 692.0 | 0.004478 |
+| case_028 | random_sample | credit_history_years | 17.416666666666668 | -0.00167 |
+| case_028 | random_sample | home_ownership | RENT | 0.01399 |
+| case_028 | random_sample | purpose | other | 0.04011 |
+| case_029 | random_sample | loan_amnt | 7800.0 | -0.00348 |
+| case_029 | random_sample | annual_inc | 78500.0 | -0.017538 |
+| case_029 | random_sample | dti | 17.18 | 0.002237 |
+| case_029 | random_sample | revol_util | 55.8 | -0.003967 |
+| case_029 | random_sample | revol_bal | 7871.0 | 0.002431 |
+| case_029 | random_sample | open_acc | 10.0 | 0.002139 |
+| case_029 | random_sample | delinq_2yrs | 0.0 | 0.001487 |
+| case_029 | random_sample | pub_rec_bankruptcies | 1.0 | -0.01102 |
+| case_029 | random_sample | emp_length_years | 9.0 | 0.000514 |
+| case_029 | random_sample | fico_mid | 687.0 | 0.004234 |
+| case_029 | random_sample | credit_history_years | 22.5 | -0.00622 |
+| case_029 | random_sample | home_ownership | RENT | 0.00858 |
+| case_029 | random_sample | purpose | debt_consolidation | 0.002126 |
+| case_030 | random_sample | loan_amnt | 13000.0 | 0.007841 |
+| case_030 | random_sample | annual_inc | 71000.0 | -0.022016 |
+| case_030 | random_sample | dti | 29.5 | 0.021308 |
+| case_030 | random_sample | revol_util | 58.7 | -0.006034 |
+| case_030 | random_sample | revol_bal | 25130.0 | -0.000061 |
+| case_030 | random_sample | open_acc | 33.0 | 0.014816 |
+| case_030 | random_sample | delinq_2yrs | 0.0 | 0.000649 |
+| case_030 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00024 |
+| case_030 | random_sample | emp_length_years | 2.0 | -0.009417 |
+| case_030 | random_sample | fico_mid | 677.0 | 0.008165 |
+| case_030 | random_sample | credit_history_years | 5.75 | 0.008958 |
+| case_030 | random_sample | home_ownership | MORTGAGE | -0.007108 |
+| case_030 | random_sample | purpose | credit_card | -0.018743 |
+| case_031 | random_sample | loan_amnt | 6400.0 | -0.013458 |
+| case_031 | random_sample | annual_inc | 58000.0 | 0.008195 |
+| case_031 | random_sample | dti | 14.64 | -0.006707 |
+| case_031 | random_sample | revol_util | 22.3 | -0.006531 |
+| case_031 | random_sample | revol_bal | 9194.0 | 0.001822 |
+| case_031 | random_sample | open_acc | 15.0 | 0.006085 |
+| case_031 | random_sample | delinq_2yrs | 1.0 | -0.004023 |
+| case_031 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00054 |
+| case_031 | random_sample | emp_length_years | 10.0 | 0.000682 |
+| case_031 | random_sample | fico_mid | 712.0 | -0.021206 |
+| case_031 | random_sample | credit_history_years | 16.666666666666668 | -0.000673 |
+| case_031 | random_sample | home_ownership | MORTGAGE | -0.005473 |
+| case_031 | random_sample | purpose | medical | 0.048397 |
+| case_032 | random_sample | loan_amnt | 6850.0 | -0.012103 |
+| case_032 | random_sample | annual_inc | 46574.0 | 0.008114 |
+| case_032 | random_sample | dti | 9.33 | -0.013447 |
+| case_032 | random_sample | revol_util | 26.1 | -0.004866 |
+| case_032 | random_sample | revol_bal | 6334.0 | 0.002174 |
+| case_032 | random_sample | open_acc | 13.0 | 0.004168 |
+| case_032 | random_sample | delinq_2yrs | 1.0 | -0.004411 |
+| case_032 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000515 |
+| case_032 | random_sample | emp_length_years | 5.0 | -0.00192 |
+| case_032 | random_sample | fico_mid | 697.0 | -0.00676 |
+| case_032 | random_sample | credit_history_years | 14.333333333333334 | 0.001982 |
+| case_032 | random_sample | home_ownership | RENT | 0.005793 |
+| case_032 | random_sample | purpose | credit_card | -0.015997 |
+| case_033 | random_sample | loan_amnt | 16000.0 | 0.012444 |
+| case_033 | random_sample | annual_inc | 65000.0 | -0.009753 |
+| case_033 | random_sample | dti | 14.84 | -0.005578 |
+| case_033 | random_sample | revol_util | 49.8 | -0.003537 |
+| case_033 | random_sample | revol_bal | 17463.0 | -0.00464 |
+| case_033 | random_sample | open_acc | 15.0 | 0.005004 |
+| case_033 | random_sample | delinq_2yrs | 0.0 | 0.000722 |
+| case_033 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000518 |
+| case_033 | random_sample | emp_length_years | 8.0 | -0.00035 |
+| case_033 | random_sample | fico_mid | 732.0 | -0.053704 |
+| case_033 | random_sample | credit_history_years | 31.5 | -0.003746 |
+| case_033 | random_sample | home_ownership | MORTGAGE | -0.008703 |
+| case_033 | random_sample | purpose | home_improvement | 0.013965 |
+| case_034 | random_sample | loan_amnt | 13500.0 | 0.011573 |
+| case_034 | random_sample | annual_inc | 80000.0 | -0.023896 |
+| case_034 | random_sample | dti | 17.55 | 0.000759 |
+| case_034 | random_sample | revol_util | 44.6 | -0.001605 |
+| case_034 | random_sample | revol_bal | 10748.0 | -0.000129 |
+| case_034 | random_sample | open_acc | 12.0 | 0.004917 |
+| case_034 | random_sample | delinq_2yrs | 1.0 | -0.003572 |
+| case_034 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000259 |
+| case_034 | random_sample | emp_length_years | 3.0 | -0.000628 |
+| case_034 | random_sample | fico_mid | 692.0 | -0.005898 |
+| case_034 | random_sample | credit_history_years | 9.0 | 0.001558 |
+| case_034 | random_sample | home_ownership | MORTGAGE | -0.003217 |
+| case_034 | random_sample | purpose | credit_card | -0.018472 |
+| case_035 | random_sample | loan_amnt | 19150.0 | 0.026263 |
+| case_035 | random_sample | annual_inc | 48000.0 | 0.016479 |
+| case_035 | random_sample | dti | 11.95 | -0.006677 |
+| case_035 | random_sample | revol_util | 74.2 | 0.002119 |
+| case_035 | random_sample | revol_bal | 9644.0 | 0.000736 |
+| case_035 | random_sample | open_acc | 3.0 | -0.015869 |
+| case_035 | random_sample | delinq_2yrs | 0.0 | 0.001226 |
+| case_035 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000225 |
+| case_035 | random_sample | emp_length_years | 3.0 | -0.00807 |
+| case_035 | random_sample | fico_mid | 717.0 | -0.037957 |
+| case_035 | random_sample | credit_history_years | 6.333333333333333 | 0.005679 |
+| case_035 | random_sample | home_ownership | RENT | 0.007221 |
+| case_035 | random_sample | purpose | debt_consolidation | -0.003663 |
+| case_036 | random_sample | loan_amnt | 16500.0 | 0.028672 |
+| case_036 | random_sample | annual_inc | 40000.0 | 0.041021 |
+| case_036 | random_sample | dti | 34.11 | 0.029256 |
+| case_036 | random_sample | revol_util | 63.1 | -0.006393 |
+| case_036 | random_sample | revol_bal | 12942.0 | -0.00169 |
+| case_036 | random_sample | open_acc | 15.0 | 0.009181 |
+| case_036 | random_sample | delinq_2yrs | 0.0 | 0.003395 |
+| case_036 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000406 |
+| case_036 | random_sample | emp_length_years | 7.0 | 0.002565 |
+| case_036 | random_sample | fico_mid | 672.0 | 0.043219 |
+| case_036 | random_sample | credit_history_years | 6.666666666666667 | 0.006191 |
+| case_036 | random_sample | home_ownership | RENT | 0.018677 |
+| case_036 | random_sample | purpose | credit_card | -0.016593 |
+| case_037 | random_sample | loan_amnt | 10000.0 | 0.002825 |
+| case_037 | random_sample | annual_inc | 38000.0 | 0.027428 |
+| case_037 | random_sample | dti | 16.27 | -0.002644 |
+| case_037 | random_sample | revol_util | 19.5 | -0.007801 |
+| case_037 | random_sample | revol_bal | 7573.0 | -0.001267 |
+| case_037 | random_sample | open_acc | 8.0 | -0.005838 |
+| case_037 | random_sample | delinq_2yrs | 0.0 | 0.000472 |
+| case_037 | random_sample | pub_rec_bankruptcies | 1.0 | -0.012376 |
+| case_037 | random_sample | emp_length_years | 6.0 | -0.000371 |
+| case_037 | random_sample | fico_mid | 677.0 | 0.009669 |
+| case_037 | random_sample | credit_history_years | 24.916666666666668 | -0.011858 |
+| case_037 | random_sample | home_ownership | OWN | -0.005236 |
+| case_037 | random_sample | purpose | other | 0.044564 |
+| case_038 | random_sample | loan_amnt | 11500.0 | 0.007341 |
+| case_038 | random_sample | annual_inc | 45000.0 | 0.020314 |
+| case_038 | random_sample | dti | 28.11 | 0.018223 |
+| case_038 | random_sample | revol_util | 34.1 | -0.001231 |
+| case_038 | random_sample | revol_bal | 9302.0 | 0.000042 |
+| case_038 | random_sample | open_acc | 14.0 | 0.004181 |
+| case_038 | random_sample | delinq_2yrs | 0.0 | 0.001077 |
+| case_038 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000476 |
+| case_038 | random_sample | emp_length_years | 1.0 | -0.009692 |
+| case_038 | random_sample | fico_mid | 722.0 | -0.047152 |
+| case_038 | random_sample | credit_history_years | 8.0 | -0.002681 |
+| case_038 | random_sample | home_ownership | RENT | 0.005476 |
+| case_038 | random_sample | purpose | credit_card | -0.014274 |
+| case_039 | random_sample | loan_amnt | 25600.0 | 0.046991 |
+| case_039 | random_sample | annual_inc | 90000.0 | -0.032362 |
+| case_039 | random_sample | dti | 8.33 | -0.018161 |
+| case_039 | random_sample | revol_util | 75.1 | 0.001222 |
+| case_039 | random_sample | revol_bal | 15700.0 | -0.003581 |
+| case_039 | random_sample | open_acc | 14.0 | 0.008121 |
+| case_039 | random_sample | delinq_2yrs | 3.0 | -0.005181 |
+| case_039 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000576 |
+| case_039 | random_sample | emp_length_years | 4.0 | -0.001466 |
+| case_039 | random_sample | fico_mid | 667.0 | 0.027101 |
+| case_039 | random_sample | credit_history_years | 16.583333333333332 | -0.001869 |
+| case_039 | random_sample | home_ownership | MORTGAGE | -0.006325 |
+| case_039 | random_sample | purpose | credit_card | -0.018077 |
+| case_040 | random_sample | loan_amnt | 9000.0 | 0.000207 |
+| case_040 | random_sample | annual_inc | 135000.0 | -0.033171 |
+| case_040 | random_sample | dti | 1.86 | -0.018294 |
+| case_040 | random_sample | revol_util | 73.4 | 0.002063 |
+| case_040 | random_sample | revol_bal | 9761.0 | 0.000193 |
+| case_040 | random_sample | open_acc | 9.0 | -0.000097 |
+| case_040 | random_sample | delinq_2yrs | 0.0 | 0.001477 |
+| case_040 | random_sample | pub_rec_bankruptcies | 1.0 | -0.005803 |
+| case_040 | random_sample | emp_length_years | 5.0 | 0.00103 |
+| case_040 | random_sample | fico_mid | 662.0 | 0.0319 |
+| case_040 | random_sample | credit_history_years | 15.5 | 0.000423 |
+| case_040 | random_sample | home_ownership | MORTGAGE | -0.006659 |
+| case_040 | random_sample | purpose | debt_consolidation | 0.001652 |
+| case_041 | random_sample | loan_amnt | 4400.0 | -0.02227 |
+| case_041 | random_sample | annual_inc | 17420.0 | 0.05675 |
+| case_041 | random_sample | dti | 23.23 | 0.009889 |
+| case_041 | random_sample | revol_util | 41.9 | -0.005808 |
+| case_041 | random_sample | revol_bal | 4186.0 | -0.001418 |
+| case_041 | random_sample | open_acc | 6.0 | -0.009093 |
+| case_041 | random_sample | delinq_2yrs | 0.0 | 0.002463 |
+| case_041 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00026 |
+| case_041 | random_sample | emp_length_years | 3.0 | -0.003498 |
+| case_041 | random_sample | fico_mid | 722.0 | -0.051177 |
+| case_041 | random_sample | credit_history_years | 7.75 | -0.003254 |
+| case_041 | random_sample | home_ownership | RENT | 0.008042 |
+| case_041 | random_sample | purpose | medical | 0.043603 |
+| case_042 | random_sample | loan_amnt | 13475.0 | 0.011087 |
+| case_042 | random_sample | annual_inc | 30000.0 | 0.038681 |
+| case_042 | random_sample | dti | 10.28 | -0.007456 |
+| case_042 | random_sample | revol_util | 37.1 | -0.005851 |
+| case_042 | random_sample | revol_bal | 16639.0 | -0.003731 |
+| case_042 | random_sample | open_acc | 10.0 | 0.000606 |
+| case_042 | random_sample | delinq_2yrs | 0.0 | 0.000757 |
+| case_042 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000309 |
+| case_042 | random_sample | emp_length_years | 2.0 | 0.000713 |
+| case_042 | random_sample | fico_mid | 757.0 | -0.077237 |
+| case_042 | random_sample | credit_history_years | 15.666666666666666 | -0.000111 |
+| case_042 | random_sample | home_ownership | OWN | -0.00105 |
+| case_042 | random_sample | purpose | debt_consolidation | -0.002727 |
+| case_043 | random_sample | loan_amnt | 3200.0 | -0.003318 |
+| case_043 | random_sample | annual_inc | 97641.0 | -0.038624 |
+| case_043 | random_sample | dti | 14.66 | -0.003836 |
+| case_043 | random_sample | revol_util | 90.0 | 0.013712 |
+| case_043 | random_sample | revol_bal | 42128.0 | 0.002725 |
+| case_043 | random_sample | open_acc | 6.0 | -0.009502 |
+| case_043 | random_sample | delinq_2yrs | 1.0 | -0.002955 |
+| case_043 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000302 |
+| case_043 | random_sample | emp_length_years | 2.0 | 0.00439 |
+| case_043 | random_sample | fico_mid | 682.0 | 0.00969 |
+| case_043 | random_sample | credit_history_years | 18.666666666666668 | -0.003445 |
+| case_043 | random_sample | home_ownership | MORTGAGE | -0.005431 |
+| case_043 | random_sample | purpose | debt_consolidation | 0.003446 |
+| case_044 | random_sample | loan_amnt | 20000.0 | 0.015093 |
+| case_044 | random_sample | annual_inc | 62000.0 | -0.00671 |
+| case_044 | random_sample | dti | 27.47 | 0.015572 |
+| case_044 | random_sample | revol_util | 38.3 | -0.002479 |
+| case_044 | random_sample | revol_bal | 26822.0 | -0.002081 |
+| case_044 | random_sample | open_acc | 23.0 | 0.013161 |
+| case_044 | random_sample | delinq_2yrs | 0.0 | 0.000511 |
+| case_044 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000332 |
+| case_044 | random_sample | emp_length_years | 10.0 | 0.001641 |
+| case_044 | random_sample | fico_mid | 742.0 | -0.068292 |
+| case_044 | random_sample | credit_history_years | 20.166666666666668 | -0.00612 |
+| case_044 | random_sample | home_ownership | OWN | -0.003535 |
+| case_044 | random_sample | purpose | credit_card | -0.014846 |
+| case_045 | random_sample | loan_amnt | 5000.0 | -0.01373 |
+| case_045 | random_sample | annual_inc | 48000.0 | 0.017822 |
+| case_045 | random_sample | dti | 13.45 | -0.00706 |
+| case_045 | random_sample | revol_util | 36.2 | -0.002163 |
+| case_045 | random_sample | revol_bal | 651.0 | 0.048505 |
+| case_045 | random_sample | open_acc | 2.0 | -0.006469 |
+| case_045 | random_sample | delinq_2yrs | 0.0 | 0.001905 |
+| case_045 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000577 |
+| case_045 | random_sample | emp_length_years | 7.0 | 0.00256 |
+| case_045 | random_sample | fico_mid | 732.0 | -0.047495 |
+| case_045 | random_sample | credit_history_years | 7.25 | 0.004089 |
+| case_045 | random_sample | home_ownership | RENT | 0.006541 |
+| case_045 | random_sample | purpose | debt_consolidation | 0.005139 |
+| case_046 | random_sample | loan_amnt | 6000.0 | -0.006391 |
+| case_046 | random_sample | annual_inc | 32000.0 | 0.037286 |
+| case_046 | random_sample | dti | 24.04 | 0.01013 |
+| case_046 | random_sample | revol_util | 55.3 | -0.003778 |
+| case_046 | random_sample | revol_bal | 12603.0 | 0.001763 |
+| case_046 | random_sample | open_acc | 9.0 | 0.00003 |
+| case_046 | random_sample | delinq_2yrs | 0.0 | 0.000998 |
+| case_046 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000193 |
+| case_046 | random_sample | emp_length_years | 0.0 | 0.001241 |
+| case_046 | random_sample | fico_mid | 717.0 | -0.043619 |
+| case_046 | random_sample | credit_history_years | 14.583333333333334 | 0.001939 |
+| case_046 | random_sample | home_ownership | MORTGAGE | -0.00566 |
+| case_046 | random_sample | purpose | debt_consolidation | 0.001216 |
+| case_047 | random_sample | loan_amnt | 20000.0 | 0.017704 |
+| case_047 | random_sample | annual_inc | 45000.0 | 0.020684 |
+| case_047 | random_sample | dti | 14.29 | -0.007176 |
+| case_047 | random_sample | revol_util | 69.9 | 0.001295 |
+| case_047 | random_sample | revol_bal | 27135.0 | -0.009032 |
+| case_047 | random_sample | open_acc | 11.0 | 0.003228 |
+| case_047 | random_sample | delinq_2yrs | 0.0 | 0.00206 |
+| case_047 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000342 |
+| case_047 | random_sample | emp_length_years | 0.0 | -0.000347 |
+| case_047 | random_sample | fico_mid | 672.0 | 0.028396 |
+| case_047 | random_sample | credit_history_years | 12.75 | 0.001871 |
+| case_047 | random_sample | home_ownership | MORTGAGE | -0.007197 |
+| case_047 | random_sample | purpose | credit_card | -0.019087 |
+| case_048 | random_sample | loan_amnt | 15000.0 | 0.009752 |
+| case_048 | random_sample | annual_inc | 142000.0 | -0.035678 |
+| case_048 | random_sample | dti | 16.65 | -0.000465 |
+| case_048 | random_sample | revol_util | 82.3 | 0.002992 |
+| case_048 | random_sample | revol_bal | 70009.0 | -0.001312 |
+| case_048 | random_sample | open_acc | 10.0 | 0.00042 |
+| case_048 | random_sample | delinq_2yrs | 0.0 | 0.001178 |
+| case_048 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000338 |
+| case_048 | random_sample | emp_length_years | 10.0 | 0.00051 |
+| case_048 | random_sample | fico_mid | 722.0 | -0.029573 |
+| case_048 | random_sample | credit_history_years | 32.5 | -0.007373 |
+| case_048 | random_sample | home_ownership | MORTGAGE | -0.009694 |
+| case_048 | random_sample | purpose | credit_card | -0.012163 |
+| case_049 | random_sample | loan_amnt | 8000.0 | -0.005772 |
+| case_049 | random_sample | annual_inc | 30000.0 | 0.040881 |
+| case_049 | random_sample | dti | 8.88 | -0.01037 |
+| case_049 | random_sample | revol_util | 31.0 | -0.005787 |
+| case_049 | random_sample | revol_bal | 4957.0 | 0.002393 |
+| case_049 | random_sample | open_acc | 5.0 | -0.009934 |
+| case_049 | random_sample | delinq_2yrs | 0.0 | 0.001388 |
+| case_049 | random_sample | pub_rec_bankruptcies | 0.0 | 0.001075 |
+| case_049 | random_sample | emp_length_years | 5.0 | -0.005596 |
+| case_049 | random_sample | fico_mid | 722.0 | -0.052484 |
+| case_049 | random_sample | credit_history_years | 3.5833333333333335 | 0.028196 |
+| case_049 | random_sample | home_ownership | RENT | 0.007471 |
+| case_049 | random_sample | purpose | debt_consolidation | -0.000067 |
+| case_050 | random_sample | loan_amnt | 7000.0 | -0.012708 |
+| case_050 | random_sample | annual_inc | 42000.0 | 0.030117 |
+| case_050 | random_sample | dti | 13.6 | -0.006273 |
+| case_050 | random_sample | revol_util | 35.3 | -0.005034 |
+| case_050 | random_sample | revol_bal | 12993.0 | 0.002822 |
+| case_050 | random_sample | open_acc | 17.0 | 0.01442 |
+| case_050 | random_sample | delinq_2yrs | 2.0 | -0.00892 |
+| case_050 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000745 |
+| case_050 | random_sample | emp_length_years | 9.0 | -0.000984 |
+| case_050 | random_sample | fico_mid | 682.0 | 0.010988 |
+| case_050 | random_sample | credit_history_years | 37.333333333333336 | -0.003677 |
+| case_050 | random_sample | home_ownership | RENT | 0.012967 |
+| case_050 | random_sample | purpose | other | 0.050109 |
+| case_051 | random_sample | loan_amnt | 28900.0 | 0.0494 |
+| case_051 | random_sample | annual_inc | 70000.0 | -0.007877 |
+| case_051 | random_sample | dti | 23.28 | 0.00828 |
+| case_051 | random_sample | revol_util | 52.2 | -0.00491 |
+| case_051 | random_sample | revol_bal | 38236.0 | -0.023979 |
+| case_051 | random_sample | open_acc | 23.0 | 0.023377 |
+| case_051 | random_sample | delinq_2yrs | 0.0 | 0.001149 |
+| case_051 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000297 |
+| case_051 | random_sample | emp_length_years | 10.0 | 0.001693 |
+| case_051 | random_sample | fico_mid | 727.0 | -0.049078 |
+| case_051 | random_sample | credit_history_years | 23.166666666666668 | -0.005354 |
+| case_051 | random_sample | home_ownership | MORTGAGE | -0.008955 |
+| case_051 | random_sample | purpose | debt_consolidation | -0.00004 |
+| case_052 | random_sample | loan_amnt | 12000.0 | 0.003295 |
+| case_052 | random_sample | annual_inc | 87000.0 | -0.02701 |
+| case_052 | random_sample | dti | 25.31 | 0.010713 |
+| case_052 | random_sample | revol_util | 37.3 | -0.0029 |
+| case_052 | random_sample | revol_bal | 14996.0 | -0.001484 |
+| case_052 | random_sample | open_acc | 18.0 | 0.008445 |
+| case_052 | random_sample | delinq_2yrs | 1.0 | -0.002804 |
+| case_052 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000246 |
+| case_052 | random_sample | emp_length_years | 10.0 | 0.000578 |
+| case_052 | random_sample | fico_mid | 707.0 | -0.019329 |
+| case_052 | random_sample | credit_history_years | 28.333333333333332 | -0.005229 |
+| case_052 | random_sample | home_ownership | MORTGAGE | -0.007799 |
+| case_052 | random_sample | purpose | debt_consolidation | 0.001579 |
+| case_053 | random_sample | loan_amnt | 7500.0 | -0.009195 |
+| case_053 | random_sample | annual_inc | 32000.0 | 0.04252 |
+| case_053 | random_sample | dti | 23.78 | 0.014373 |
+| case_053 | random_sample | revol_util | 56.8 | -0.003112 |
+| case_053 | random_sample | revol_bal | 5452.0 | 0.007981 |
+| case_053 | random_sample | open_acc | 8.0 | -0.004753 |
+| case_053 | random_sample | delinq_2yrs | 0.0 | 0.001285 |
+| case_053 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000673 |
+| case_053 | random_sample | emp_length_years | 7.0 | 0.001718 |
+| case_053 | random_sample | fico_mid | 687.0 | 0.008021 |
+| case_053 | random_sample | credit_history_years | 6.833333333333333 | 0.004545 |
+| case_053 | random_sample | home_ownership | MORTGAGE | -0.011008 |
+| case_053 | random_sample | purpose | debt_consolidation | 0.003309 |
+| case_054 | random_sample | loan_amnt | 10000.0 | 0.002837 |
+| case_054 | random_sample | annual_inc | 55000.0 | 0.007626 |
+| case_054 | random_sample | dti | 28.23 | 0.022509 |
+| case_054 | random_sample | revol_util | 90.7 | 0.00999 |
+| case_054 | random_sample | revol_bal | 18422.0 | 0.000114 |
+| case_054 | random_sample | open_acc | 9.0 | -0.003278 |
+| case_054 | random_sample | delinq_2yrs | 2.0 | -0.006602 |
+| case_054 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000677 |
+| case_054 | random_sample | emp_length_years | 10.0 | 0.001301 |
+| case_054 | random_sample | fico_mid | 662.0 | 0.043141 |
+| case_054 | random_sample | credit_history_years | 12.083333333333334 | 0.005946 |
+| case_054 | random_sample | home_ownership | MORTGAGE | -0.010112 |
+| case_054 | random_sample | purpose | debt_consolidation | 0.005226 |
+| case_055 | random_sample | loan_amnt | 15000.0 | 0.010646 |
+| case_055 | random_sample | annual_inc | 88000.0 | -0.03486 |
+| case_055 | random_sample | dti | 13.02 | -0.011226 |
+| case_055 | random_sample | revol_util | 83.5 | 0.004117 |
+| case_055 | random_sample | revol_bal | 17291.0 | -0.006863 |
+| case_055 | random_sample | open_acc | 6.0 | -0.013952 |
+| case_055 | random_sample | delinq_2yrs | 0.0 | 0.00207 |
+| case_055 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000319 |
+| case_055 | random_sample | emp_length_years | 9.0 | 0.001776 |
+| case_055 | random_sample | fico_mid | 682.0 | 0.008933 |
+| case_055 | random_sample | credit_history_years | 15.916666666666666 | -0.001717 |
+| case_055 | random_sample | home_ownership | RENT | 0.008762 |
+| case_055 | random_sample | purpose | debt_consolidation | 0.000762 |
+| case_056 | random_sample | loan_amnt | 11250.0 | 0.008019 |
+| case_056 | random_sample | annual_inc | 25600.0 | 0.070027 |
+| case_056 | random_sample | dti | 9.7 | -0.011284 |
+| case_056 | random_sample | revol_util | 57.4 | -0.007747 |
+| case_056 | random_sample | revol_bal | 10794.0 | 0.000098 |
+| case_056 | random_sample | open_acc | 9.0 | -0.000391 |
+| case_056 | random_sample | delinq_2yrs | 0.0 | 0.000173 |
+| case_056 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000289 |
+| case_056 | random_sample | emp_length_years | 9.0 | 0.000786 |
+| case_056 | random_sample | fico_mid | 702.0 | -0.021001 |
+| case_056 | random_sample | credit_history_years | 15.583333333333334 | 0.003319 |
+| case_056 | random_sample | home_ownership | OWN | -0.001983 |
+| case_056 | random_sample | purpose | debt_consolidation | -0.0002 |
+| case_057 | random_sample | loan_amnt | 14225.0 | 0.014746 |
+| case_057 | random_sample | annual_inc | 90000.0 | -0.034717 |
+| case_057 | random_sample | dti | 21.09 | 0.009888 |
+| case_057 | random_sample | revol_util | 47.4 | -0.000427 |
+| case_057 | random_sample | revol_bal | 4502.0 | 0.006683 |
+| case_057 | random_sample | open_acc | 11.0 | 0.004134 |
+| case_057 | random_sample | delinq_2yrs | 2.0 | -0.005004 |
+| case_057 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000503 |
+| case_057 | random_sample | emp_length_years | 10.0 | -0.002793 |
+| case_057 | random_sample | fico_mid | 662.0 | 0.035961 |
+| case_057 | random_sample | credit_history_years | 32.666666666666664 | -0.013154 |
+| case_057 | random_sample | home_ownership | OWN | -0.005492 |
+| case_057 | random_sample | purpose | home_improvement | 0.015017 |
+| case_058 | random_sample | loan_amnt | 8000.0 | 0.001536 |
+| case_058 | random_sample | annual_inc | 75000.0 | -0.011686 |
+| case_058 | random_sample | dti | 19.34 | 0.003216 |
+| case_058 | random_sample | revol_util | 50.9 | -0.004933 |
+| case_058 | random_sample | revol_bal | 24516.0 | -0.000001 |
+| case_058 | random_sample | open_acc | 12.0 | 0.003539 |
+| case_058 | random_sample | delinq_2yrs | 0.0 | 0.001112 |
+| case_058 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000375 |
+| case_058 | random_sample | emp_length_years | 0.0 | -0.000016 |
+| case_058 | random_sample | fico_mid | 712.0 | -0.034322 |
+| case_058 | random_sample | credit_history_years | 42.083333333333336 | 0.0052 |
+| case_058 | random_sample | home_ownership | RENT | 0.006275 |
+| case_058 | random_sample | purpose | debt_consolidation | 0.000413 |
+| case_059 | random_sample | loan_amnt | 35000.0 | 0.058787 |
+| case_059 | random_sample | annual_inc | 110000.0 | -0.028874 |
+| case_059 | random_sample | dti | 15.62 | -0.003557 |
+| case_059 | random_sample | revol_util | 71.5 | 0.001395 |
+| case_059 | random_sample | revol_bal | 38441.0 | -0.021127 |
+| case_059 | random_sample | open_acc | 20.0 | 0.018186 |
+| case_059 | random_sample | delinq_2yrs | 0.0 | -0.000188 |
+| case_059 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000217 |
+| case_059 | random_sample | emp_length_years | 8.0 | 0.002165 |
+| case_059 | random_sample | fico_mid | 697.0 | -0.004519 |
+| case_059 | random_sample | credit_history_years | 17.083333333333332 | -0.000088 |
+| case_059 | random_sample | home_ownership | MORTGAGE | -0.009203 |
+| case_059 | random_sample | purpose | credit_card | -0.017771 |
+| case_060 | random_sample | loan_amnt | 7750.0 | 0.000644 |
+| case_060 | random_sample | annual_inc | 70000.0 | -0.011179 |
+| case_060 | random_sample | dti | 26.63 | 0.012317 |
+| case_060 | random_sample | revol_util | 45.2 | -0.00246 |
+| case_060 | random_sample | revol_bal | 20296.0 | 0.000472 |
+| case_060 | random_sample | open_acc | 10.0 | 0.001446 |
+| case_060 | random_sample | delinq_2yrs | 1.0 | -0.002413 |
+| case_060 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000144 |
+| case_060 | random_sample | emp_length_years | 10.0 | -0.000149 |
+| case_060 | random_sample | fico_mid | 732.0 | -0.051411 |
+| case_060 | random_sample | credit_history_years | 22.25 | -0.003741 |
+| case_060 | random_sample | home_ownership | MORTGAGE | -0.006373 |
+| case_060 | random_sample | purpose | debt_consolidation | 0.001682 |
+| case_061 | random_sample | loan_amnt | 30000.0 | 0.035756 |
+| case_061 | random_sample | annual_inc | 270000.0 | -0.027763 |
+| case_061 | random_sample | dti | 5.24 | -0.010817 |
+| case_061 | random_sample | revol_util | 37.7 | -0.003561 |
+| case_061 | random_sample | revol_bal | 26379.0 | -0.011204 |
+| case_061 | random_sample | open_acc | 14.0 | 0.003531 |
+| case_061 | random_sample | delinq_2yrs | 1.0 | -0.002504 |
+| case_061 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000722 |
+| case_061 | random_sample | emp_length_years | 9.0 | 0.000094 |
+| case_061 | random_sample | fico_mid | 747.0 | -0.044567 |
+| case_061 | random_sample | credit_history_years | 19.75 | -0.005536 |
+| case_061 | random_sample | home_ownership | MORTGAGE | -0.008438 |
+| case_061 | random_sample | purpose | credit_card | -0.009343 |
+| case_062 | random_sample | loan_amnt | 17425.0 | 0.013958 |
+| case_062 | random_sample | annual_inc | 65000.0 | -0.000493 |
+| case_062 | random_sample | dti | 33.53 | 0.022505 |
+| case_062 | random_sample | revol_util | 62.0 | -0.003367 |
+| case_062 | random_sample | revol_bal | 18476.0 | -0.010994 |
+| case_062 | random_sample | open_acc | 12.0 | 0.004903 |
+| case_062 | random_sample | delinq_2yrs | 0.0 | 0.001341 |
+| case_062 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000442 |
+| case_062 | random_sample | emp_length_years | 6.0 | 0.001491 |
+| case_062 | random_sample | fico_mid | 687.0 | 0.002276 |
+| case_062 | random_sample | credit_history_years | 7.333333333333333 | 0.003817 |
+| case_062 | random_sample | home_ownership | MORTGAGE | -0.009039 |
+| case_062 | random_sample | purpose | debt_consolidation | 0.002136 |
+| case_063 | random_sample | loan_amnt | 5000.0 | -0.008301 |
+| case_063 | random_sample | annual_inc | 42000.0 | 0.017951 |
+| case_063 | random_sample | dti | 1.43 | -0.010895 |
+| case_063 | random_sample | revol_util | 5.2 | -0.010191 |
+| case_063 | random_sample | revol_bal | 1224.0 | 0.021777 |
+| case_063 | random_sample | open_acc | 11.0 | -0.000387 |
+| case_063 | random_sample | delinq_2yrs | 0.0 | -0.000132 |
+| case_063 | random_sample | pub_rec_bankruptcies | 0.0 | -0.000088 |
+| case_063 | random_sample | emp_length_years | 10.0 | 0.001809 |
+| case_063 | random_sample | fico_mid | 787.0 | -0.088604 |
+| case_063 | random_sample | credit_history_years | 11.916666666666666 | 0.001276 |
+| case_063 | random_sample | home_ownership | OWN | -0.002065 |
+| case_063 | random_sample | purpose | debt_consolidation | 0.000106 |
+| case_064 | random_sample | loan_amnt | 2400.0 | -0.027162 |
+| case_064 | random_sample | annual_inc | 56300.0 | 0.000177 |
+| case_064 | random_sample | dti | 2.0 | -0.015201 |
+| case_064 | random_sample | revol_util | 52.2 | -0.001641 |
+| case_064 | random_sample | revol_bal | 1775.0 | 0.016483 |
+| case_064 | random_sample | open_acc | 11.0 | 0.000761 |
+| case_064 | random_sample | delinq_2yrs | 0.0 | 0.000903 |
+| case_064 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00039 |
+| case_064 | random_sample | emp_length_years | 0.0 | -0.005851 |
+| case_064 | random_sample | fico_mid | 677.0 | 0.009133 |
+| case_064 | random_sample | credit_history_years | 9.75 | 0.000287 |
+| case_064 | random_sample | home_ownership | RENT | 0.005312 |
+| case_064 | random_sample | purpose | credit_card | -0.021492 |
+| case_065 | random_sample | loan_amnt | 10000.0 | 0.000372 |
+| case_065 | random_sample | annual_inc | 45000.0 | 0.015693 |
+| case_065 | random_sample | dti | 21.24 | 0.016145 |
+| case_065 | random_sample | revol_util | 12.8 | 0.000468 |
+| case_065 | random_sample | revol_bal | 3471.0 | 0.007801 |
+| case_065 | random_sample | open_acc | 8.0 | -0.007349 |
+| case_065 | random_sample | delinq_2yrs | 6.0 | -0.004623 |
+| case_065 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000563 |
+| case_065 | random_sample | emp_length_years | 10.0 | -0.000355 |
+| case_065 | random_sample | fico_mid | 667.0 | 0.031437 |
+| case_065 | random_sample | credit_history_years | 22.083333333333332 | -0.009647 |
+| case_065 | random_sample | home_ownership | MORTGAGE | -0.009232 |
+| case_065 | random_sample | purpose | debt_consolidation | 0.00515 |
+| case_066 | random_sample | loan_amnt | 15000.0 | 0.009502 |
+| case_066 | random_sample | annual_inc | 88000.0 | -0.021988 |
+| case_066 | random_sample | dti | 16.45 | 0.000414 |
+| case_066 | random_sample | revol_util | 50.5 | -0.003435 |
+| case_066 | random_sample | revol_bal | 13950.0 | -0.003048 |
+| case_066 | random_sample | open_acc | 10.0 | 0.000641 |
+| case_066 | random_sample | delinq_2yrs | 0.0 | 0.001008 |
+| case_066 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00028 |
+| case_066 | random_sample | emp_length_years | 9.0 | 0.000921 |
+| case_066 | random_sample | fico_mid | 747.0 | -0.056179 |
+| case_066 | random_sample | credit_history_years | 14.416666666666666 | 0.001528 |
+| case_066 | random_sample | home_ownership | MORTGAGE | -0.005126 |
+| case_066 | random_sample | purpose | debt_consolidation | -0.000268 |
+| case_067 | random_sample | loan_amnt | 4000.0 | -0.014238 |
+| case_067 | random_sample | annual_inc | 44496.0 | 0.012728 |
+| case_067 | random_sample | dti | 8.22 | -0.014387 |
+| case_067 | random_sample | revol_util | 45.4 | -0.003505 |
+| case_067 | random_sample | revol_bal | 8537.0 | 0.000934 |
+| case_067 | random_sample | open_acc | 9.0 | 0.001694 |
+| case_067 | random_sample | delinq_2yrs | 0.0 | 0.000988 |
+| case_067 | random_sample | pub_rec_bankruptcies | 1.0 | -0.006851 |
+| case_067 | random_sample | emp_length_years | 10.0 | 0.001343 |
+| case_067 | random_sample | fico_mid | 682.0 | 0.006473 |
+| case_067 | random_sample | credit_history_years | 11.666666666666666 | 0.002166 |
+| case_067 | random_sample | home_ownership | OWN | -0.001197 |
+| case_067 | random_sample | purpose | credit_card | -0.014937 |
+| case_068 | random_sample | loan_amnt | 7800.0 | -0.005356 |
+| case_068 | random_sample | annual_inc | 33000.0 | 0.048865 |
+| case_068 | random_sample | dti | 6.25 | -0.009903 |
+| case_068 | random_sample | revol_util | 95.0 | 0.031573 |
+| case_068 | random_sample | revol_bal | 7041.0 | -0.000519 |
+| case_068 | random_sample | open_acc | 5.0 | -0.010277 |
+| case_068 | random_sample | delinq_2yrs | 0.0 | 0.001901 |
+| case_068 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000778 |
+| case_068 | random_sample | emp_length_years | 6.0 | -0.000254 |
+| case_068 | random_sample | fico_mid | 667.0 | 0.022057 |
+| case_068 | random_sample | credit_history_years | 17.583333333333332 | -0.007645 |
+| case_068 | random_sample | home_ownership | MORTGAGE | -0.010858 |
+| case_068 | random_sample | purpose | credit_card | -0.018096 |
+| case_069 | random_sample | loan_amnt | 14000.0 | 0.008056 |
+| case_069 | random_sample | annual_inc | 107600.0 | -0.038791 |
+| case_069 | random_sample | dti | 14.45 | -0.005662 |
+| case_069 | random_sample | revol_util | 67.7 | 0.001903 |
+| case_069 | random_sample | revol_bal | 26660.0 | -0.007289 |
+| case_069 | random_sample | open_acc | 9.0 | -0.000573 |
+| case_069 | random_sample | delinq_2yrs | 0.0 | 0.00118 |
+| case_069 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00037 |
+| case_069 | random_sample | emp_length_years | 4.0 | -0.001088 |
+| case_069 | random_sample | fico_mid | 677.0 | 0.010193 |
+| case_069 | random_sample | credit_history_years | 6.416666666666667 | 0.005278 |
+| case_069 | random_sample | home_ownership | MORTGAGE | -0.005485 |
+| case_069 | random_sample | purpose | debt_consolidation | -0.000195 |
+| case_070 | random_sample | loan_amnt | 10000.0 | 0.001531 |
+| case_070 | random_sample | annual_inc | 108000.0 | -0.032615 |
+| case_070 | random_sample | dti | 3.17 | -0.02033 |
+| case_070 | random_sample | revol_util | 32.8 | -0.005961 |
+| case_070 | random_sample | revol_bal | 6258.0 | 0.004496 |
+| case_070 | random_sample | open_acc | 16.0 | 0.007927 |
+| case_070 | random_sample | delinq_2yrs | 3.0 | 0.000721 |
+| case_070 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000443 |
+| case_070 | random_sample | emp_length_years | 9.0 | -0.000552 |
+| case_070 | random_sample | fico_mid | 672.0 | 0.024683 |
+| case_070 | random_sample | credit_history_years | 16.833333333333332 | -0.00404 |
+| case_070 | random_sample | home_ownership | MORTGAGE | -0.010146 |
+| case_070 | random_sample | purpose | home_improvement | 0.012408 |
+| case_071 | random_sample | loan_amnt | 3200.0 | -0.046076 |
+| case_071 | random_sample | annual_inc | 20000.0 | 0.06996 |
+| case_071 | random_sample | dti | 30.19 | 0.01651 |
+| case_071 | random_sample | revol_util | 110.7 | 0.034768 |
+| case_071 | random_sample | revol_bal | 3984.0 | 0.003828 |
+| case_071 | random_sample | open_acc | 7.0 | -0.003973 |
+| case_071 | random_sample | delinq_2yrs | 0.0 | 0.001686 |
+| case_071 | random_sample | pub_rec_bankruptcies | 0.0 | -0.000741 |
+| case_071 | random_sample | emp_length_years | 3.0 | -0.006932 |
+| case_071 | random_sample | fico_mid | 682.0 | 0.020003 |
+| case_071 | random_sample | credit_history_years | 6.25 | -0.003756 |
+| case_071 | random_sample | home_ownership | RENT | 0.014067 |
+| case_071 | random_sample | purpose | debt_consolidation | 0.00647 |
+| case_072 | random_sample | loan_amnt | 18000.0 | 0.016947 |
+| case_072 | random_sample | annual_inc | 98000.0 | -0.036659 |
+| case_072 | random_sample | dti | 24.14 | 0.011887 |
+| case_072 | random_sample | revol_util | 67.9 | 0.002551 |
+| case_072 | random_sample | revol_bal | 10323.0 | -0.000176 |
+| case_072 | random_sample | open_acc | 21.0 | 0.016625 |
+| case_072 | random_sample | delinq_2yrs | 2.0 | -0.00453 |
+| case_072 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000304 |
+| case_072 | random_sample | emp_length_years | 10.0 | 0.004249 |
+| case_072 | random_sample | fico_mid | 687.0 | 0.002869 |
+| case_072 | random_sample | credit_history_years | 12.0 | 0.003755 |
+| case_072 | random_sample | home_ownership | MORTGAGE | -0.010067 |
+| case_072 | random_sample | purpose | debt_consolidation | 0.001836 |
+| case_073 | random_sample | loan_amnt | 34350.0 | 0.05847 |
+| case_073 | random_sample | annual_inc | 84000.0 | -0.022852 |
+| case_073 | random_sample | dti | 18.77 | 0.002213 |
+| case_073 | random_sample | revol_util | 90.5 | 0.021571 |
+| case_073 | random_sample | revol_bal | 43365.0 | -0.024154 |
+| case_073 | random_sample | open_acc | 9.0 | -0.001188 |
+| case_073 | random_sample | delinq_2yrs | 0.0 | 0.001556 |
+| case_073 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000634 |
+| case_073 | random_sample | emp_length_years | 6.0 | 0.000421 |
+| case_073 | random_sample | fico_mid | 692.0 | -0.001035 |
+| case_073 | random_sample | credit_history_years | 17.166666666666668 | 0.000882 |
+| case_073 | random_sample | home_ownership | MORTGAGE | -0.007228 |
+| case_073 | random_sample | purpose | debt_consolidation | 0.000884 |
+| case_074 | random_sample | loan_amnt | 21000.0 | 0.02049 |
+| case_074 | random_sample | annual_inc | 200000.0 | -0.054631 |
+| case_074 | random_sample | dti | 20.75 | 0.009002 |
+| case_074 | random_sample | revol_util | 90.3 | 0.015378 |
+| case_074 | random_sample | revol_bal | 40295.0 | -0.003675 |
+| case_074 | random_sample | open_acc | 17.0 | 0.011728 |
+| case_074 | random_sample | delinq_2yrs | 7.0 | -0.004167 |
+| case_074 | random_sample | pub_rec_bankruptcies | 0.0 | -0.000191 |
+| case_074 | random_sample | emp_length_years | 0.0 | 0.007178 |
+| case_074 | random_sample | fico_mid | 667.0 | 0.03642 |
+| case_074 | random_sample | credit_history_years | 35.083333333333336 | -0.002702 |
+| case_074 | random_sample | home_ownership | RENT | 0.011818 |
+| case_074 | random_sample | purpose | debt_consolidation | 0.000265 |
+| case_075 | random_sample | loan_amnt | 24000.0 | 0.034313 |
+| case_075 | random_sample | annual_inc | 82000.0 | -0.031876 |
+| case_075 | random_sample | dti | 19.16 | 0.002381 |
+| case_075 | random_sample | revol_util | 112.4 | 0.044887 |
+| case_075 | random_sample | revol_bal | 8765.0 | 0.002598 |
+| case_075 | random_sample | open_acc | 7.0 | -0.005368 |
+| case_075 | random_sample | delinq_2yrs | 0.0 | 0.001966 |
+| case_075 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00001 |
+| case_075 | random_sample | emp_length_years | 1.0 | 0.000591 |
+| case_075 | random_sample | fico_mid | 732.0 | -0.050924 |
+| case_075 | random_sample | credit_history_years | 17.583333333333332 | 0.000327 |
+| case_075 | random_sample | home_ownership | RENT | 0.009582 |
+| case_075 | random_sample | purpose | credit_card | -0.015792 |
+| case_076 | random_sample | loan_amnt | 9000.0 | 0.004041 |
+| case_076 | random_sample | annual_inc | 46000.0 | 0.012266 |
+| case_076 | random_sample | dti | 15.44 | -0.006567 |
+| case_076 | random_sample | revol_util | 79.0 | 0.007435 |
+| case_076 | random_sample | revol_bal | 30509.0 | 0.004984 |
+| case_076 | random_sample | open_acc | 10.0 | 0.001974 |
+| case_076 | random_sample | delinq_2yrs | 0.0 | 0.001081 |
+| case_076 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000259 |
+| case_076 | random_sample | emp_length_years | 1.0 | 0.004301 |
+| case_076 | random_sample | fico_mid | 697.0 | -0.009286 |
+| case_076 | random_sample | credit_history_years | 16.083333333333332 | 0.000408 |
+| case_076 | random_sample | home_ownership | MORTGAGE | -0.004458 |
+| case_076 | random_sample | purpose | debt_consolidation | -0.000226 |
+| case_077 | random_sample | loan_amnt | 8750.0 | 0.000049 |
+| case_077 | random_sample | annual_inc | 41000.0 | 0.024821 |
+| case_077 | random_sample | dti | 17.68 | 0.000797 |
+| case_077 | random_sample | revol_util | 14.1 | -0.009453 |
+| case_077 | random_sample | revol_bal | 619.0 | 0.043712 |
+| case_077 | random_sample | open_acc | 7.0 | -0.002474 |
+| case_077 | random_sample | delinq_2yrs | 0.0 | 0.001008 |
+| case_077 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000446 |
+| case_077 | random_sample | emp_length_years | 10.0 | 0.002194 |
+| case_077 | random_sample | fico_mid | 757.0 | -0.082505 |
+| case_077 | random_sample | credit_history_years | 13.833333333333334 | 0.000795 |
+| case_077 | random_sample | home_ownership | MORTGAGE | -0.006958 |
+| case_077 | random_sample | purpose | debt_consolidation | 0.004595 |
+| case_078 | random_sample | loan_amnt | 11500.0 | 0.008089 |
+| case_078 | random_sample | annual_inc | 60000.0 | 0.010085 |
+| case_078 | random_sample | dti | 18.52 | 0.003645 |
+| case_078 | random_sample | revol_util | 80.3 | 0.00552 |
+| case_078 | random_sample | revol_bal | 40380.0 | 0.015005 |
+| case_078 | random_sample | open_acc | 12.0 | 0.007765 |
+| case_078 | random_sample | delinq_2yrs | 0.0 | 0.001684 |
+| case_078 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000459 |
+| case_078 | random_sample | emp_length_years | 10.0 | 0.004454 |
+| case_078 | random_sample | fico_mid | 682.0 | 0.012321 |
+| case_078 | random_sample | credit_history_years | 10.5 | 0.005116 |
+| case_078 | random_sample | home_ownership | OWN | -0.006177 |
+| case_078 | random_sample | purpose | debt_consolidation | 0.001139 |
+| case_079 | random_sample | loan_amnt | 16775.0 | 0.029827 |
+| case_079 | random_sample | annual_inc | 40000.0 | 0.032988 |
+| case_079 | random_sample | dti | 8.88 | -0.019919 |
+| case_079 | random_sample | revol_util | 13.6 | -0.010247 |
+| case_079 | random_sample | revol_bal | 3523.0 | 0.010276 |
+| case_079 | random_sample | open_acc | 10.0 | 0.003153 |
+| case_079 | random_sample | delinq_2yrs | 2.0 | -0.002451 |
+| case_079 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000315 |
+| case_079 | random_sample | emp_length_years | 8.0 | -0.001248 |
+| case_079 | random_sample | fico_mid | 692.0 | -0.002968 |
+| case_079 | random_sample | credit_history_years | 17.0 | -0.00292 |
+| case_079 | random_sample | home_ownership | MORTGAGE | -0.013022 |
+| case_079 | random_sample | purpose | home_improvement | 0.011466 |
+| case_080 | random_sample | loan_amnt | 20000.0 | 0.011361 |
+| case_080 | random_sample | annual_inc | 170000.0 | -0.036233 |
+| case_080 | random_sample | dti | 9.19 | -0.012432 |
+| case_080 | random_sample | revol_util | 61.4 | -0.003896 |
+| case_080 | random_sample | revol_bal | 39810.0 | -0.007216 |
+| case_080 | random_sample | open_acc | 12.0 | 0.003634 |
+| case_080 | random_sample | delinq_2yrs | 0.0 | 0.000195 |
+| case_080 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000861 |
+| case_080 | random_sample | emp_length_years | 1.0 | 0.002349 |
+| case_080 | random_sample | fico_mid | 722.0 | -0.030768 |
+| case_080 | random_sample | credit_history_years | 20.0 | -0.002411 |
+| case_080 | random_sample | home_ownership | MORTGAGE | -0.006462 |
+| case_080 | random_sample | purpose | debt_consolidation | -0.000448 |
+| case_081 | random_sample | loan_amnt | 18500.0 | 0.029823 |
+| case_081 | random_sample | annual_inc | 55000.0 | 0.012269 |
+| case_081 | random_sample | dti | 33.71 | 0.027073 |
+| case_081 | random_sample | revol_util | 58.1 | -0.003074 |
+| case_081 | random_sample | revol_bal | 13474.0 | -0.003308 |
+| case_081 | random_sample | open_acc | 14.0 | 0.011212 |
+| case_081 | random_sample | delinq_2yrs | 4.0 | -0.006147 |
+| case_081 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000635 |
+| case_081 | random_sample | emp_length_years | 10.0 | 0.00137 |
+| case_081 | random_sample | fico_mid | 662.0 | 0.055898 |
+| case_081 | random_sample | credit_history_years | 14.75 | 0.006131 |
+| case_081 | random_sample | home_ownership | OWN | -0.004481 |
+| case_081 | random_sample | purpose | debt_consolidation | 0.005389 |
+| case_082 | random_sample | loan_amnt | 6000.0 | -0.021899 |
+| case_082 | random_sample | annual_inc | 56000.0 | 0.01201 |
+| case_082 | random_sample | dti | 32.4 | 0.028845 |
+| case_082 | random_sample | revol_util | 47.3 | -0.002786 |
+| case_082 | random_sample | revol_bal | 11154.0 | -0.000439 |
+| case_082 | random_sample | open_acc | 18.0 | 0.010448 |
+| case_082 | random_sample | delinq_2yrs | 1.0 | -0.008473 |
+| case_082 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000697 |
+| case_082 | random_sample | emp_length_years | 3.0 | 0.000967 |
+| case_082 | random_sample | fico_mid | 672.0 | 0.033468 |
+| case_082 | random_sample | credit_history_years | 21.333333333333332 | -0.000161 |
+| case_082 | random_sample | home_ownership | RENT | 0.013026 |
+| case_082 | random_sample | purpose | medical | 0.040466 |
+| case_083 | random_sample | loan_amnt | 9375.0 | 0.004405 |
+| case_083 | random_sample | annual_inc | 42000.0 | 0.025953 |
+| case_083 | random_sample | dti | 38.8 | 0.02151 |
+| case_083 | random_sample | revol_util | 22.0 | -0.005056 |
+| case_083 | random_sample | revol_bal | 19715.0 | 0.001759 |
+| case_083 | random_sample | open_acc | 15.0 | 0.00544 |
+| case_083 | random_sample | delinq_2yrs | 0.0 | 0.001945 |
+| case_083 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000389 |
+| case_083 | random_sample | emp_length_years | 10.0 | 0.003718 |
+| case_083 | random_sample | fico_mid | 732.0 | -0.059808 |
+| case_083 | random_sample | credit_history_years | 17.5 | -0.002164 |
+| case_083 | random_sample | home_ownership | RENT | 0.01199 |
+| case_083 | random_sample | purpose | debt_consolidation | -0.001043 |
+| case_084 | random_sample | loan_amnt | 5125.0 | -0.02034 |
+| case_084 | random_sample | annual_inc | 40276.0 | 0.025906 |
+| case_084 | random_sample | dti | 5.96 | -0.02518 |
+| case_084 | random_sample | revol_util | 33.7 | -0.004774 |
+| case_084 | random_sample | revol_bal | 3240.0 | 0.002662 |
+| case_084 | random_sample | open_acc | 9.0 | 0.000207 |
+| case_084 | random_sample | delinq_2yrs | 0.0 | 0.002042 |
+| case_084 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000867 |
+| case_084 | random_sample | emp_length_years | 6.0 | 0.00143 |
+| case_084 | random_sample | fico_mid | 662.0 | 0.041473 |
+| case_084 | random_sample | credit_history_years | 10.333333333333334 | 0.004517 |
+| case_084 | random_sample | home_ownership | RENT | 0.009499 |
+| case_084 | random_sample | purpose | debt_consolidation | 0.002113 |
+| case_085 | random_sample | loan_amnt | 6000.0 | -0.00703 |
+| case_085 | random_sample | annual_inc | 100000.0 | -0.035377 |
+| case_085 | random_sample | dti | 15.64 | -0.001495 |
+| case_085 | random_sample | revol_util | 94.7 | 0.012922 |
+| case_085 | random_sample | revol_bal | 79676.0 | 0.003785 |
+| case_085 | random_sample | open_acc | 9.0 | -0.000711 |
+| case_085 | random_sample | delinq_2yrs | 0.0 | 0.000971 |
+| case_085 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000097 |
+| case_085 | random_sample | emp_length_years | 10.0 | -0.000453 |
+| case_085 | random_sample | fico_mid | 722.0 | -0.030941 |
+| case_085 | random_sample | credit_history_years | 23.416666666666668 | -0.005029 |
+| case_085 | random_sample | home_ownership | MORTGAGE | -0.009871 |
+| case_085 | random_sample | purpose | home_improvement | 0.006943 |
+| case_086 | random_sample | loan_amnt | 10000.0 | 0.001576 |
+| case_086 | random_sample | annual_inc | 50000.0 | 0.007245 |
+| case_086 | random_sample | dti | 20.26 | 0.003739 |
+| case_086 | random_sample | revol_util | 56.3 | -0.004618 |
+| case_086 | random_sample | revol_bal | 11991.0 | 0.000627 |
+| case_086 | random_sample | open_acc | 8.0 | -0.003942 |
+| case_086 | random_sample | delinq_2yrs | 0.0 | 0.001291 |
+| case_086 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000317 |
+| case_086 | random_sample | emp_length_years | 3.0 | -0.000759 |
+| case_086 | random_sample | fico_mid | 687.0 | 0.002475 |
+| case_086 | random_sample | credit_history_years | 10.25 | 0.001342 |
+| case_086 | random_sample | home_ownership | OWN | -0.00241 |
+| case_086 | random_sample | purpose | credit_card | -0.017838 |
+| case_087 | random_sample | loan_amnt | 18000.0 | 0.013565 |
+| case_087 | random_sample | annual_inc | 120000.0 | -0.044725 |
+| case_087 | random_sample | dti | 18.03 | 0.002496 |
+| case_087 | random_sample | revol_util | 69.4 | 0.001139 |
+| case_087 | random_sample | revol_bal | 39396.0 | -0.00403 |
+| case_087 | random_sample | open_acc | 12.0 | 0.006169 |
+| case_087 | random_sample | delinq_2yrs | 0.0 | 0.001493 |
+| case_087 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000463 |
+| case_087 | random_sample | emp_length_years | 6.0 | -0.000259 |
+| case_087 | random_sample | fico_mid | 672.0 | 0.026208 |
+| case_087 | random_sample | credit_history_years | 19.666666666666668 | -0.009854 |
+| case_087 | random_sample | home_ownership | OWN | -0.005487 |
+| case_087 | random_sample | purpose | credit_card | -0.017103 |
+| case_088 | random_sample | loan_amnt | 4000.0 | -0.009611 |
+| case_088 | random_sample | annual_inc | 86000.0 | -0.023428 |
+| case_088 | random_sample | dti | 17.59 | 0.003637 |
+| case_088 | random_sample | revol_util | 23.0 | -0.002852 |
+| case_088 | random_sample | revol_bal | 9522.0 | 0.000796 |
+| case_088 | random_sample | open_acc | 20.0 | 0.012704 |
+| case_088 | random_sample | delinq_2yrs | 0.0 | 0.000881 |
+| case_088 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000405 |
+| case_088 | random_sample | emp_length_years | 10.0 | 0.000877 |
+| case_088 | random_sample | fico_mid | 712.0 | -0.016627 |
+| case_088 | random_sample | credit_history_years | 24.666666666666668 | -0.006998 |
+| case_088 | random_sample | home_ownership | MORTGAGE | -0.008766 |
+| case_088 | random_sample | purpose | other | 0.042605 |
+| case_089 | random_sample | loan_amnt | 16500.0 | 0.009366 |
+| case_089 | random_sample | annual_inc | 80000.0 | -0.020617 |
+| case_089 | random_sample | dti | 10.32 | -0.00834 |
+| case_089 | random_sample | revol_util | 77.5 | 0.002039 |
+| case_089 | random_sample | revol_bal | 19210.0 | -0.003973 |
+| case_089 | random_sample | open_acc | 7.0 | -0.008094 |
+| case_089 | random_sample | delinq_2yrs | 0.0 | 0.001246 |
+| case_089 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000266 |
+| case_089 | random_sample | emp_length_years | 8.0 | 0.001067 |
+| case_089 | random_sample | fico_mid | 717.0 | -0.026869 |
+| case_089 | random_sample | credit_history_years | 14.166666666666666 | 0.000717 |
+| case_089 | random_sample | home_ownership | MORTGAGE | -0.005912 |
+| case_089 | random_sample | purpose | credit_card | -0.013108 |
+| case_090 | random_sample | loan_amnt | 30900.0 | 0.049022 |
+| case_090 | random_sample | annual_inc | 62000.0 | 0.000838 |
+| case_090 | random_sample | dti | 23.81 | 0.024597 |
+| case_090 | random_sample | revol_util | 72.4 | 0.000331 |
+| case_090 | random_sample | revol_bal | 46342.0 | -0.026626 |
+| case_090 | random_sample | open_acc | 15.0 | 0.013329 |
+| case_090 | random_sample | delinq_2yrs | 0.0 | 0.003181 |
+| case_090 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00089 |
+| case_090 | random_sample | emp_length_years | 10.0 | 0.002403 |
+| case_090 | random_sample | fico_mid | 682.0 | 0.021939 |
+| case_090 | random_sample | credit_history_years | 22.916666666666668 | -0.011692 |
+| case_090 | random_sample | home_ownership | RENT | 0.020171 |
+| case_090 | random_sample | purpose | debt_consolidation | 0.002603 |
+| case_091 | random_sample | loan_amnt | 30000.0 | 0.052332 |
+| case_091 | random_sample | annual_inc | 120000.0 | -0.041395 |
+| case_091 | random_sample | dti | 14.62 | -0.003412 |
+| case_091 | random_sample | revol_util | 89.2 | 0.013781 |
+| case_091 | random_sample | revol_bal | 42926.0 | -0.017488 |
+| case_091 | random_sample | open_acc | 17.0 | 0.010201 |
+| case_091 | random_sample | delinq_2yrs | 1.0 | -0.006182 |
+| case_091 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000536 |
+| case_091 | random_sample | emp_length_years | 3.0 | 0.001469 |
+| case_091 | random_sample | fico_mid | 667.0 | 0.031486 |
+| case_091 | random_sample | credit_history_years | 29.583333333333332 | -0.008318 |
+| case_091 | random_sample | home_ownership | OWN | -0.000672 |
+| case_091 | random_sample | purpose | credit_card | -0.020532 |
+| case_092 | random_sample | loan_amnt | 9800.0 | 0.003187 |
+| case_092 | random_sample | annual_inc | 195000.0 | -0.040961 |
+| case_092 | random_sample | dti | 16.18 | -0.000015 |
+| case_092 | random_sample | revol_util | 49.3 | -0.003159 |
+| case_092 | random_sample | revol_bal | 106302.0 | 0.002954 |
+| case_092 | random_sample | open_acc | 18.0 | 0.005844 |
+| case_092 | random_sample | delinq_2yrs | 1.0 | -0.001722 |
+| case_092 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000104 |
+| case_092 | random_sample | emp_length_years | 2.0 | 0.004254 |
+| case_092 | random_sample | fico_mid | 722.0 | -0.036929 |
+| case_092 | random_sample | credit_history_years | 30.583333333333332 | -0.002526 |
+| case_092 | random_sample | home_ownership | MORTGAGE | -0.008916 |
+| case_092 | random_sample | purpose | home_improvement | 0.014461 |
+| case_093 | random_sample | loan_amnt | 6000.0 | -0.012191 |
+| case_093 | random_sample | annual_inc | 55000.0 | 0.005361 |
+| case_093 | random_sample | dti | 33.76 | 0.019467 |
+| case_093 | random_sample | revol_util | 10.5 | -0.001966 |
+| case_093 | random_sample | revol_bal | 4093.0 | 0.005231 |
+| case_093 | random_sample | open_acc | 18.0 | 0.006331 |
+| case_093 | random_sample | delinq_2yrs | 1.0 | -0.003128 |
+| case_093 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000283 |
+| case_093 | random_sample | emp_length_years | 2.0 | -0.003866 |
+| case_093 | random_sample | fico_mid | 702.0 | -0.024647 |
+| case_093 | random_sample | credit_history_years | 11.166666666666666 | -0.00082 |
+| case_093 | random_sample | home_ownership | MORTGAGE | -0.001842 |
+| case_093 | random_sample | purpose | debt_consolidation | 0.005082 |
+| case_094 | random_sample | loan_amnt | 9600.0 | 0.001141 |
+| case_094 | random_sample | annual_inc | 160000.0 | -0.023094 |
+| case_094 | random_sample | dti | 12.35 | -0.014071 |
+| case_094 | random_sample | revol_util | 60.4 | -0.00362 |
+| case_094 | random_sample | revol_bal | 10451.0 | 0.002362 |
+| case_094 | random_sample | open_acc | 9.0 | -0.000007 |
+| case_094 | random_sample | delinq_2yrs | 3.0 | -0.007459 |
+| case_094 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000557 |
+| case_094 | random_sample | emp_length_years | 10.0 | 0.001435 |
+| case_094 | random_sample | fico_mid | 662.0 | 0.029263 |
+| case_094 | random_sample | credit_history_years | 19.25 | -0.013272 |
+| case_094 | random_sample | home_ownership | RENT | 0.012704 |
+| case_094 | random_sample | purpose | credit_card | -0.015583 |
+| case_095 | random_sample | loan_amnt | 20000.0 | 0.029435 |
+| case_095 | random_sample | annual_inc | 50000.0 | 0.0124 |
+| case_095 | random_sample | dti | 15.12 | -0.007015 |
+| case_095 | random_sample | revol_util | 54.5 | -0.004068 |
+| case_095 | random_sample | revol_bal | 15703.0 | -0.004606 |
+| case_095 | random_sample | open_acc | 13.0 | 0.00987 |
+| case_095 | random_sample | delinq_2yrs | 1.0 | -0.004868 |
+| case_095 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000662 |
+| case_095 | random_sample | emp_length_years | 6.0 | 0.002744 |
+| case_095 | random_sample | fico_mid | 667.0 | 0.040124 |
+| case_095 | random_sample | credit_history_years | 14.333333333333334 | 0.005413 |
+| case_095 | random_sample | home_ownership | MORTGAGE | -0.006987 |
+| case_095 | random_sample | purpose | debt_consolidation | 0.001649 |
+| case_096 | random_sample | loan_amnt | 24125.0 | 0.02 |
+| case_096 | random_sample | annual_inc | 55000.0 | 0.010539 |
+| case_096 | random_sample | dti | 26.31 | 0.023748 |
+| case_096 | random_sample | revol_util | 49.3 | -0.005134 |
+| case_096 | random_sample | revol_bal | 40078.0 | -0.000228 |
+| case_096 | random_sample | open_acc | 12.0 | 0.006486 |
+| case_096 | random_sample | delinq_2yrs | 0.0 | 0.000571 |
+| case_096 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000312 |
+| case_096 | random_sample | emp_length_years | 10.0 | -0.000114 |
+| case_096 | random_sample | fico_mid | 697.0 | -0.007163 |
+| case_096 | random_sample | credit_history_years | 37.416666666666664 | -0.007883 |
+| case_096 | random_sample | home_ownership | OWN | -0.004834 |
+| case_096 | random_sample | purpose | debt_consolidation | 0.000364 |
+| case_097 | random_sample | loan_amnt | 5000.0 | -0.010128 |
+| case_097 | random_sample | annual_inc | 75000.0 | -0.011339 |
+| case_097 | random_sample | dti | 14.67 | -0.00361 |
+| case_097 | random_sample | revol_util | 42.9 | -0.002895 |
+| case_097 | random_sample | revol_bal | 5016.0 | 0.003793 |
+| case_097 | random_sample | open_acc | 11.0 | 0.002387 |
+| case_097 | random_sample | delinq_2yrs | 0.0 | 0.001029 |
+| case_097 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000307 |
+| case_097 | random_sample | emp_length_years | 10.0 | -0.000006 |
+| case_097 | random_sample | fico_mid | 717.0 | -0.03394 |
+| case_097 | random_sample | credit_history_years | 19.0 | -0.003544 |
+| case_097 | random_sample | home_ownership | OWN | -0.002814 |
+| case_097 | random_sample | purpose | home_improvement | 0.010184 |
+| case_098 | random_sample | loan_amnt | 25450.0 | 0.083009 |
+| case_098 | random_sample | annual_inc | 67000.0 | 0.000571 |
+| case_098 | random_sample | dti | 23.59 | 0.023671 |
+| case_098 | random_sample | revol_util | 42.8 | -0.008163 |
+| case_098 | random_sample | revol_bal | 25740.0 | -0.017009 |
+| case_098 | random_sample | open_acc | 26.0 | 0.064345 |
+| case_098 | random_sample | delinq_2yrs | 0.0 | 0.002401 |
+| case_098 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000805 |
+| case_098 | random_sample | emp_length_years | 6.0 | 0.004453 |
+| case_098 | random_sample | fico_mid | 667.0 | 0.051984 |
+| case_098 | random_sample | credit_history_years | 18.0 | -0.007993 |
+| case_098 | random_sample | home_ownership | RENT | 0.019544 |
+| case_098 | random_sample | purpose | debt_consolidation | 0.006457 |
+| case_099 | random_sample | loan_amnt | 6000.0 | -0.01538 |
+| case_099 | random_sample | annual_inc | 30000.0 | 0.043949 |
+| case_099 | random_sample | dti | 9.28 | -0.016888 |
+| case_099 | random_sample | revol_util | 57.6 | -0.005255 |
+| case_099 | random_sample | revol_bal | 6159.0 | 0.000744 |
+| case_099 | random_sample | open_acc | 6.0 | -0.010596 |
+| case_099 | random_sample | delinq_2yrs | 0.0 | 0.001826 |
+| case_099 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000561 |
+| case_099 | random_sample | emp_length_years | 4.0 | -0.000835 |
+| case_099 | random_sample | fico_mid | 662.0 | 0.035043 |
+| case_099 | random_sample | credit_history_years | 10.833333333333334 | 0.005744 |
+| case_099 | random_sample | home_ownership | MORTGAGE | -0.007079 |
+| case_099 | random_sample | purpose | debt_consolidation | 0.004206 |
+| case_100 | random_sample | loan_amnt | 5025.0 | -0.00853 |
+| case_100 | random_sample | annual_inc | 49000.0 | 0.006305 |
+| case_100 | random_sample | dti | 16.12 | -0.004528 |
+| case_100 | random_sample | revol_util | 47.4 | -0.003505 |
+| case_100 | random_sample | revol_bal | 7019.0 | 0.001621 |
+| case_100 | random_sample | open_acc | 13.0 | 0.003449 |
+| case_100 | random_sample | delinq_2yrs | 0.0 | 0.001673 |
+| case_100 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000388 |
+| case_100 | random_sample | emp_length_years | 1.0 | -0.009053 |
+| case_100 | random_sample | fico_mid | 692.0 | -0.009453 |
+| case_100 | random_sample | credit_history_years | 8.333333333333334 | -0.002119 |
+| case_100 | random_sample | home_ownership | RENT | 0.004262 |
+| case_100 | random_sample | purpose | debt_consolidation | 0.001472 |
+| case_101 | random_sample | loan_amnt | 3200.0 | -0.014992 |
+| case_101 | random_sample | annual_inc | 45000.0 | 0.022982 |
+| case_101 | random_sample | dti | 23.89 | 0.01762 |
+| case_101 | random_sample | revol_util | 94.5 | 0.013696 |
+| case_101 | random_sample | revol_bal | 13134.0 | 0.003483 |
+| case_101 | random_sample | open_acc | 13.0 | 0.008474 |
+| case_101 | random_sample | delinq_2yrs | 0.0 | 0.002557 |
+| case_101 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000491 |
+| case_101 | random_sample | emp_length_years | 6.0 | -0.000433 |
+| case_101 | random_sample | fico_mid | 667.0 | 0.036189 |
+| case_101 | random_sample | credit_history_years | 15.083333333333334 | 0.005576 |
+| case_101 | random_sample | home_ownership | MORTGAGE | -0.008435 |
+| case_101 | random_sample | purpose | debt_consolidation | 0.005488 |
+| case_102 | random_sample | loan_amnt | 11200.0 | 0.008874 |
+| case_102 | random_sample | annual_inc | 40000.0 | 0.029784 |
+| case_102 | random_sample | dti | 33.0 | 0.026822 |
+| case_102 | random_sample | revol_util | 56.0 | -0.002837 |
+| case_102 | random_sample | revol_bal | 4033.0 | 0.010295 |
+| case_102 | random_sample | open_acc | 13.0 | 0.005599 |
+| case_102 | random_sample | delinq_2yrs | 0.0 | 0.000585 |
+| case_102 | random_sample | pub_rec_bankruptcies | 1.0 | -0.00377 |
+| case_102 | random_sample | emp_length_years | 3.0 | -0.001691 |
+| case_102 | random_sample | fico_mid | 697.0 | -0.006182 |
+| case_102 | random_sample | credit_history_years | 6.75 | 0.004847 |
+| case_102 | random_sample | home_ownership | OWN | -0.000766 |
+| case_102 | random_sample | purpose | debt_consolidation | 0.000161 |
+| case_103 | random_sample | loan_amnt | 19350.0 | 0.029663 |
+| case_103 | random_sample | annual_inc | 60000.0 | 0.004604 |
+| case_103 | random_sample | dti | 15.94 | -0.004158 |
+| case_103 | random_sample | revol_util | 44.8 | -0.005173 |
+| case_103 | random_sample | revol_bal | 9327.0 | 0.003668 |
+| case_103 | random_sample | open_acc | 16.0 | 0.011952 |
+| case_103 | random_sample | delinq_2yrs | 0.0 | 0.000881 |
+| case_103 | random_sample | pub_rec_bankruptcies | 1.0 | -0.01219 |
+| case_103 | random_sample | emp_length_years | 1.0 | 0.005459 |
+| case_103 | random_sample | fico_mid | 667.0 | 0.034879 |
+| case_103 | random_sample | credit_history_years | 19.833333333333332 | -0.007594 |
+| case_103 | random_sample | home_ownership | MORTGAGE | -0.007329 |
+| case_103 | random_sample | purpose | debt_consolidation | 0.002668 |
+| case_104 | random_sample | loan_amnt | 19500.0 | 0.016793 |
+| case_104 | random_sample | annual_inc | 53550.0 | 0.00114 |
+| case_104 | random_sample | dti | 9.93 | -0.016579 |
+| case_104 | random_sample | revol_util | 35.7 | -0.005385 |
+| case_104 | random_sample | revol_bal | 19540.0 | -0.011687 |
+| case_104 | random_sample | open_acc | 10.0 | 0.001585 |
+| case_104 | random_sample | delinq_2yrs | 0.0 | 0.000835 |
+| case_104 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000182 |
+| case_104 | random_sample | emp_length_years | 1.0 | -0.00485 |
+| case_104 | random_sample | fico_mid | 697.0 | -0.009976 |
+| case_104 | random_sample | credit_history_years | 11.0 | -0.001975 |
+| case_104 | random_sample | home_ownership | RENT | 0.004929 |
+| case_104 | random_sample | purpose | debt_consolidation | -0.001437 |
+| case_105 | random_sample | loan_amnt | 6000.0 | -0.017382 |
+| case_105 | random_sample | annual_inc | 30000.0 | 0.041892 |
+| case_105 | random_sample | dti | 6.12 | -0.016573 |
+| case_105 | random_sample | revol_util | 57.3 | -0.005849 |
+| case_105 | random_sample | revol_bal | 4523.0 | 0.004103 |
+| case_105 | random_sample | open_acc | 9.0 | -0.000556 |
+| case_105 | random_sample | delinq_2yrs | 0.0 | 0.001992 |
+| case_105 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000952 |
+| case_105 | random_sample | emp_length_years | 10.0 | 0.002924 |
+| case_105 | random_sample | fico_mid | 702.0 | -0.01639 |
+| case_105 | random_sample | credit_history_years | 15.083333333333334 | -0.000163 |
+| case_105 | random_sample | home_ownership | RENT | 0.009143 |
+| case_105 | random_sample | purpose | debt_consolidation | 0.001059 |
+| case_106 | random_sample | loan_amnt | 8850.0 | -0.001261 |
+| case_106 | random_sample | annual_inc | 49459.0 | 0.012689 |
+| case_106 | random_sample | dti | 26.77 | 0.029579 |
+| case_106 | random_sample | revol_util | 55.4 | -0.003355 |
+| case_106 | random_sample | revol_bal | 6700.0 | -0.001362 |
+| case_106 | random_sample | open_acc | 11.0 | 0.002606 |
+| case_106 | random_sample | delinq_2yrs | 0.0 | 0.001476 |
+| case_106 | random_sample | pub_rec_bankruptcies | 2.0 | -0.033347 |
+| case_106 | random_sample | emp_length_years | 10.0 | 0.000555 |
+| case_106 | random_sample | fico_mid | 667.0 | 0.029384 |
+| case_106 | random_sample | credit_history_years | 33.083333333333336 | -0.010358 |
+| case_106 | random_sample | home_ownership | RENT | 0.013929 |
+| case_106 | random_sample | purpose | debt_consolidation | 0.003007 |
+| case_107 | random_sample | loan_amnt | 15000.0 | 0.019357 |
+| case_107 | random_sample | annual_inc | 125000.0 | -0.047888 |
+| case_107 | random_sample | dti | 14.04 | -0.004 |
+| case_107 | random_sample | revol_util | 48.9 | -0.002967 |
+| case_107 | random_sample | revol_bal | 8749.0 | 0.002337 |
+| case_107 | random_sample | open_acc | 16.0 | 0.004353 |
+| case_107 | random_sample | delinq_2yrs | 0.0 | 0.001769 |
+| case_107 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000468 |
+| case_107 | random_sample | emp_length_years | 2.0 | -0.008763 |
+| case_107 | random_sample | fico_mid | 687.0 | 0.003437 |
+| case_107 | random_sample | credit_history_years | 7.0 | -0.001236 |
+| case_107 | random_sample | home_ownership | RENT | 0.009834 |
+| case_107 | random_sample | purpose | vacation | 0.025301 |
+| case_108 | random_sample | loan_amnt | 12000.0 | 0.001897 |
+| case_108 | random_sample | annual_inc | 52000.0 | -0.002008 |
+| case_108 | random_sample | dti | 6.65 | -0.022445 |
+| case_108 | random_sample | revol_util | 91.9 | 0.017258 |
+| case_108 | random_sample | revol_bal | 7353.0 | 0.002242 |
+| case_108 | random_sample | open_acc | 4.0 | -0.018738 |
+| case_108 | random_sample | delinq_2yrs | 0.0 | 0.001635 |
+| case_108 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000751 |
+| case_108 | random_sample | emp_length_years | 3.0 | -0.002514 |
+| case_108 | random_sample | fico_mid | 672.0 | 0.02322 |
+| case_108 | random_sample | credit_history_years | 15.25 | 0.000489 |
+| case_108 | random_sample | home_ownership | RENT | 0.006552 |
+| case_108 | random_sample | purpose | debt_consolidation | 0.001158 |
+| case_109 | random_sample | loan_amnt | 2000.0 | -0.026804 |
+| case_109 | random_sample | annual_inc | 50000.0 | 0.008661 |
+| case_109 | random_sample | dti | 10.18 | -0.009579 |
+| case_109 | random_sample | revol_util | 88.9 | 0.019273 |
+| case_109 | random_sample | revol_bal | 12889.0 | 0.001642 |
+| case_109 | random_sample | open_acc | 4.0 | -0.008943 |
+| case_109 | random_sample | delinq_2yrs | 0.0 | 0.000976 |
+| case_109 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000244 |
+| case_109 | random_sample | emp_length_years | 10.0 | 0.00241 |
+| case_109 | random_sample | fico_mid | 687.0 | 0.001701 |
+| case_109 | random_sample | credit_history_years | 9.583333333333334 | 0.004232 |
+| case_109 | random_sample | home_ownership | MORTGAGE | -0.007919 |
+| case_109 | random_sample | purpose | home_improvement | 0.010858 |
+| case_110 | random_sample | loan_amnt | 24500.0 | 0.013493 |
+| case_110 | random_sample | annual_inc | 157401.0 | -0.032714 |
+| case_110 | random_sample | dti | 6.1 | -0.012124 |
+| case_110 | random_sample | revol_util | 93.7 | 0.018305 |
+| case_110 | random_sample | revol_bal | 17152.0 | -0.007918 |
+| case_110 | random_sample | open_acc | 8.0 | -0.004451 |
+| case_110 | random_sample | delinq_2yrs | 0.0 | 0.001815 |
+| case_110 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000559 |
+| case_110 | random_sample | emp_length_years | 9.0 | 0.001046 |
+| case_110 | random_sample | fico_mid | 712.0 | -0.024132 |
+| case_110 | random_sample | credit_history_years | 23.0 | -0.007681 |
+| case_110 | random_sample | home_ownership | RENT | 0.011639 |
+| case_110 | random_sample | purpose | debt_consolidation | -0.001229 |
+| case_111 | random_sample | loan_amnt | 13000.0 | 0.004276 |
+| case_111 | random_sample | annual_inc | 74256.0 | -0.01753 |
+| case_111 | random_sample | dti | 10.63 | -0.009748 |
+| case_111 | random_sample | revol_util | 66.1 | -0.003819 |
+| case_111 | random_sample | revol_bal | 13876.0 | -0.000696 |
+| case_111 | random_sample | open_acc | 8.0 | -0.002049 |
+| case_111 | random_sample | delinq_2yrs | 0.0 | 0.000892 |
+| case_111 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00013 |
+| case_111 | random_sample | emp_length_years | 1.0 | -0.004167 |
+| case_111 | random_sample | fico_mid | 732.0 | -0.040363 |
+| case_111 | random_sample | credit_history_years | 10.75 | -0.000572 |
+| case_111 | random_sample | home_ownership | RENT | 0.003418 |
+| case_111 | random_sample | purpose | credit_card | -0.011523 |
+| case_112 | random_sample | loan_amnt | 16000.0 | 0.018661 |
+| case_112 | random_sample | annual_inc | 50000.0 | 0.013107 |
+| case_112 | random_sample | dti | 24.05 | 0.011979 |
+| case_112 | random_sample | revol_util | 31.6 | -0.003684 |
+| case_112 | random_sample | revol_bal | 10023.0 | 0.001211 |
+| case_112 | random_sample | open_acc | 10.0 | 0.002747 |
+| case_112 | random_sample | delinq_2yrs | 0.0 | 0.001077 |
+| case_112 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000292 |
+| case_112 | random_sample | emp_length_years | 10.0 | 0.001087 |
+| case_112 | random_sample | fico_mid | 712.0 | -0.04052 |
+| case_112 | random_sample | credit_history_years | 16.333333333333332 | -0.001401 |
+| case_112 | random_sample | home_ownership | OWN | -0.00517 |
+| case_112 | random_sample | purpose | debt_consolidation | -0.000415 |
+| case_113 | random_sample | loan_amnt | 3000.0 | -0.013817 |
+| case_113 | random_sample | annual_inc | 40000.0 | 0.026491 |
+| case_113 | random_sample | dti | 21.69 | 0.005057 |
+| case_113 | random_sample | revol_util | 89.0 | 0.013989 |
+| case_113 | random_sample | revol_bal | 8008.0 | -0.00104 |
+| case_113 | random_sample | open_acc | 3.0 | -0.011284 |
+| case_113 | random_sample | delinq_2yrs | 0.0 | 0.001136 |
+| case_113 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000369 |
+| case_113 | random_sample | emp_length_years | 10.0 | 0.000673 |
+| case_113 | random_sample | fico_mid | 737.0 | -0.047448 |
+| case_113 | random_sample | credit_history_years | 16.75 | -0.002304 |
+| case_113 | random_sample | home_ownership | MORTGAGE | -0.009143 |
+| case_113 | random_sample | purpose | home_improvement | 0.006123 |
+| case_114 | random_sample | loan_amnt | 5000.0 | -0.024475 |
+| case_114 | random_sample | annual_inc | 50000.0 | 0.020282 |
+| case_114 | random_sample | dti | 18.03 | 0.001464 |
+| case_114 | random_sample | revol_util | 89.8 | 0.010167 |
+| case_114 | random_sample | revol_bal | 23261.0 | 0.004968 |
+| case_114 | random_sample | open_acc | 9.0 | 0.000246 |
+| case_114 | random_sample | delinq_2yrs | 0.0 | 0.00229 |
+| case_114 | random_sample | pub_rec_bankruptcies | 0.0 | -0.000141 |
+| case_114 | random_sample | emp_length_years | 10.0 | 0.000854 |
+| case_114 | random_sample | fico_mid | 692.0 | -0.002231 |
+| case_114 | random_sample | credit_history_years | 10.75 | 0.003695 |
+| case_114 | random_sample | home_ownership | MORTGAGE | -0.007466 |
+| case_114 | random_sample | purpose | small_business | 0.104107 |
+| case_115 | random_sample | loan_amnt | 7475.0 | -0.00207 |
+| case_115 | random_sample | annual_inc | 95000.0 | -0.035538 |
+| case_115 | random_sample | dti | 12.17 | -0.014698 |
+| case_115 | random_sample | revol_util | 32.1 | -0.004507 |
+| case_115 | random_sample | revol_bal | 1766.0 | 0.0277 |
+| case_115 | random_sample | open_acc | 8.0 | -0.004004 |
+| case_115 | random_sample | delinq_2yrs | 0.0 | 0.002257 |
+| case_115 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000816 |
+| case_115 | random_sample | emp_length_years | 10.0 | 0.002562 |
+| case_115 | random_sample | fico_mid | 682.0 | 0.010695 |
+| case_115 | random_sample | credit_history_years | 26.916666666666668 | -0.008908 |
+| case_115 | random_sample | home_ownership | RENT | 0.012396 |
+| case_115 | random_sample | purpose | debt_consolidation | 0.00309 |
+| case_116 | random_sample | loan_amnt | 25000.0 | 0.021206 |
+| case_116 | random_sample | annual_inc | 210000.0 | -0.033584 |
+| case_116 | random_sample | dti | 9.14 | -0.013165 |
+| case_116 | random_sample | revol_util | 17.9 | -0.006065 |
+| case_116 | random_sample | revol_bal | 18432.0 | -0.00415 |
+| case_116 | random_sample | open_acc | 19.0 | 0.006406 |
+| case_116 | random_sample | delinq_2yrs | 0.0 | 0.001163 |
+| case_116 | random_sample | pub_rec_bankruptcies | 0.0 | -0.00056 |
+| case_116 | random_sample | emp_length_years | 4.0 | -0.000908 |
+| case_116 | random_sample | fico_mid | 752.0 | -0.055196 |
+| case_116 | random_sample | credit_history_years | 37.083333333333336 | -0.003443 |
+| case_116 | random_sample | home_ownership | MORTGAGE | -0.008916 |
+| case_116 | random_sample | purpose | home_improvement | 0.010149 |
+| case_117 | random_sample | loan_amnt | 18200.0 | 0.012869 |
+| case_117 | random_sample | annual_inc | 93000.0 | -0.03522 |
+| case_117 | random_sample | dti | 18.85 | 0.004051 |
+| case_117 | random_sample | revol_util | 30.8 | -0.001327 |
+| case_117 | random_sample | revol_bal | 18742.0 | -0.006978 |
+| case_117 | random_sample | open_acc | 18.0 | 0.011114 |
+| case_117 | random_sample | delinq_2yrs | 1.0 | -0.002554 |
+| case_117 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000203 |
+| case_117 | random_sample | emp_length_years | 5.0 | -0.001362 |
+| case_117 | random_sample | fico_mid | 697.0 | -0.012207 |
+| case_117 | random_sample | credit_history_years | 12.083333333333334 | 0.003512 |
+| case_117 | random_sample | home_ownership | MORTGAGE | -0.003274 |
+| case_117 | random_sample | purpose | debt_consolidation | 0.001017 |
+| case_118 | random_sample | loan_amnt | 10000.0 | -0.001154 |
+| case_118 | random_sample | annual_inc | 52000.0 | 0.004684 |
+| case_118 | random_sample | dti | 12.44 | -0.016886 |
+| case_118 | random_sample | revol_util | 34.5 | -0.008038 |
+| case_118 | random_sample | revol_bal | 2481.0 | 0.009762 |
+| case_118 | random_sample | open_acc | 7.0 | -0.015093 |
+| case_118 | random_sample | delinq_2yrs | 0.0 | 0.001697 |
+| case_118 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000877 |
+| case_118 | random_sample | emp_length_years | 7.0 | -0.000055 |
+| case_118 | random_sample | fico_mid | 662.0 | 0.035975 |
+| case_118 | random_sample | credit_history_years | 13.5 | 0.003443 |
+| case_118 | random_sample | home_ownership | MORTGAGE | -0.011559 |
+| case_118 | random_sample | purpose | home_improvement | 0.01376 |
+| case_119 | random_sample | loan_amnt | 16000.0 | 0.020875 |
+| case_119 | random_sample | annual_inc | 55000.0 | 0.003079 |
+| case_119 | random_sample | dti | 2.23 | -0.023182 |
+| case_119 | random_sample | revol_util | 36.0 | -0.004166 |
+| case_119 | random_sample | revol_bal | 3416.0 | 0.01259 |
+| case_119 | random_sample | open_acc | 5.0 | -0.01446 |
+| case_119 | random_sample | delinq_2yrs | 1.0 | -0.002697 |
+| case_119 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000738 |
+| case_119 | random_sample | emp_length_years | 10.0 | 0.00166 |
+| case_119 | random_sample | fico_mid | 677.0 | 0.011507 |
+| case_119 | random_sample | credit_history_years | 10.833333333333334 | 0.002233 |
+| case_119 | random_sample | home_ownership | MORTGAGE | -0.010807 |
+| case_119 | random_sample | purpose | debt_consolidation | 0.001321 |
+| case_120 | random_sample | loan_amnt | 5000.0 | -0.016996 |
+| case_120 | random_sample | annual_inc | 43200.0 | 0.021518 |
+| case_120 | random_sample | dti | 7.56 | -0.014099 |
+| case_120 | random_sample | revol_util | 15.2 | -0.005018 |
+| case_120 | random_sample | revol_bal | 2300.0 | 0.008877 |
+| case_120 | random_sample | open_acc | 8.0 | -0.001558 |
+| case_120 | random_sample | delinq_2yrs | 0.0 | 0.000841 |
+| case_120 | random_sample | pub_rec_bankruptcies | 0.0 | -0.000732 |
+| case_120 | random_sample | emp_length_years | 0.0 | -0.009065 |
+| case_120 | random_sample | fico_mid | 752.0 | -0.057444 |
+| case_120 | random_sample | credit_history_years | 4.25 | 0.01077 |
+| case_120 | random_sample | home_ownership | RENT | 0.005324 |
+| case_120 | random_sample | purpose | major_purchase | -0.008095 |
+| case_121 | random_sample | loan_amnt | 10000.0 | 0.003957 |
+| case_121 | random_sample | annual_inc | 63500.0 | -0.001586 |
+| case_121 | random_sample | dti | 20.94 | 0.006926 |
+| case_121 | random_sample | revol_util | 81.8 | 0.003925 |
+| case_121 | random_sample | revol_bal | 18249.0 | 0.000048 |
+| case_121 | random_sample | open_acc | 11.0 | 0.00324 |
+| case_121 | random_sample | delinq_2yrs | 0.0 | 0.001268 |
+| case_121 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000298 |
+| case_121 | random_sample | emp_length_years | 10.0 | -0.000373 |
+| case_121 | random_sample | fico_mid | 697.0 | -0.003853 |
+| case_121 | random_sample | credit_history_years | 24.916666666666668 | -0.006618 |
+| case_121 | random_sample | home_ownership | MORTGAGE | -0.007404 |
+| case_121 | random_sample | purpose | debt_consolidation | 0.001921 |
+| case_122 | random_sample | loan_amnt | 8500.0 | 0.00371 |
+| case_122 | random_sample | annual_inc | 38000.0 | 0.031498 |
+| case_122 | random_sample | dti | 32.66 | 0.025498 |
+| case_122 | random_sample | revol_util | 47.7 | -0.004552 |
+| case_122 | random_sample | revol_bal | 17270.0 | 0.005482 |
+| case_122 | random_sample | open_acc | 17.0 | 0.011343 |
+| case_122 | random_sample | delinq_2yrs | 0.0 | 0.00077 |
+| case_122 | random_sample | pub_rec_bankruptcies | 2.0 | -0.023795 |
+| case_122 | random_sample | emp_length_years | 0.0 | 0.005112 |
+| case_122 | random_sample | fico_mid | 667.0 | 0.032739 |
+| case_122 | random_sample | credit_history_years | 32.333333333333336 | -0.003307 |
+| case_122 | random_sample | home_ownership | MORTGAGE | -0.008892 |
+| case_122 | random_sample | purpose | debt_consolidation | 0.000965 |
+| case_123 | random_sample | loan_amnt | 7200.0 | -0.002214 |
+| case_123 | random_sample | annual_inc | 54000.0 | 0.002939 |
+| case_123 | random_sample | dti | 11.58 | -0.008932 |
+| case_123 | random_sample | revol_util | 76.2 | 0.002472 |
+| case_123 | random_sample | revol_bal | 6476.0 | 0.002892 |
+| case_123 | random_sample | open_acc | 10.0 | 0.002123 |
+| case_123 | random_sample | delinq_2yrs | 1.0 | -0.003015 |
+| case_123 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000328 |
+| case_123 | random_sample | emp_length_years | 5.0 | -0.001396 |
+| case_123 | random_sample | fico_mid | 722.0 | -0.034915 |
+| case_123 | random_sample | credit_history_years | 11.916666666666666 | 0.002061 |
+| case_123 | random_sample | home_ownership | MORTGAGE | -0.002619 |
+| case_123 | random_sample | purpose | debt_consolidation | 0.000228 |
+| case_124 | random_sample | loan_amnt | 18000.0 | 0.011507 |
+| case_124 | random_sample | annual_inc | 140000.0 | -0.042289 |
+| case_124 | random_sample | dti | 25.61 | 0.010107 |
+| case_124 | random_sample | revol_util | 81.6 | 0.000825 |
+| case_124 | random_sample | revol_bal | 18604.0 | -0.006452 |
+| case_124 | random_sample | open_acc | 9.0 | 0.000812 |
+| case_124 | random_sample | delinq_2yrs | 1.0 | -0.004628 |
+| case_124 | random_sample | pub_rec_bankruptcies | 0.0 | -0.000261 |
+| case_124 | random_sample | emp_length_years | 4.0 | -0.002258 |
+| case_124 | random_sample | fico_mid | 697.0 | -0.007744 |
+| case_124 | random_sample | credit_history_years | 20.75 | -0.003586 |
+| case_124 | random_sample | home_ownership | RENT | 0.009696 |
+| case_124 | random_sample | purpose | credit_card | -0.016454 |
+| case_125 | random_sample | loan_amnt | 5000.0 | -0.007861 |
+| case_125 | random_sample | annual_inc | 45000.0 | 0.016375 |
+| case_125 | random_sample | dti | 4.37 | -0.010023 |
+| case_125 | random_sample | revol_util | 62.4 | -0.003825 |
+| case_125 | random_sample | revol_bal | 6240.0 | 0.001068 |
+| case_125 | random_sample | open_acc | 5.0 | -0.007796 |
+| case_125 | random_sample | delinq_2yrs | 0.0 | 0.001067 |
+| case_125 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000304 |
+| case_125 | random_sample | emp_length_years | 2.0 | -0.000866 |
+| case_125 | random_sample | fico_mid | 732.0 | -0.031305 |
+| case_125 | random_sample | credit_history_years | 43.666666666666664 | 0.005137 |
+| case_125 | random_sample | home_ownership | RENT | 0.006228 |
+| case_125 | random_sample | purpose | credit_card | -0.013249 |
+| case_126 | random_sample | loan_amnt | 8000.0 | -0.001856 |
+| case_126 | random_sample | annual_inc | 68000.0 | -0.011276 |
+| case_126 | random_sample | dti | 10.52 | -0.010536 |
+| case_126 | random_sample | revol_util | 24.4 | -0.005527 |
+| case_126 | random_sample | revol_bal | 6411.0 | 0.002691 |
+| case_126 | random_sample | open_acc | 7.0 | -0.008271 |
+| case_126 | random_sample | delinq_2yrs | 0.0 | 0.001052 |
+| case_126 | random_sample | pub_rec_bankruptcies | 0.0 | 0.00028 |
+| case_126 | random_sample | emp_length_years | 10.0 | 0.001498 |
+| case_126 | random_sample | fico_mid | 717.0 | -0.026796 |
+| case_126 | random_sample | credit_history_years | 14.416666666666666 | 0.000582 |
+| case_126 | random_sample | home_ownership | MORTGAGE | -0.005762 |
+| case_126 | random_sample | purpose | credit_card | -0.013219 |
+| case_127 | random_sample | loan_amnt | 20000.0 | 0.012423 |
+| case_127 | random_sample | annual_inc | 210000.0 | -0.024404 |
+| case_127 | random_sample | dti | 4.21 | -0.022787 |
+| case_127 | random_sample | revol_util | 37.2 | -0.005818 |
+| case_127 | random_sample | revol_bal | 30344.0 | -0.014238 |
+| case_127 | random_sample | open_acc | 16.0 | 0.005968 |
+| case_127 | random_sample | delinq_2yrs | 0.0 | 0.001131 |
+| case_127 | random_sample | pub_rec_bankruptcies | 0.0 | 0.000067 |
+| case_127 | random_sample | emp_length_years | 4.0 | -0.00317 |
+| case_127 | random_sample | fico_mid | 682.0 | 0.004451 |
+| case_127 | random_sample | credit_history_years | 12.666666666666666 | 0.007837 |
+| case_127 | random_sample | home_ownership | RENT | 0.014633 |
+| case_127 | random_sample | purpose | debt_consolidation | -0.001798 |
+| case_128 | curated_TP | loan_amnt | 10000.0 | 0.003215 |
+| case_128 | curated_TP | annual_inc | 30000.0 | 0.048335 |
+| case_128 | curated_TP | dti | 20.32 | 0.00574 |
+| case_128 | curated_TP | revol_util | 34.9 | -0.005948 |
+| case_128 | curated_TP | revol_bal | 8231.0 | 0.000898 |
+| case_128 | curated_TP | open_acc | 9.0 | 0.000385 |
+| case_128 | curated_TP | delinq_2yrs | 0.0 | 0.002002 |
+| case_128 | curated_TP | pub_rec_bankruptcies | 1.0 | -0.007498 |
+| case_128 | curated_TP | emp_length_years | 5.0 | -0.00071 |
+| case_128 | curated_TP | fico_mid | 687.0 | 0.009217 |
+| case_128 | curated_TP | credit_history_years | 13.416666666666666 | 0.000935 |
+| case_128 | curated_TP | home_ownership | RENT | 0.010281 |
+| case_128 | curated_TP | purpose | credit_card | -0.01979 |
+| case_129 | curated_TP | loan_amnt | 4000.0 | -0.025582 |
+| case_129 | curated_TP | annual_inc | 32000.0 | 0.052416 |
+| case_129 | curated_TP | dti | 28.06 | 0.014479 |
+| case_129 | curated_TP | revol_util | 95.4 | 0.016602 |
+| case_129 | curated_TP | revol_bal | 14889.0 | 0.004736 |
+| case_129 | curated_TP | open_acc | 8.0 | -0.003511 |
+| case_129 | curated_TP | delinq_2yrs | 0.0 | 0.00302 |
+| case_129 | curated_TP | pub_rec_bankruptcies | 0.0 | -0.000026 |
+| case_129 | curated_TP | emp_length_years | 3.0 | 0.000417 |
+| case_129 | curated_TP | fico_mid | 682.0 | 0.013964 |
+| case_129 | curated_TP | credit_history_years | 12.166666666666666 | 0.000357 |
+| case_129 | curated_TP | home_ownership | RENT | 0.017938 |
+| case_129 | curated_TP | purpose | vacation | 0.018251 |
+| case_130 | curated_TN | loan_amnt | 16000.0 | 0.016112 |
+| case_130 | curated_TN | annual_inc | 55400.0 | 0.001156 |
+| case_130 | curated_TN | dti | 7.04 | -0.014283 |
+| case_130 | curated_TN | revol_util | 59.6 | -0.004178 |
+| case_130 | curated_TN | revol_bal | 13001.0 | -0.004817 |
+| case_130 | curated_TN | open_acc | 14.0 | 0.005581 |
+| case_130 | curated_TN | delinq_2yrs | 1.0 | -0.002986 |
+| case_130 | curated_TN | pub_rec_bankruptcies | 0.0 | 0.000111 |
+| case_130 | curated_TN | emp_length_years | 5.0 | -0.000465 |
+| case_130 | curated_TN | fico_mid | 692.0 | -0.004142 |
+| case_130 | curated_TN | credit_history_years | 15.416666666666666 | 0.000949 |
+| case_130 | curated_TN | home_ownership | MORTGAGE | -0.00603 |
+| case_130 | curated_TN | purpose | credit_card | -0.017184 |
+| case_131 | curated_TN | loan_amnt | 8900.0 | 0.001433 |
+| case_131 | curated_TN | annual_inc | 69000.0 | -0.008842 |
+| case_131 | curated_TN | dti | 3.97 | -0.008731 |
+| case_131 | curated_TN | revol_util | 16.0 | -0.005809 |
+| case_131 | curated_TN | revol_bal | 12610.0 | 0.000343 |
+| case_131 | curated_TN | open_acc | 6.0 | -0.007337 |
+| case_131 | curated_TN | delinq_2yrs | 0.0 | -0.000151 |
+| case_131 | curated_TN | pub_rec_bankruptcies | 0.0 | 0.000397 |
+| case_131 | curated_TN | emp_length_years | 10.0 | 0.00155 |
+| case_131 | curated_TN | fico_mid | 807.0 | -0.059277 |
+| case_131 | curated_TN | credit_history_years | 25.583333333333332 | -0.0043 |
+| case_131 | curated_TN | home_ownership | MORTGAGE | -0.005127 |
+| case_131 | curated_TN | purpose | credit_card | -0.007732 |
+| case_132 | curated_FP | loan_amnt | 4800.0 | -0.011309 |
+| case_132 | curated_FP | annual_inc | 49000.0 | 0.016277 |
+| case_132 | curated_FP | dti | 21.84 | 0.017839 |
+| case_132 | curated_FP | revol_util | 39.0 | -0.001568 |
+| case_132 | curated_FP | revol_bal | 6634.0 | 0.000289 |
+| case_132 | curated_FP | open_acc | 12.0 | 0.007155 |
+| case_132 | curated_FP | delinq_2yrs | 0.0 | 0.001534 |
+| case_132 | curated_FP | pub_rec_bankruptcies | 0.0 | 0.001026 |
+| case_132 | curated_FP | emp_length_years | 5.0 | -0.001759 |
+| case_132 | curated_FP | fico_mid | 672.0 | 0.031633 |
+| case_132 | curated_FP | credit_history_years | 21.666666666666668 | -0.0061 |
+| case_132 | curated_FP | home_ownership | MORTGAGE | -0.008039 |
+| case_132 | curated_FP | purpose | debt_consolidation | 0.005405 |
+| case_133 | curated_FP | loan_amnt | 14000.0 | 0.013098 |
+| case_133 | curated_FP | annual_inc | 130000.0 | -0.037318 |
+| case_133 | curated_FP | dti | 13.19 | -0.015349 |
+| case_133 | curated_FP | revol_util | 85.4 | 0.002125 |
+| case_133 | curated_FP | revol_bal | 5207.0 | 0.014976 |
+| case_133 | curated_FP | open_acc | 9.0 | -0.000741 |
+| case_133 | curated_FP | delinq_2yrs | 0.0 | 0.002619 |
+| case_133 | curated_FP | pub_rec_bankruptcies | 0.0 | 0.00052 |
+| case_133 | curated_FP | emp_length_years | 7.0 | 0.002194 |
+| case_133 | curated_FP | fico_mid | 662.0 | 0.039095 |
+| case_133 | curated_FP | credit_history_years | 8.333333333333334 | 0.006321 |
+| case_133 | curated_FP | home_ownership | RENT | 0.010992 |
+| case_133 | curated_FP | purpose | debt_consolidation | 0.002032 |
+| case_134 | curated_FN | loan_amnt | 5000.0 | -0.029198 |
+| case_134 | curated_FN | annual_inc | 35000.0 | 0.037489 |
+| case_134 | curated_FN | dti | 7.54 | -0.015354 |
+| case_134 | curated_FN | revol_util | 33.0 | -0.003832 |
+| case_134 | curated_FN | revol_bal | 3835.0 | -0.000578 |
+| case_134 | curated_FN | open_acc | 10.0 | 0.001434 |
+| case_134 | curated_FN | delinq_2yrs | 1.0 | -0.004163 |
+| case_134 | curated_FN | pub_rec_bankruptcies | 0.0 | -0.000458 |
+| case_134 | curated_FN | emp_length_years | 3.0 | -0.005378 |
+| case_134 | curated_FN | fico_mid | 697.0 | -0.002622 |
+| case_134 | curated_FN | credit_history_years | 4.166666666666667 | 0.023341 |
+| case_134 | curated_FN | home_ownership | RENT | 0.007274 |
+| case_134 | curated_FN | purpose | credit_card | -0.016708 |
+| case_135 | curated_FN | loan_amnt | 20000.0 | 0.014449 |
+| case_135 | curated_FN | annual_inc | 70000.0 | -0.012292 |
+| case_135 | curated_FN | dti | 6.19 | -0.020289 |
+| case_135 | curated_FN | revol_util | 73.2 | 0.001841 |
+| case_135 | curated_FN | revol_bal | 16898.0 | -0.009209 |
+| case_135 | curated_FN | open_acc | 10.0 | 0.000662 |
+| case_135 | curated_FN | delinq_2yrs | 0.0 | 0.001145 |
+| case_135 | curated_FN | pub_rec_bankruptcies | 0.0 | 0.000217 |
+| case_135 | curated_FN | emp_length_years | 10.0 | 0.00257 |
+| case_135 | curated_FN | fico_mid | 677.0 | 0.006464 |
+| case_135 | curated_FN | credit_history_years | 10.333333333333334 | 0.003308 |
+| case_135 | curated_FN | home_ownership | MORTGAGE | -0.007763 |
+| case_135 | curated_FN | purpose | debt_consolidation | 0.000044 |
+
+### shap_global_importance
+
+| feature | mean_absolute_contribution | mean_signed_contribution |
+| --- | --- | --- |
+| fico_mid | 0.026985 | -0.006466 |
+| annual_inc | 0.025498 | 0.002061 |
+| loan_amnt | 0.015857 | 0.005336 |
+| dti | 0.011521 | 0.000126 |
+| purpose | 0.011187 | 0.002039 |
+| home_ownership | 0.007845 | -0.000214 |
+| open_acc | 0.006766 | 0.001771 |
+| revol_util | 0.006104 | 0.00009 |
+| revol_bal | 0.006062 | 0.000856 |
+| credit_history_years | 0.004488 | -0.001024 |
+| emp_length_years | 0.002332 | -0.000191 |
+| delinq_2yrs | 0.002065 | -0.000024 |
+| pub_rec_bankruptcies | 0.001514 | -0.000758 |
+
+### partial_dependence
+
+| feature | grid_value | display_value | mean_probability | lower_row_spread | upper_row_spread |
+| --- | --- | --- | --- | --- | --- |
+| loan_amnt | 1,000 | 1000.0 | 0.09113 | 0.053504 | 0.128756 |
+| loan_amnt | 4,000 | 4000.0 | 0.111164 | 0.061236 | 0.161092 |
+| loan_amnt | 5,000 | 5000.0 | 0.111225 | 0.061215 | 0.161235 |
+| loan_amnt | 6,200 | 6200.0 | 0.111551 | 0.060243 | 0.16286 |
+| loan_amnt | 7,553.571429 | 7553.57142857143 | 0.118049 | 0.061442 | 0.174656 |
+| loan_amnt | 8,500 | 8500.0 | 0.120128 | 0.060968 | 0.179288 |
+| loan_amnt | 10,000 | 10000.0 | 0.122671 | 0.061453 | 0.183889 |
+| loan_amnt | 10,000 | 10000.0 | 0.122671 | 0.061453 | 0.183889 |
+| loan_amnt | 12,000 | 12000.0 | 0.126674 | 0.061057 | 0.192292 |
+| loan_amnt | 13,000 | 13000.0 | 0.1281 | 0.06168 | 0.19452 |
+| loan_amnt | 15,000 | 15000.0 | 0.138538 | 0.065618 | 0.211459 |
+| loan_amnt | 17,587.5 | 17587.500000000004 | 0.138924 | 0.065662 | 0.212186 |
+| loan_amnt | 20,000 | 20000.0 | 0.14449 | 0.066644 | 0.222337 |
+| loan_amnt | 25,000 | 25000.0 | 0.164015 | 0.075429 | 0.252601 |
+| loan_amnt | 35,000 | 35000.0 | 0.193058 | 0.103279 | 0.282837 |
+| annual_inc | 10,200 | 10200.0 | 0.192782 | 0.126569 | 0.258995 |
+| annual_inc | 30,000 | 30000.0 | 0.169663 | 0.11044 | 0.228887 |
+| annual_inc | 36,000 | 36000.0 | 0.164642 | 0.106998 | 0.222287 |
+| annual_inc | 41,038.928571 | 41038.92857142858 | 0.148899 | 0.093566 | 0.204232 |
+| annual_inc | 47,000 | 47000.0 | 0.136695 | 0.084939 | 0.18845 |
+| annual_inc | 52,000 | 52000.0 | 0.125064 | 0.072777 | 0.177352 |
+| annual_inc | 56,000 | 56000.0 | 0.125101 | 0.072785 | 0.177418 |
+| annual_inc | 61,365.5 | 61365.5 | 0.119826 | 0.066608 | 0.173043 |
+| annual_inc | 68,000 | 68000.0 | 0.11109 | 0.063168 | 0.159012 |
+| annual_inc | 74,093.428571 | 74093.4285714286 | 0.107334 | 0.06148 | 0.153187 |
+| annual_inc | 80,000 | 80000.0 | 0.099478 | 0.057417 | 0.141539 |
+| annual_inc | 90,000 | 90000.0 | 0.093169 | 0.055254 | 0.131085 |
+| annual_inc | 105,000 | 105000.0 | 0.08852 | 0.050729 | 0.126311 |
+| annual_inc | 135,000 | 135000.0 | 0.08695 | 0.049135 | 0.124765 |
+| annual_inc | 619,000 | 619000.0 | 0.094417 | 0.050169 | 0.138666 |
+| dti | 0 | 0.0 | 0.10794 | 0.06029 | 0.15559 |
+| dti | 5.344286 | 5.344285714285715 | 0.10678 | 0.058788 | 0.154772 |
+| dti | 7.7 | 7.7 | 0.107613 | 0.059853 | 0.155374 |
+| dti | 9.630714 | 9.630714285714287 | 0.10827 | 0.059837 | 0.156703 |
+| dti | 11.077143 | 11.077142857142858 | 0.111552 | 0.061045 | 0.162059 |
+| dti | 12.921429 | 12.92142857142857 | 0.112168 | 0.061673 | 0.162663 |
+| dti | 14.22 | 14.22 | 0.115843 | 0.063963 | 0.167722 |
+| dti | 15.8 | 15.8 | 0.119778 | 0.066702 | 0.172854 |
+| dti | 17.287143 | 17.287142857142857 | 0.122957 | 0.069569 | 0.176346 |
+| dti | 19.214286 | 19.214285714285715 | 0.125926 | 0.070055 | 0.181798 |
+| dti | 21.055714 | 21.055714285714284 | 0.128916 | 0.072105 | 0.185728 |
+| dti | 23.115714 | 23.115714285714287 | 0.131701 | 0.073687 | 0.189715 |
+| dti | 25.025714 | 25.025714285714287 | 0.135161 | 0.075859 | 0.194463 |
+| dti | 27.952857 | 27.952857142857145 | 0.140396 | 0.08015 | 0.200641 |
+| dti | 34.99 | 34.99 | 0.140489 | 0.080009 | 0.20097 |
+| revol_util | 0 | 0.0 | 0.11589 | 0.057436 | 0.174343 |
+| revol_util | 21.071429 | 21.071428571428573 | 0.115972 | 0.06126 | 0.170684 |
+| revol_util | 29.571429 | 29.571428571428573 | 0.116404 | 0.061569 | 0.17124 |
+| revol_util | 37.907143 | 37.90714285714286 | 0.116283 | 0.061819 | 0.170748 |
+| revol_util | 42.7 | 42.7 | 0.116116 | 0.061799 | 0.170432 |
+| revol_util | 48.9 | 48.9 | 0.116178 | 0.062381 | 0.169976 |
+| revol_util | 53.514286 | 53.51428571428572 | 0.11645 | 0.06269 | 0.170209 |
+| revol_util | 58.85 | 58.849999999999994 | 0.116658 | 0.062931 | 0.170385 |
+| revol_util | 64.3 | 64.3 | 0.116579 | 0.063064 | 0.170094 |
+| revol_util | 68.4 | 68.4 | 0.123703 | 0.067681 | 0.179725 |
+| revol_util | 73.5 | 73.5 | 0.121922 | 0.06785 | 0.175994 |
+| revol_util | 78.4 | 78.4 | 0.122801 | 0.068787 | 0.176815 |
+| revol_util | 84.757143 | 84.75714285714287 | 0.127236 | 0.072938 | 0.181534 |
+| revol_util | 91.1 | 91.1 | 0.13552 | 0.078527 | 0.192513 |
+| revol_util | 99.8 | 99.8 | 0.154363 | 0.090584 | 0.218142 |
+| revol_bal | 0 | 0.0 | 0.165484 | 0.090439 | 0.240528 |
+| revol_bal | 2,798.357143 | 2798.3571428571427 | 0.133637 | 0.073587 | 0.193688 |
+| revol_bal | 4,674.571429 | 4674.571428571428 | 0.131561 | 0.072742 | 0.190379 |
+| revol_bal | 6,142.5 | 6142.500000000001 | 0.131545 | 0.072826 | 0.190264 |
+| revol_bal | 7,366 | 7366.0 | 0.126652 | 0.07065 | 0.182654 |
+| revol_bal | 8,750 | 8750.0 | 0.124579 | 0.068238 | 0.180921 |
+| revol_bal | 10,037.428571 | 10037.42857142857 | 0.123986 | 0.067419 | 0.180553 |
+| revol_bal | 11,470.5 | 11470.5 | 0.123277 | 0.065683 | 0.180871 |
+| revol_bal | 13,272 | 13272.000000000004 | 0.122351 | 0.064929 | 0.179774 |
+| revol_bal | 15,198.071429 | 15198.071428571431 | 0.122651 | 0.065167 | 0.180136 |
+| revol_bal | 17,889.714286 | 17889.714285714286 | 0.121139 | 0.064068 | 0.17821 |
+| revol_bal | 20,731.428571 | 20731.428571428572 | 0.121055 | 0.064007 | 0.178102 |
+| revol_bal | 26,237.857143 | 26237.857142857156 | 0.120399 | 0.063122 | 0.177677 |
+| revol_bal | 33,513.428571 | 33513.42857142857 | 0.120067 | 0.059674 | 0.180461 |
+| revol_bal | 271,068 | 271068.0 | 0.13313 | 0.060394 | 0.205866 |
+| open_acc | 2 | 2.0 | 0.107486 | 0.055479 | 0.159494 |
+| open_acc | 5 | 5.0 | 0.109364 | 0.056605 | 0.162123 |
+| open_acc | 6 | 6.0 | 0.109254 | 0.05661 | 0.161899 |
+| open_acc | 7 | 7.0 | 0.112648 | 0.05919 | 0.166107 |
+| open_acc | 8 | 8.0 | 0.116742 | 0.062271 | 0.171214 |
+| open_acc | 9 | 9.0 | 0.121018 | 0.065791 | 0.176244 |
+| open_acc | 9 | 9.0 | 0.121018 | 0.065791 | 0.176244 |
+| open_acc | 10 | 10.0 | 0.121829 | 0.066092 | 0.177565 |
+| open_acc | 11 | 11.0 | 0.122346 | 0.066637 | 0.178055 |
+| open_acc | 12 | 12.0 | 0.12481 | 0.067956 | 0.181663 |
+| open_acc | 13 | 13.0 | 0.124989 | 0.067997 | 0.181982 |
+| open_acc | 14 | 14.0 | 0.125532 | 0.068153 | 0.18291 |
+| open_acc | 15 | 15.0 | 0.126161 | 0.068788 | 0.183533 |
+| open_acc | 18 | 18.0 | 0.129538 | 0.070714 | 0.188363 |
+| open_acc | 32 | 32.0 | 0.14125 | 0.075936 | 0.206563 |
+| delinq_2yrs | 0 | 0.0 | 0.121766 | 0.065708 | 0.177824 |
+| delinq_2yrs | 1 | 1.0 | 0.117215 | 0.064436 | 0.169993 |
+| delinq_2yrs | 2 | 2.0 | 0.117374 | 0.064628 | 0.170121 |
+| delinq_2yrs | 3 | 3.0 | 0.117374 | 0.064628 | 0.170121 |
+| delinq_2yrs | 4 | 4.0 | 0.117722 | 0.065077 | 0.170367 |
+| delinq_2yrs | 5 | 5.0 | 0.117722 | 0.065077 | 0.170367 |
+| delinq_2yrs | 6 | 6.0 | 0.117722 | 0.065077 | 0.170367 |
+| delinq_2yrs | 10 | 10.0 | 0.117722 | 0.065077 | 0.170367 |
+| pub_rec_bankruptcies | 0 | 0.0 | 0.12225 | 0.065908 | 0.178592 |
+| pub_rec_bankruptcies | 1 | 1.0 | 0.117266 | 0.064123 | 0.17041 |
+| pub_rec_bankruptcies | 2 | 2.0 | 0.106926 | 0.057491 | 0.156361 |
+| emp_length_years | 0 | 0.0 | 0.120259 | 0.066069 | 0.174449 |
+| emp_length_years | 1 | 1.0 | 0.120157 | 0.065955 | 0.174359 |
+| emp_length_years | 2 | 2.0 | 0.120104 | 0.065996 | 0.174212 |
+| emp_length_years | 3 | 3.0 | 0.119643 | 0.065317 | 0.173968 |
+| emp_length_years | 4 | 4.0 | 0.11921 | 0.064588 | 0.173833 |
+| emp_length_years | 5 | 5.0 | 0.119425 | 0.064713 | 0.174137 |
+| emp_length_years | 6 | 6.0 | 0.122459 | 0.066158 | 0.17876 |
+| emp_length_years | 7 | 7.0 | 0.123852 | 0.066409 | 0.181295 |
+| emp_length_years | 8 | 8.0 | 0.123596 | 0.066122 | 0.181071 |
+| emp_length_years | 9 | 9.0 | 0.123621 | 0.066087 | 0.181155 |
+| emp_length_years | 10 | 10.0 | 0.125714 | 0.066276 | 0.185152 |
+| fico_mid | 662 | 662.0 | 0.172262 | 0.1173 | 0.227224 |
+| fico_mid | 667 | 667.0 | 0.163899 | 0.110628 | 0.217171 |
+| fico_mid | 672 | 672.0 | 0.159498 | 0.106822 | 0.212175 |
+| fico_mid | 677 | 677.0 | 0.143365 | 0.092381 | 0.194349 |
+| fico_mid | 682 | 682.0 | 0.142692 | 0.092035 | 0.193348 |
+| fico_mid | 682 | 682.0 | 0.142692 | 0.092035 | 0.193348 |
+| fico_mid | 692 | 692.0 | 0.127026 | 0.079195 | 0.174857 |
+| fico_mid | 692 | 692.0 | 0.127026 | 0.079195 | 0.174857 |
+| fico_mid | 697 | 697.0 | 0.125074 | 0.077589 | 0.172559 |
+| fico_mid | 702 | 702.0 | 0.111104 | 0.068632 | 0.153575 |
+| fico_mid | 712 | 712.0 | 0.101014 | 0.062612 | 0.139417 |
+| fico_mid | 722 | 722.0 | 0.092632 | 0.056826 | 0.128439 |
+| fico_mid | 732 | 732.0 | 0.08259 | 0.049291 | 0.115888 |
+| fico_mid | 752 | 752.0 | 0.065445 | 0.034824 | 0.096066 |
+| fico_mid | 827 | 827.0 | 0.035534 | 0.017785 | 0.053283 |
+| credit_history_years | 3 | 3.0 | 0.154026 | 0.087739 | 0.220313 |
+| credit_history_years | 6.25 | 6.25 | 0.128662 | 0.071638 | 0.185685 |
+| credit_history_years | 7.916667 | 7.916666666666667 | 0.122106 | 0.067414 | 0.176799 |
+| credit_history_years | 9.5 | 9.5 | 0.122242 | 0.067353 | 0.177131 |
+| credit_history_years | 10.75 | 10.75 | 0.122061 | 0.067254 | 0.176867 |
+| credit_history_years | 11.64881 | 11.648809523809522 | 0.122398 | 0.067467 | 0.177328 |
+| credit_history_years | 12.416667 | 12.416666666666666 | 0.12215 | 0.067414 | 0.176887 |
+| credit_history_years | 13.291667 | 13.291666666666668 | 0.12279 | 0.067112 | 0.178467 |
+| credit_history_years | 14.571429 | 14.571428571428575 | 0.123147 | 0.06721 | 0.179085 |
+| credit_history_years | 15.666667 | 15.666666666666666 | 0.121746 | 0.066187 | 0.177305 |
+| credit_history_years | 17.083333 | 17.083333333333332 | 0.120579 | 0.065119 | 0.176039 |
+| credit_history_years | 18.833333 | 18.833333333333332 | 0.117871 | 0.063417 | 0.172324 |
+| credit_history_years | 21.857143 | 21.85714285714286 | 0.117202 | 0.062856 | 0.171548 |
+| credit_history_years | 25.970238 | 25.970238095238102 | 0.116619 | 0.062378 | 0.170859 |
+| credit_history_years | 45.75 | 45.75 | 0.120397 | 0.064142 | 0.176652 |
+| home_ownership | 0 | MORTGAGE | 0.114606 | 0.064069 | 0.165143 |
+| home_ownership | 3 | OWN | 0.119164 | 0.066674 | 0.171654 |
+| home_ownership | 4 | RENT | 0.130014 | 0.073146 | 0.186882 |
+| purpose | 0 | car | 0.123792 | 0.066371 | 0.181212 |
+| purpose | 1 | credit_card | 0.103102 | 0.056685 | 0.149519 |
+| purpose | 2 | debt_consolidation | 0.121353 | 0.066798 | 0.175909 |
+| purpose | 3 | home_improvement | 0.137587 | 0.076624 | 0.198551 |
+| purpose | 4 | house | 0.148328 | 0.089165 | 0.207492 |
+| purpose | 5 | major_purchase | 0.12339 | 0.065076 | 0.181703 |
+| purpose | 6 | medical | 0.168169 | 0.102248 | 0.234089 |
+| purpose | 7 | moving | 0.163033 | 0.099252 | 0.226813 |
+| purpose | 8 | other | 0.163797 | 0.099443 | 0.228151 |
+| purpose | 10 | small_business | 0.229153 | 0.154131 | 0.304175 |
+| purpose | 11 | vacation | 0.153064 | 0.092697 | 0.213431 |
+| purpose | 12 | wedding | 0.128301 | 0.076902 | 0.179699 |
+
+### ice_curves
+
+| feature | grid_value | ice_row | model_probability |
+| --- | --- | --- | --- |
+| loan_amnt | 1,000 | 0 | 0.082967 |
+| loan_amnt | 1,000 | 1 | 0.17908 |
+| loan_amnt | 1,000 | 2 | 0.117673 |
+| loan_amnt | 1,000 | 3 | 0.062811 |
+| loan_amnt | 1,000 | 4 | 0.105501 |
+| loan_amnt | 1,000 | 5 | 0.038189 |
+| loan_amnt | 1,000 | 6 | 0.063807 |
+| loan_amnt | 1,000 | 7 | 0.116898 |
+| loan_amnt | 1,000 | 8 | 0.08405 |
+| loan_amnt | 1,000 | 9 | 0.064168 |
+| loan_amnt | 4,000 | 0 | 0.11523 |
+| loan_amnt | 4,000 | 1 | 0.203544 |
+| loan_amnt | 4,000 | 2 | 0.183731 |
+| loan_amnt | 4,000 | 3 | 0.083273 |
+| loan_amnt | 4,000 | 4 | 0.158569 |
+| loan_amnt | 4,000 | 5 | 0.053575 |
+| loan_amnt | 4,000 | 6 | 0.062387 |
+| loan_amnt | 4,000 | 7 | 0.156577 |
+| loan_amnt | 4,000 | 8 | 0.123519 |
+| loan_amnt | 4,000 | 9 | 0.080305 |
+| loan_amnt | 5,000 | 0 | 0.11523 |
+| loan_amnt | 5,000 | 1 | 0.203544 |
+| loan_amnt | 5,000 | 2 | 0.183731 |
+| loan_amnt | 5,000 | 3 | 0.083273 |
+| loan_amnt | 5,000 | 4 | 0.158569 |
+| loan_amnt | 5,000 | 5 | 0.053575 |
+| loan_amnt | 5,000 | 6 | 0.062387 |
+| loan_amnt | 5,000 | 7 | 0.156577 |
+| loan_amnt | 5,000 | 8 | 0.123519 |
+| loan_amnt | 5,000 | 9 | 0.080305 |
+| loan_amnt | 6,200 | 0 | 0.12383 |
+| loan_amnt | 6,200 | 1 | 0.202561 |
+| loan_amnt | 6,200 | 2 | 0.183295 |
+| loan_amnt | 6,200 | 3 | 0.080548 |
+| loan_amnt | 6,200 | 4 | 0.167104 |
+| loan_amnt | 6,200 | 5 | 0.054265 |
+| loan_amnt | 6,200 | 6 | 0.060917 |
+| loan_amnt | 6,200 | 7 | 0.160039 |
+| loan_amnt | 6,200 | 8 | 0.120794 |
+| loan_amnt | 6,200 | 9 | 0.08009 |
+| loan_amnt | 7,553.571429 | 0 | 0.149855 |
+| loan_amnt | 7,553.571429 | 1 | 0.24154 |
+| loan_amnt | 7,553.571429 | 2 | 0.190559 |
+| loan_amnt | 7,553.571429 | 3 | 0.080448 |
+| loan_amnt | 7,553.571429 | 4 | 0.171188 |
+| loan_amnt | 7,553.571429 | 5 | 0.060354 |
+| loan_amnt | 7,553.571429 | 6 | 0.060983 |
+| loan_amnt | 7,553.571429 | 7 | 0.165308 |
+| loan_amnt | 7,553.571429 | 8 | 0.121692 |
+| loan_amnt | 7,553.571429 | 9 | 0.087559 |
+| loan_amnt | 8,500 | 0 | 0.151832 |
+| loan_amnt | 8,500 | 1 | 0.243149 |
+| loan_amnt | 8,500 | 2 | 0.191205 |
+| loan_amnt | 8,500 | 3 | 0.081888 |
+| loan_amnt | 8,500 | 4 | 0.171188 |
+| loan_amnt | 8,500 | 5 | 0.060853 |
+| loan_amnt | 8,500 | 6 | 0.060983 |
+| loan_amnt | 8,500 | 7 | 0.171843 |
+| loan_amnt | 8,500 | 8 | 0.121692 |
+| loan_amnt | 8,500 | 9 | 0.087559 |
+| loan_amnt | 10,000 | 0 | 0.161192 |
+| loan_amnt | 10,000 | 1 | 0.247358 |
+| loan_amnt | 10,000 | 2 | 0.193175 |
+| loan_amnt | 10,000 | 3 | 0.082698 |
+| loan_amnt | 10,000 | 4 | 0.168696 |
+| loan_amnt | 10,000 | 5 | 0.065991 |
+| loan_amnt | 10,000 | 6 | 0.059158 |
+| loan_amnt | 10,000 | 7 | 0.180477 |
+| loan_amnt | 10,000 | 8 | 0.122294 |
+| loan_amnt | 10,000 | 9 | 0.08921 |
+| loan_amnt | 10,000 | 0 | 0.161192 |
+| loan_amnt | 10,000 | 1 | 0.247358 |
+| loan_amnt | 10,000 | 2 | 0.193175 |
+| loan_amnt | 10,000 | 3 | 0.082698 |
+| loan_amnt | 10,000 | 4 | 0.168696 |
+| loan_amnt | 10,000 | 5 | 0.065991 |
+| loan_amnt | 10,000 | 6 | 0.059158 |
+| loan_amnt | 10,000 | 7 | 0.180477 |
+| loan_amnt | 10,000 | 8 | 0.122294 |
+| loan_amnt | 10,000 | 9 | 0.08921 |
+| loan_amnt | 12,000 | 0 | 0.173495 |
+| loan_amnt | 12,000 | 1 | 0.256504 |
+| loan_amnt | 12,000 | 2 | 0.194134 |
+| loan_amnt | 12,000 | 3 | 0.082698 |
+| loan_amnt | 12,000 | 4 | 0.167367 |
+| loan_amnt | 12,000 | 5 | 0.068503 |
+| loan_amnt | 12,000 | 6 | 0.059158 |
+| loan_amnt | 12,000 | 7 | 0.200827 |
+| loan_amnt | 12,000 | 8 | 0.122294 |
+| loan_amnt | 12,000 | 9 | 0.08921 |
+| loan_amnt | 13,000 | 0 | 0.181327 |
+| loan_amnt | 13,000 | 1 | 0.267608 |
+| loan_amnt | 13,000 | 2 | 0.194134 |
+| loan_amnt | 13,000 | 3 | 0.082698 |
+| loan_amnt | 13,000 | 4 | 0.167367 |
+| loan_amnt | 13,000 | 5 | 0.070261 |
+| loan_amnt | 13,000 | 6 | 0.059137 |
+| loan_amnt | 13,000 | 7 | 0.200827 |
+| loan_amnt | 13,000 | 8 | 0.122294 |
+| loan_amnt | 13,000 | 9 | 0.08921 |
+| loan_amnt | 15,000 | 0 | 0.206908 |
+| loan_amnt | 15,000 | 1 | 0.338439 |
+| loan_amnt | 15,000 | 2 | 0.193934 |
+| loan_amnt | 15,000 | 3 | 0.089483 |
+| loan_amnt | 15,000 | 4 | 0.173241 |
+| loan_amnt | 15,000 | 5 | 0.095608 |
+| loan_amnt | 15,000 | 6 | 0.057405 |
+| loan_amnt | 15,000 | 7 | 0.215198 |
+| loan_amnt | 15,000 | 8 | 0.125683 |
+| loan_amnt | 15,000 | 9 | 0.090172 |
+| loan_amnt | 17,587.5 | 0 | 0.206908 |
+| loan_amnt | 17,587.5 | 1 | 0.336602 |
+| loan_amnt | 17,587.5 | 2 | 0.193934 |
+| loan_amnt | 17,587.5 | 3 | 0.089483 |
+| loan_amnt | 17,587.5 | 4 | 0.173241 |
+| loan_amnt | 17,587.5 | 5 | 0.098743 |
+| loan_amnt | 17,587.5 | 6 | 0.057405 |
+| loan_amnt | 17,587.5 | 7 | 0.215198 |
+| loan_amnt | 17,587.5 | 8 | 0.125683 |
+| loan_amnt | 17,587.5 | 9 | 0.090172 |
+| loan_amnt | 20,000 | 0 | 0.2219 |
+| loan_amnt | 20,000 | 1 | 0.358914 |
+| loan_amnt | 20,000 | 2 | 0.197739 |
+| loan_amnt | 20,000 | 3 | 0.089764 |
+| loan_amnt | 20,000 | 4 | 0.173734 |
+| loan_amnt | 20,000 | 5 | 0.1018 |
+| loan_amnt | 20,000 | 6 | 0.057241 |
+| loan_amnt | 20,000 | 7 | 0.214809 |
+| loan_amnt | 20,000 | 8 | 0.126691 |
+| loan_amnt | 20,000 | 9 | 0.092357 |
+| loan_amnt | 25,000 | 0 | 0.25734 |
+| loan_amnt | 25,000 | 1 | 0.408184 |
+| loan_amnt | 25,000 | 2 | 0.23304 |
+| loan_amnt | 25,000 | 3 | 0.101172 |
+| loan_amnt | 25,000 | 4 | 0.178545 |
+| loan_amnt | 25,000 | 5 | 0.131352 |
+| loan_amnt | 25,000 | 6 | 0.062225 |
+| loan_amnt | 25,000 | 7 | 0.217068 |
+| loan_amnt | 25,000 | 8 | 0.130405 |
+| loan_amnt | 25,000 | 9 | 0.106006 |
+| loan_amnt | 35,000 | 0 | 0.273959 |
+| loan_amnt | 35,000 | 1 | 0.432322 |
+| loan_amnt | 35,000 | 2 | 0.261848 |
+| loan_amnt | 35,000 | 3 | 0.138904 |
+| loan_amnt | 35,000 | 4 | 0.212112 |
+| loan_amnt | 35,000 | 5 | 0.161013 |
+| loan_amnt | 35,000 | 6 | 0.100656 |
+| loan_amnt | 35,000 | 7 | 0.237073 |
+| loan_amnt | 35,000 | 8 | 0.186682 |
+| loan_amnt | 35,000 | 9 | 0.176795 |
+| annual_inc | 10,200 | 0 | 0.232629 |
+| annual_inc | 10,200 | 1 | 0.230549 |
+| annual_inc | 10,200 | 2 | 0.206925 |
+| annual_inc | 10,200 | 3 | 0.247174 |
+| annual_inc | 10,200 | 4 | 0.238576 |
+| annual_inc | 10,200 | 5 | 0.244102 |
+| annual_inc | 10,200 | 6 | 0.236399 |
+| annual_inc | 10,200 | 7 | 0.285733 |
+| annual_inc | 10,200 | 8 | 0.161806 |
+| annual_inc | 10,200 | 9 | 0.129556 |
+| annual_inc | 30,000 | 0 | 0.222311 |
+| annual_inc | 30,000 | 1 | 0.203916 |
+| annual_inc | 30,000 | 2 | 0.178079 |
+| annual_inc | 30,000 | 3 | 0.216996 |
+| annual_inc | 30,000 | 4 | 0.217524 |
+| annual_inc | 30,000 | 5 | 0.214799 |
+| annual_inc | 30,000 | 6 | 0.228819 |
+| annual_inc | 30,000 | 7 | 0.22395 |
+| annual_inc | 30,000 | 8 | 0.126871 |
+| annual_inc | 30,000 | 9 | 0.101555 |
+| annual_inc | 36,000 | 0 | 0.222311 |
+| annual_inc | 36,000 | 1 | 0.199476 |
+| annual_inc | 36,000 | 2 | 0.178079 |
+| annual_inc | 36,000 | 3 | 0.216996 |
+| annual_inc | 36,000 | 4 | 0.209245 |
+| annual_inc | 36,000 | 5 | 0.204771 |
+| annual_inc | 36,000 | 6 | 0.228819 |
+| annual_inc | 36,000 | 7 | 0.211153 |
+| annual_inc | 36,000 | 8 | 0.121764 |
+| annual_inc | 36,000 | 9 | 0.099067 |
+| annual_inc | 41,038.928571 | 0 | 0.212109 |
+| annual_inc | 41,038.928571 | 1 | 0.171963 |
+| annual_inc | 41,038.928571 | 2 | 0.165827 |
+| annual_inc | 41,038.928571 | 3 | 0.204033 |
+| annual_inc | 41,038.928571 | 4 | 0.206033 |
+| annual_inc | 41,038.928571 | 5 | 0.180685 |
+| annual_inc | 41,038.928571 | 6 | 0.216271 |
+| annual_inc | 41,038.928571 | 7 | 0.170794 |
+| annual_inc | 41,038.928571 | 8 | 0.1067 |
+| annual_inc | 41,038.928571 | 9 | 0.090355 |
+| annual_inc | 47,000 | 0 | 0.20092 |
+| annual_inc | 47,000 | 1 | 0.145515 |
+| annual_inc | 47,000 | 2 | 0.160986 |
+| annual_inc | 47,000 | 3 | 0.180778 |
+| annual_inc | 47,000 | 4 | 0.175832 |
+| annual_inc | 47,000 | 5 | 0.179763 |
+| annual_inc | 47,000 | 6 | 0.192766 |
+| annual_inc | 47,000 | 7 | 0.147147 |
+| annual_inc | 47,000 | 8 | 0.108343 |
+| annual_inc | 47,000 | 9 | 0.081194 |
+| annual_inc | 52,000 | 0 | 0.190503 |
+| annual_inc | 52,000 | 1 | 0.136214 |
+| annual_inc | 52,000 | 2 | 0.158917 |
+| annual_inc | 52,000 | 3 | 0.163874 |
+| annual_inc | 52,000 | 4 | 0.154062 |
+| annual_inc | 52,000 | 5 | 0.176004 |
+| annual_inc | 52,000 | 6 | 0.174954 |
+| annual_inc | 52,000 | 7 | 0.141485 |
+| annual_inc | 52,000 | 8 | 0.10864 |
+| annual_inc | 52,000 | 9 | 0.072717 |
+| annual_inc | 56,000 | 0 | 0.190503 |
+| annual_inc | 56,000 | 1 | 0.136214 |
+| annual_inc | 56,000 | 2 | 0.158917 |
+| annual_inc | 56,000 | 3 | 0.163874 |
+| annual_inc | 56,000 | 4 | 0.154062 |
+| annual_inc | 56,000 | 5 | 0.176004 |
+| annual_inc | 56,000 | 6 | 0.174954 |
+| annual_inc | 56,000 | 7 | 0.141485 |
+| annual_inc | 56,000 | 8 | 0.10864 |
+| annual_inc | 56,000 | 9 | 0.072717 |
+| annual_inc | 61,365.5 | 0 | 0.189571 |
+| annual_inc | 61,365.5 | 1 | 0.13442 |
+| annual_inc | 61,365.5 | 2 | 0.159328 |
+| annual_inc | 61,365.5 | 3 | 0.162549 |
+| annual_inc | 61,365.5 | 4 | 0.152868 |
+| annual_inc | 61,365.5 | 5 | 0.177416 |
+| annual_inc | 61,365.5 | 6 | 0.174469 |
+| annual_inc | 61,365.5 | 7 | 0.140937 |
+| annual_inc | 61,365.5 | 8 | 0.103907 |
+| annual_inc | 61,365.5 | 9 | 0.070087 |
+| annual_inc | 68,000 | 0 | 0.159462 |
+| annual_inc | 68,000 | 1 | 0.12135 |
+| annual_inc | 68,000 | 2 | 0.131985 |
+| annual_inc | 68,000 | 3 | 0.151014 |
+| annual_inc | 68,000 | 4 | 0.136587 |
+| annual_inc | 68,000 | 5 | 0.144603 |
+| annual_inc | 68,000 | 6 | 0.153669 |
+| annual_inc | 68,000 | 7 | 0.132144 |
+| annual_inc | 68,000 | 8 | 0.104077 |
+| annual_inc | 68,000 | 9 | 0.06788 |
+| annual_inc | 74,093.428571 | 0 | 0.150148 |
+| annual_inc | 74,093.428571 | 1 | 0.11694 |
+| annual_inc | 74,093.428571 | 2 | 0.122876 |
+| annual_inc | 74,093.428571 | 3 | 0.150058 |
+| annual_inc | 74,093.428571 | 4 | 0.133246 |
+| annual_inc | 74,093.428571 | 5 | 0.126721 |
+| annual_inc | 74,093.428571 | 6 | 0.147349 |
+| annual_inc | 74,093.428571 | 7 | 0.129021 |
+| annual_inc | 74,093.428571 | 8 | 0.103671 |
+| annual_inc | 74,093.428571 | 9 | 0.065758 |
+| annual_inc | 80,000 | 0 | 0.141315 |
+| annual_inc | 80,000 | 1 | 0.107118 |
+| annual_inc | 80,000 | 2 | 0.111988 |
+| annual_inc | 80,000 | 3 | 0.13916 |
+| annual_inc | 80,000 | 4 | 0.124776 |
+| annual_inc | 80,000 | 5 | 0.123781 |
+| annual_inc | 80,000 | 6 | 0.137734 |
+| annual_inc | 80,000 | 7 | 0.123188 |
+| annual_inc | 80,000 | 8 | 0.103983 |
+| annual_inc | 80,000 | 9 | 0.061214 |
+| annual_inc | 90,000 | 0 | 0.130675 |
+| annual_inc | 90,000 | 1 | 0.098592 |
+| annual_inc | 90,000 | 2 | 0.10517 |
+| annual_inc | 90,000 | 3 | 0.132069 |
+| annual_inc | 90,000 | 4 | 0.120881 |
+| annual_inc | 90,000 | 5 | 0.123092 |
+| annual_inc | 90,000 | 6 | 0.122312 |
+| annual_inc | 90,000 | 7 | 0.115203 |
+| annual_inc | 90,000 | 8 | 0.100035 |
+| annual_inc | 90,000 | 9 | 0.058955 |
+| annual_inc | 105,000 | 0 | 0.119375 |
+| annual_inc | 105,000 | 1 | 0.086398 |
+| annual_inc | 105,000 | 2 | 0.106069 |
+| annual_inc | 105,000 | 3 | 0.134725 |
+| annual_inc | 105,000 | 4 | 0.110499 |
+| annual_inc | 105,000 | 5 | 0.116804 |
+| annual_inc | 105,000 | 6 | 0.116115 |
+| annual_inc | 105,000 | 7 | 0.110832 |
+| annual_inc | 105,000 | 8 | 0.090305 |
+| annual_inc | 105,000 | 9 | 0.052957 |
+| annual_inc | 135,000 | 0 | 0.113011 |
+| annual_inc | 135,000 | 1 | 0.082433 |
+| annual_inc | 135,000 | 2 | 0.100334 |
+| annual_inc | 135,000 | 3 | 0.134725 |
+| annual_inc | 135,000 | 4 | 0.104552 |
+| annual_inc | 135,000 | 5 | 0.111521 |
+| annual_inc | 135,000 | 6 | 0.114187 |
+| annual_inc | 135,000 | 7 | 0.109447 |
+| annual_inc | 135,000 | 8 | 0.090305 |
+| annual_inc | 135,000 | 9 | 0.050814 |
+| annual_inc | 619,000 | 0 | 0.109317 |
+| annual_inc | 619,000 | 1 | 0.075374 |
+| annual_inc | 619,000 | 2 | 0.10669 |
+| annual_inc | 619,000 | 3 | 0.147768 |
+| annual_inc | 619,000 | 4 | 0.114382 |
+| annual_inc | 619,000 | 5 | 0.132845 |
+| annual_inc | 619,000 | 6 | 0.112812 |
+| annual_inc | 619,000 | 7 | 0.113427 |
+| annual_inc | 619,000 | 8 | 0.112053 |
+| annual_inc | 619,000 | 9 | 0.049944 |
+| dti | 0 | 0 | 0.060598 |
+| dti | 0 | 1 | 0.047654 |
+| dti | 0 | 2 | 0.034042 |
+| dti | 0 | 3 | 0.12715 |
+| dti | 0 | 4 | 0.130834 |
+| dti | 0 | 5 | 0.129564 |
+| dti | 0 | 6 | 0.131825 |
+| dti | 0 | 7 | 0.085932 |
+| dti | 0 | 8 | 0.113004 |
+| dti | 0 | 9 | 0.095179 |
+| dti | 5.344286 | 0 | 0.062591 |
+| dti | 5.344286 | 1 | 0.047654 |
+| dti | 5.344286 | 2 | 0.031305 |
+| dti | 5.344286 | 3 | 0.12715 |
+| dti | 5.344286 | 4 | 0.130834 |
+| dti | 5.344286 | 5 | 0.129564 |
+| dti | 5.344286 | 6 | 0.127915 |
+| dti | 5.344286 | 7 | 0.067737 |
+| dti | 5.344286 | 8 | 0.113004 |
+| dti | 5.344286 | 9 | 0.087289 |
+| dti | 7.7 | 0 | 0.063711 |
+| dti | 7.7 | 1 | 0.048647 |
+| dti | 7.7 | 2 | 0.031968 |
+| dti | 7.7 | 3 | 0.125185 |
+| dti | 7.7 | 4 | 0.130834 |
+| dti | 7.7 | 5 | 0.132025 |
+| dti | 7.7 | 6 | 0.13035 |
+| dti | 7.7 | 7 | 0.069117 |
+| dti | 7.7 | 8 | 0.115192 |
+| dti | 7.7 | 9 | 0.087289 |
+| dti | 9.630714 | 0 | 0.063698 |
+| dti | 9.630714 | 1 | 0.048637 |
+| dti | 9.630714 | 2 | 0.031961 |
+| dti | 9.630714 | 3 | 0.125979 |
+| dti | 9.630714 | 4 | 0.132643 |
+| dti | 9.630714 | 5 | 0.120942 |
+| dti | 9.630714 | 6 | 0.131326 |
+| dti | 9.630714 | 7 | 0.069117 |
+| dti | 9.630714 | 8 | 0.115192 |
+| dti | 9.630714 | 9 | 0.087289 |
+| dti | 11.077143 | 0 | 0.065126 |
+| dti | 11.077143 | 1 | 0.049475 |
+| dti | 11.077143 | 2 | 0.033695 |
+| dti | 11.077143 | 3 | 0.125548 |
+| dti | 11.077143 | 4 | 0.131628 |
+| dti | 11.077143 | 5 | 0.122021 |
+| dti | 11.077143 | 6 | 0.130765 |
+| dti | 11.077143 | 7 | 0.070997 |
+| dti | 11.077143 | 8 | 0.122473 |
+| dti | 11.077143 | 9 | 0.08973 |
+| dti | 12.921429 | 0 | 0.065126 |
+| dti | 12.921429 | 1 | 0.049475 |
+| dti | 12.921429 | 2 | 0.034866 |
+| dti | 12.921429 | 3 | 0.125548 |
+| dti | 12.921429 | 4 | 0.132653 |
+| dti | 12.921429 | 5 | 0.122021 |
+| dti | 12.921429 | 6 | 0.127953 |
+| dti | 12.921429 | 7 | 0.075116 |
+| dti | 12.921429 | 8 | 0.123437 |
+| dti | 12.921429 | 9 | 0.090463 |
+| dti | 14.22 | 0 | 0.065673 |
+| dti | 14.22 | 1 | 0.050905 |
+| dti | 14.22 | 2 | 0.037059 |
+| dti | 14.22 | 3 | 0.127139 |
+| dti | 14.22 | 4 | 0.131394 |
+| dti | 14.22 | 5 | 0.122102 |
+| dti | 14.22 | 6 | 0.125391 |
+| dti | 14.22 | 7 | 0.081353 |
+| dti | 14.22 | 8 | 0.129894 |
+| dti | 14.22 | 9 | 0.097631 |
+| dti | 15.8 | 0 | 0.067673 |
+| dti | 15.8 | 1 | 0.05244 |
+| dti | 15.8 | 2 | 0.038544 |
+| dti | 15.8 | 3 | 0.128861 |
+| dti | 15.8 | 4 | 0.136117 |
+| dti | 15.8 | 5 | 0.125856 |
+| dti | 15.8 | 6 | 0.131407 |
+| dti | 15.8 | 7 | 0.083887 |
+| dti | 15.8 | 8 | 0.131816 |
+| dti | 15.8 | 9 | 0.108381 |
+| dti | 17.287143 | 0 | 0.070967 |
+| dti | 17.287143 | 1 | 0.054303 |
+| dti | 17.287143 | 2 | 0.039933 |
+| dti | 17.287143 | 3 | 0.128544 |
+| dti | 17.287143 | 4 | 0.138317 |
+| dti | 17.287143 | 5 | 0.131158 |
+| dti | 17.287143 | 6 | 0.134979 |
+| dti | 17.287143 | 7 | 0.084866 |
+| dti | 17.287143 | 8 | 0.131816 |
+| dti | 17.287143 | 9 | 0.108381 |
+| dti | 19.214286 | 0 | 0.070967 |
+| dti | 19.214286 | 1 | 0.054303 |
+| dti | 19.214286 | 2 | 0.039933 |
+| dti | 19.214286 | 3 | 0.128544 |
+| dti | 19.214286 | 4 | 0.143235 |
+| dti | 19.214286 | 5 | 0.128084 |
+| dti | 19.214286 | 6 | 0.134979 |
+| dti | 19.214286 | 7 | 0.086581 |
+| dti | 19.214286 | 8 | 0.142454 |
+| dti | 19.214286 | 9 | 0.109576 |
+| dti | 21.055714 | 0 | 0.073353 |
+| dti | 21.055714 | 1 | 0.056391 |
+| dti | 21.055714 | 2 | 0.04146 |
+| dti | 21.055714 | 3 | 0.129302 |
+| dti | 21.055714 | 4 | 0.145667 |
+| dti | 21.055714 | 5 | 0.129496 |
+| dti | 21.055714 | 6 | 0.135356 |
+| dti | 21.055714 | 7 | 0.086581 |
+| dti | 21.055714 | 8 | 0.149479 |
+| dti | 21.055714 | 9 | 0.109377 |
+| dti | 23.115714 | 0 | 0.074449 |
+| dti | 23.115714 | 1 | 0.056391 |
+| dti | 23.115714 | 2 | 0.042101 |
+| dti | 23.115714 | 3 | 0.129535 |
+| dti | 23.115714 | 4 | 0.155164 |
+| dti | 23.115714 | 5 | 0.129646 |
+| dti | 23.115714 | 6 | 0.13709 |
+| dti | 23.115714 | 7 | 0.087124 |
+| dti | 23.115714 | 8 | 0.157809 |
+| dti | 23.115714 | 9 | 0.110047 |
+| dti | 25.025714 | 0 | 0.074449 |
+| dti | 25.025714 | 1 | 0.057134 |
+| dti | 25.025714 | 2 | 0.042101 |
+| dti | 25.025714 | 3 | 0.12944 |
+| dti | 25.025714 | 4 | 0.155164 |
+| dti | 25.025714 | 5 | 0.129646 |
+| dti | 25.025714 | 6 | 0.138388 |
+| dti | 25.025714 | 7 | 0.087124 |
+| dti | 25.025714 | 8 | 0.166518 |
+| dti | 25.025714 | 9 | 0.115003 |
+| dti | 27.952857 | 0 | 0.079459 |
+| dti | 27.952857 | 1 | 0.062755 |
+| dti | 27.952857 | 2 | 0.046012 |
+| dti | 27.952857 | 3 | 0.133972 |
+| dti | 27.952857 | 4 | 0.159475 |
+| dti | 27.952857 | 5 | 0.129804 |
+| dti | 27.952857 | 6 | 0.150329 |
+| dti | 27.952857 | 7 | 0.088776 |
+| dti | 27.952857 | 8 | 0.179292 |
+| dti | 27.952857 | 9 | 0.120144 |
+| dti | 34.99 | 0 | 0.079459 |
+| dti | 34.99 | 1 | 0.062755 |
+| dti | 34.99 | 2 | 0.046012 |
+| dti | 34.99 | 3 | 0.130554 |
+| dti | 34.99 | 4 | 0.1585 |
+| dti | 34.99 | 5 | 0.131575 |
+| dti | 34.99 | 6 | 0.151717 |
+| dti | 34.99 | 7 | 0.087029 |
+| dti | 34.99 | 8 | 0.179292 |
+| dti | 34.99 | 9 | 0.117346 |
+| revol_util | 0 | 0 | 0.1364 |
+| revol_util | 0 | 1 | 0.034008 |
+| revol_util | 0 | 2 | 0.101181 |
+| revol_util | 0 | 3 | 0.121073 |
+| revol_util | 0 | 4 | 0.070264 |
+| revol_util | 0 | 5 | 0.085763 |
+| revol_util | 0 | 6 | 0.233296 |
+| revol_util | 0 | 7 | 0.082379 |
+| revol_util | 0 | 8 | 0.136077 |
+| revol_util | 0 | 9 | 0.072684 |
+| revol_util | 21.071429 | 0 | 0.14128 |
+| revol_util | 21.071429 | 1 | 0.037767 |
+| revol_util | 21.071429 | 2 | 0.104576 |
+| revol_util | 21.071429 | 3 | 0.120427 |
+| revol_util | 21.071429 | 4 | 0.07504 |
+| revol_util | 21.071429 | 5 | 0.091489 |
+| revol_util | 21.071429 | 6 | 0.23994 |
+| revol_util | 21.071429 | 7 | 0.058077 |
+| revol_util | 21.071429 | 8 | 0.142214 |
+| revol_util | 21.071429 | 9 | 0.070878 |
+| revol_util | 29.571429 | 0 | 0.144432 |
+| revol_util | 29.571429 | 1 | 0.037767 |
+| revol_util | 29.571429 | 2 | 0.104576 |
+| revol_util | 29.571429 | 3 | 0.120427 |
+| revol_util | 29.571429 | 4 | 0.07504 |
+| revol_util | 29.571429 | 5 | 0.091489 |
+| revol_util | 29.571429 | 6 | 0.246584 |
+| revol_util | 29.571429 | 7 | 0.055178 |
+| revol_util | 29.571429 | 8 | 0.142214 |
+| revol_util | 29.571429 | 9 | 0.070878 |
+| revol_util | 37.907143 | 0 | 0.144432 |
+| revol_util | 37.907143 | 1 | 0.037767 |
+| revol_util | 37.907143 | 2 | 0.104576 |
+| revol_util | 37.907143 | 3 | 0.122153 |
+| revol_util | 37.907143 | 4 | 0.07504 |
+| revol_util | 37.907143 | 5 | 0.091489 |
+| revol_util | 37.907143 | 6 | 0.246584 |
+| revol_util | 37.907143 | 7 | 0.055178 |
+| revol_util | 37.907143 | 8 | 0.142214 |
+| revol_util | 37.907143 | 9 | 0.070878 |
+| revol_util | 42.7 | 0 | 0.144432 |
+| revol_util | 42.7 | 1 | 0.037767 |
+| revol_util | 42.7 | 2 | 0.104576 |
+| revol_util | 42.7 | 3 | 0.122153 |
+| revol_util | 42.7 | 4 | 0.07504 |
+| revol_util | 42.7 | 5 | 0.091489 |
+| revol_util | 42.7 | 6 | 0.246584 |
+| revol_util | 42.7 | 7 | 0.055178 |
+| revol_util | 42.7 | 8 | 0.142214 |
+| revol_util | 42.7 | 9 | 0.070878 |
+| revol_util | 48.9 | 0 | 0.144143 |
+| revol_util | 48.9 | 1 | 0.038204 |
+| revol_util | 48.9 | 2 | 0.106738 |
+| revol_util | 48.9 | 3 | 0.127742 |
+| revol_util | 48.9 | 4 | 0.076764 |
+| revol_util | 48.9 | 5 | 0.09305 |
+| revol_util | 48.9 | 6 | 0.247728 |
+| revol_util | 48.9 | 7 | 0.055667 |
+| revol_util | 48.9 | 8 | 0.143258 |
+| revol_util | 48.9 | 9 | 0.072153 |
+| revol_util | 53.514286 | 0 | 0.144143 |
+| revol_util | 53.514286 | 1 | 0.038913 |
+| revol_util | 53.514286 | 2 | 0.106738 |
+| revol_util | 53.514286 | 3 | 0.127742 |
+| revol_util | 53.514286 | 4 | 0.076764 |
+| revol_util | 53.514286 | 5 | 0.09305 |
+| revol_util | 53.514286 | 6 | 0.247728 |
+| revol_util | 53.514286 | 7 | 0.056681 |
+| revol_util | 53.514286 | 8 | 0.143258 |
+| revol_util | 53.514286 | 9 | 0.072153 |
+| revol_util | 58.85 | 0 | 0.144855 |
+| revol_util | 58.85 | 1 | 0.038913 |
+| revol_util | 58.85 | 2 | 0.106738 |
+| revol_util | 58.85 | 3 | 0.127742 |
+| revol_util | 58.85 | 4 | 0.076764 |
+| revol_util | 58.85 | 5 | 0.093537 |
+| revol_util | 58.85 | 6 | 0.247728 |
+| revol_util | 58.85 | 7 | 0.056681 |
+| revol_util | 58.85 | 8 | 0.143966 |
+| revol_util | 58.85 | 9 | 0.072153 |
+| revol_util | 64.3 | 0 | 0.144855 |
+| revol_util | 64.3 | 1 | 0.038997 |
+| revol_util | 64.3 | 2 | 0.105062 |
+| revol_util | 64.3 | 3 | 0.127742 |
+| revol_util | 64.3 | 4 | 0.077537 |
+| revol_util | 64.3 | 5 | 0.093537 |
+| revol_util | 64.3 | 6 | 0.244443 |
+| revol_util | 64.3 | 7 | 0.056681 |
+| revol_util | 64.3 | 8 | 0.143966 |
+| revol_util | 64.3 | 9 | 0.072153 |
+| revol_util | 68.4 | 0 | 0.152643 |
+| revol_util | 68.4 | 1 | 0.049728 |
+| revol_util | 68.4 | 2 | 0.1137 |
+| revol_util | 68.4 | 3 | 0.127654 |
+| revol_util | 68.4 | 4 | 0.085218 |
+| revol_util | 68.4 | 5 | 0.099555 |
+| revol_util | 68.4 | 6 | 0.245907 |
+| revol_util | 68.4 | 7 | 0.060623 |
+| revol_util | 68.4 | 8 | 0.149413 |
+| revol_util | 68.4 | 9 | 0.079379 |
+| revol_util | 73.5 | 0 | 0.149217 |
+| revol_util | 73.5 | 1 | 0.051497 |
+| revol_util | 73.5 | 2 | 0.114102 |
+| revol_util | 73.5 | 3 | 0.126133 |
+| revol_util | 73.5 | 4 | 0.084314 |
+| revol_util | 73.5 | 5 | 0.09984 |
+| revol_util | 73.5 | 6 | 0.243733 |
+| revol_util | 73.5 | 7 | 0.060494 |
+| revol_util | 73.5 | 8 | 0.147777 |
+| revol_util | 73.5 | 9 | 0.069884 |
+| revol_util | 78.4 | 0 | 0.158741 |
+| revol_util | 78.4 | 1 | 0.051497 |
+| revol_util | 78.4 | 2 | 0.116177 |
+| revol_util | 78.4 | 3 | 0.127638 |
+| revol_util | 78.4 | 4 | 0.085899 |
+| revol_util | 78.4 | 5 | 0.100131 |
+| revol_util | 78.4 | 6 | 0.243733 |
+| revol_util | 78.4 | 7 | 0.061167 |
+| revol_util | 78.4 | 8 | 0.148184 |
+| revol_util | 78.4 | 9 | 0.070277 |
+| revol_util | 84.757143 | 0 | 0.180127 |
+| revol_util | 84.757143 | 1 | 0.05374 |
+| revol_util | 84.757143 | 2 | 0.11965 |
+| revol_util | 84.757143 | 3 | 0.128663 |
+| revol_util | 84.757143 | 4 | 0.09263 |
+| revol_util | 84.757143 | 5 | 0.10188 |
+| revol_util | 84.757143 | 6 | 0.243733 |
+| revol_util | 84.757143 | 7 | 0.061167 |
+| revol_util | 84.757143 | 8 | 0.156014 |
+| revol_util | 84.757143 | 9 | 0.070277 |
+| revol_util | 91.1 | 0 | 0.203362 |
+| revol_util | 91.1 | 1 | 0.059281 |
+| revol_util | 91.1 | 2 | 0.127711 |
+| revol_util | 91.1 | 3 | 0.133108 |
+| revol_util | 91.1 | 4 | 0.102071 |
+| revol_util | 91.1 | 5 | 0.108569 |
+| revol_util | 91.1 | 6 | 0.253153 |
+| revol_util | 91.1 | 7 | 0.068808 |
+| revol_util | 91.1 | 8 | 0.168983 |
+| revol_util | 91.1 | 9 | 0.073608 |
+| revol_util | 99.8 | 0 | 0.288123 |
+| revol_util | 99.8 | 1 | 0.077317 |
+| revol_util | 99.8 | 2 | 0.136963 |
+| revol_util | 99.8 | 3 | 0.126179 |
+| revol_util | 99.8 | 4 | 0.106451 |
+| revol_util | 99.8 | 5 | 0.121714 |
+| revol_util | 99.8 | 6 | 0.278601 |
+| revol_util | 99.8 | 7 | 0.080527 |
+| revol_util | 99.8 | 8 | 0.19772 |
+| revol_util | 99.8 | 9 | 0.093027 |
+| revol_bal | 0 | 0 | 0.112704 |
+| revol_bal | 0 | 1 | 0.258211 |
+| revol_bal | 0 | 2 | 0.191148 |
+| revol_bal | 0 | 3 | 0.227471 |
+| revol_bal | 0 | 4 | 0.159771 |
+| revol_bal | 0 | 5 | 0.095568 |
+| revol_bal | 0 | 6 | 0.202077 |
+| revol_bal | 0 | 7 | 0.204132 |
+| revol_bal | 0 | 8 | 0.111808 |
+| revol_bal | 0 | 9 | 0.179438 |
+| revol_bal | 2,798.357143 | 0 | 0.081421 |
+| revol_bal | 2,798.357143 | 1 | 0.223565 |
+| revol_bal | 2,798.357143 | 2 | 0.19599 |
+| revol_bal | 2,798.357143 | 3 | 0.167088 |
+| revol_bal | 2,798.357143 | 4 | 0.121585 |
+| revol_bal | 2,798.357143 | 5 | 0.088563 |
+| revol_bal | 2,798.357143 | 6 | 0.195581 |
+| revol_bal | 2,798.357143 | 7 | 0.184843 |
+| revol_bal | 2,798.357143 | 8 | 0.118898 |
+| revol_bal | 2,798.357143 | 9 | 0.12071 |
+| revol_bal | 4,674.571429 | 0 | 0.080022 |
+| revol_bal | 4,674.571429 | 1 | 0.223565 |
+| revol_bal | 4,674.571429 | 2 | 0.19599 |
+| revol_bal | 4,674.571429 | 3 | 0.166031 |
+| revol_bal | 4,674.571429 | 4 | 0.118542 |
+| revol_bal | 4,674.571429 | 5 | 0.088563 |
+| revol_bal | 4,674.571429 | 6 | 0.190458 |
+| revol_bal | 4,674.571429 | 7 | 0.184843 |
+| revol_bal | 4,674.571429 | 8 | 0.118898 |
+| revol_bal | 4,674.571429 | 9 | 0.117864 |
+| revol_bal | 6,142.5 | 0 | 0.080022 |
+| revol_bal | 6,142.5 | 1 | 0.223565 |
+| revol_bal | 6,142.5 | 2 | 0.192084 |
+| revol_bal | 6,142.5 | 3 | 0.171619 |
+| revol_bal | 6,142.5 | 4 | 0.118542 |
+| revol_bal | 6,142.5 | 5 | 0.088563 |
+| revol_bal | 6,142.5 | 6 | 0.194159 |
+| revol_bal | 6,142.5 | 7 | 0.180686 |
+| revol_bal | 6,142.5 | 8 | 0.118898 |
+| revol_bal | 6,142.5 | 9 | 0.120564 |
+| revol_bal | 7,366 | 0 | 0.075858 |
+| revol_bal | 7,366 | 1 | 0.218956 |
+| revol_bal | 7,366 | 2 | 0.176115 |
+| revol_bal | 7,366 | 3 | 0.164941 |
+| revol_bal | 7,366 | 4 | 0.106538 |
+| revol_bal | 7,366 | 5 | 0.088563 |
+| revol_bal | 7,366 | 6 | 0.194159 |
+| revol_bal | 7,366 | 7 | 0.171356 |
+| revol_bal | 7,366 | 8 | 0.116854 |
+| revol_bal | 7,366 | 9 | 0.120564 |
+| revol_bal | 8,750 | 0 | 0.075399 |
+| revol_bal | 8,750 | 1 | 0.196905 |
+| revol_bal | 8,750 | 2 | 0.166237 |
+| revol_bal | 8,750 | 3 | 0.167027 |
+| revol_bal | 8,750 | 4 | 0.096708 |
+| revol_bal | 8,750 | 5 | 0.088563 |
+| revol_bal | 8,750 | 6 | 0.193333 |
+| revol_bal | 8,750 | 7 | 0.172384 |
+| revol_bal | 8,750 | 8 | 0.106622 |
+| revol_bal | 8,750 | 9 | 0.123531 |
+| revol_bal | 10,037.428571 | 0 | 0.073561 |
+| revol_bal | 10,037.428571 | 1 | 0.195906 |
+| revol_bal | 10,037.428571 | 2 | 0.161322 |
+| revol_bal | 10,037.428571 | 3 | 0.169316 |
+| revol_bal | 10,037.428571 | 4 | 0.091608 |
+| revol_bal | 10,037.428571 | 5 | 0.088563 |
+| revol_bal | 10,037.428571 | 6 | 0.200277 |
+| revol_bal | 10,037.428571 | 7 | 0.177877 |
+| revol_bal | 10,037.428571 | 8 | 0.105367 |
+| revol_bal | 10,037.428571 | 9 | 0.125565 |
+| revol_bal | 11,470.5 | 0 | 0.072674 |
+| revol_bal | 11,470.5 | 1 | 0.188527 |
+| revol_bal | 11,470.5 | 2 | 0.1295 |
+| revol_bal | 11,470.5 | 3 | 0.171613 |
+| revol_bal | 11,470.5 | 4 | 0.087207 |
+| revol_bal | 11,470.5 | 5 | 0.088686 |
+| revol_bal | 11,470.5 | 6 | 0.211034 |
+| revol_bal | 11,470.5 | 7 | 0.171182 |
+| revol_bal | 11,470.5 | 8 | 0.10113 |
+| revol_bal | 11,470.5 | 9 | 0.130381 |
+| revol_bal | 13,272 | 0 | 0.072674 |
+| revol_bal | 13,272 | 1 | 0.182273 |
+| revol_bal | 13,272 | 2 | 0.120753 |
+| revol_bal | 13,272 | 3 | 0.17395 |
+| revol_bal | 13,272 | 4 | 0.082485 |
+| revol_bal | 13,272 | 5 | 0.0892 |
+| revol_bal | 13,272 | 6 | 0.213938 |
+| revol_bal | 13,272 | 7 | 0.177445 |
+| revol_bal | 13,272 | 8 | 0.09869 |
+| revol_bal | 13,272 | 9 | 0.135459 |
+| revol_bal | 15,198.071429 | 0 | 0.073935 |
+| revol_bal | 15,198.071429 | 1 | 0.182273 |
+| revol_bal | 15,198.071429 | 2 | 0.118583 |
+| revol_bal | 15,198.071429 | 3 | 0.176888 |
+| revol_bal | 15,198.071429 | 4 | 0.082485 |
+| revol_bal | 15,198.071429 | 5 | 0.090095 |
+| revol_bal | 15,198.071429 | 6 | 0.215788 |
+| revol_bal | 15,198.071429 | 7 | 0.177445 |
+| revol_bal | 15,198.071429 | 8 | 0.096873 |
+| revol_bal | 15,198.071429 | 9 | 0.135459 |
+| revol_bal | 17,889.714286 | 0 | 0.079686 |
+| revol_bal | 17,889.714286 | 1 | 0.170448 |
+| revol_bal | 17,889.714286 | 2 | 0.113542 |
+| revol_bal | 17,889.714286 | 3 | 0.177597 |
+| revol_bal | 17,889.714286 | 4 | 0.074992 |
+| revol_bal | 17,889.714286 | 5 | 0.090946 |
+| revol_bal | 17,889.714286 | 6 | 0.216612 |
+| revol_bal | 17,889.714286 | 7 | 0.177689 |
+| revol_bal | 17,889.714286 | 8 | 0.088867 |
+| revol_bal | 17,889.714286 | 9 | 0.137415 |
+| revol_bal | 20,731.428571 | 0 | 0.074023 |
+| revol_bal | 20,731.428571 | 1 | 0.170448 |
+| revol_bal | 20,731.428571 | 2 | 0.112681 |
+| revol_bal | 20,731.428571 | 3 | 0.177597 |
+| revol_bal | 20,731.428571 | 4 | 0.074992 |
+| revol_bal | 20,731.428571 | 5 | 0.094551 |
+| revol_bal | 20,731.428571 | 6 | 0.216612 |
+| revol_bal | 20,731.428571 | 7 | 0.177689 |
+| revol_bal | 20,731.428571 | 8 | 0.088867 |
+| revol_bal | 20,731.428571 | 9 | 0.137415 |
+| revol_bal | 26,237.857143 | 0 | 0.078621 |
+| revol_bal | 26,237.857143 | 1 | 0.163935 |
+| revol_bal | 26,237.857143 | 2 | 0.087926 |
+| revol_bal | 26,237.857143 | 3 | 0.184405 |
+| revol_bal | 26,237.857143 | 4 | 0.073474 |
+| revol_bal | 26,237.857143 | 5 | 0.094551 |
+| revol_bal | 26,237.857143 | 6 | 0.216612 |
+| revol_bal | 26,237.857143 | 7 | 0.177689 |
+| revol_bal | 26,237.857143 | 8 | 0.088867 |
+| revol_bal | 26,237.857143 | 9 | 0.141302 |
+| revol_bal | 33,513.428571 | 0 | 0.070313 |
+| revol_bal | 33,513.428571 | 1 | 0.148242 |
+| revol_bal | 33,513.428571 | 2 | 0.078433 |
+| revol_bal | 33,513.428571 | 3 | 0.197337 |
+| revol_bal | 33,513.428571 | 4 | 0.06932 |
+| revol_bal | 33,513.428571 | 5 | 0.094551 |
+| revol_bal | 33,513.428571 | 6 | 0.217919 |
+| revol_bal | 33,513.428571 | 7 | 0.178815 |
+| revol_bal | 33,513.428571 | 8 | 0.088867 |
+| revol_bal | 33,513.428571 | 9 | 0.144401 |
+| revol_bal | 271,068 | 0 | 0.086154 |
+| revol_bal | 271,068 | 1 | 0.132338 |
+| revol_bal | 271,068 | 2 | 0.078433 |
+| revol_bal | 271,068 | 3 | 0.229031 |
+| revol_bal | 271,068 | 4 | 0.071098 |
+| revol_bal | 271,068 | 5 | 0.094299 |
+| revol_bal | 271,068 | 6 | 0.265259 |
+| revol_bal | 271,068 | 7 | 0.204476 |
+| revol_bal | 271,068 | 8 | 0.087597 |
+| revol_bal | 271,068 | 9 | 0.170078 |
+| open_acc | 2 | 0 | 0.033521 |
+| open_acc | 2 | 1 | 0.201081 |
+| open_acc | 2 | 2 | 0.082158 |
+| open_acc | 2 | 3 | 0.06014 |
+| open_acc | 2 | 4 | 0.076066 |
+| open_acc | 2 | 5 | 0.174516 |
+| open_acc | 2 | 6 | 0.102451 |
+| open_acc | 2 | 7 | 0.098159 |
+| open_acc | 2 | 8 | 0.038808 |
+| open_acc | 2 | 9 | 0.078765 |
+| open_acc | 5 | 0 | 0.034471 |
+| open_acc | 5 | 1 | 0.201081 |
+| open_acc | 5 | 2 | 0.082158 |
+| open_acc | 5 | 3 | 0.061795 |
+| open_acc | 5 | 4 | 0.073837 |
+| open_acc | 5 | 5 | 0.181394 |
+| open_acc | 5 | 6 | 0.102451 |
+| open_acc | 5 | 7 | 0.102401 |
+| open_acc | 5 | 8 | 0.039901 |
+| open_acc | 5 | 9 | 0.078765 |
+| open_acc | 6 | 0 | 0.034471 |
+| open_acc | 6 | 1 | 0.201081 |
+| open_acc | 6 | 2 | 0.082158 |
+| open_acc | 6 | 3 | 0.061795 |
+| open_acc | 6 | 4 | 0.073837 |
+| open_acc | 6 | 5 | 0.181394 |
+| open_acc | 6 | 6 | 0.102451 |
+| open_acc | 6 | 7 | 0.102401 |
+| open_acc | 6 | 8 | 0.039901 |
+| open_acc | 6 | 9 | 0.078765 |
+| open_acc | 7 | 0 | 0.035716 |
+| open_acc | 7 | 1 | 0.202487 |
+| open_acc | 7 | 2 | 0.084622 |
+| open_acc | 7 | 3 | 0.075491 |
+| open_acc | 7 | 4 | 0.076682 |
+| open_acc | 7 | 5 | 0.181417 |
+| open_acc | 7 | 6 | 0.107597 |
+| open_acc | 7 | 7 | 0.108037 |
+| open_acc | 7 | 8 | 0.044423 |
+| open_acc | 7 | 9 | 0.083804 |
+| open_acc | 8 | 0 | 0.037991 |
+| open_acc | 8 | 1 | 0.206677 |
+| open_acc | 8 | 2 | 0.087322 |
+| open_acc | 8 | 3 | 0.077764 |
+| open_acc | 8 | 4 | 0.07951 |
+| open_acc | 8 | 5 | 0.192106 |
+| open_acc | 8 | 6 | 0.111838 |
+| open_acc | 8 | 7 | 0.111091 |
+| open_acc | 8 | 8 | 0.048634 |
+| open_acc | 8 | 9 | 0.087069 |
+| open_acc | 9 | 0 | 0.040487 |
+| open_acc | 9 | 1 | 0.207028 |
+| open_acc | 9 | 2 | 0.091924 |
+| open_acc | 9 | 3 | 0.082306 |
+| open_acc | 9 | 4 | 0.083671 |
+| open_acc | 9 | 5 | 0.198966 |
+| open_acc | 9 | 6 | 0.121417 |
+| open_acc | 9 | 7 | 0.115574 |
+| open_acc | 9 | 8 | 0.052561 |
+| open_acc | 9 | 9 | 0.095604 |
+| open_acc | 9 | 0 | 0.040487 |
+| open_acc | 9 | 1 | 0.207028 |
+| open_acc | 9 | 2 | 0.091924 |
+| open_acc | 9 | 3 | 0.082306 |
+| open_acc | 9 | 4 | 0.083671 |
+| open_acc | 9 | 5 | 0.198966 |
+| open_acc | 9 | 6 | 0.121417 |
+| open_acc | 9 | 7 | 0.115574 |
+| open_acc | 9 | 8 | 0.052561 |
+| open_acc | 9 | 9 | 0.095604 |
+| open_acc | 10 | 0 | 0.041105 |
+| open_acc | 10 | 1 | 0.209685 |
+| open_acc | 10 | 2 | 0.091924 |
+| open_acc | 10 | 3 | 0.083174 |
+| open_acc | 10 | 4 | 0.083671 |
+| open_acc | 10 | 5 | 0.198966 |
+| open_acc | 10 | 6 | 0.121417 |
+| open_acc | 10 | 7 | 0.115574 |
+| open_acc | 10 | 8 | 0.052561 |
+| open_acc | 10 | 9 | 0.095604 |
+| open_acc | 11 | 0 | 0.041799 |
+| open_acc | 11 | 1 | 0.197485 |
+| open_acc | 11 | 2 | 0.092346 |
+| open_acc | 11 | 3 | 0.083559 |
+| open_acc | 11 | 4 | 0.084058 |
+| open_acc | 11 | 5 | 0.19977 |
+| open_acc | 11 | 6 | 0.121956 |
+| open_acc | 11 | 7 | 0.11609 |
+| open_acc | 11 | 8 | 0.052813 |
+| open_acc | 11 | 9 | 0.096041 |
+| open_acc | 12 | 0 | 0.042745 |
+| open_acc | 12 | 1 | 0.201732 |
+| open_acc | 12 | 2 | 0.093836 |
+| open_acc | 12 | 3 | 0.086811 |
+| open_acc | 12 | 4 | 0.086408 |
+| open_acc | 12 | 5 | 0.208578 |
+| open_acc | 12 | 6 | 0.122929 |
+| open_acc | 12 | 7 | 0.116774 |
+| open_acc | 12 | 8 | 0.055629 |
+| open_acc | 12 | 9 | 0.101817 |
+| open_acc | 13 | 0 | 0.042745 |
+| open_acc | 13 | 1 | 0.201732 |
+| open_acc | 13 | 2 | 0.094714 |
+| open_acc | 13 | 3 | 0.086811 |
+| open_acc | 13 | 4 | 0.086408 |
+| open_acc | 13 | 5 | 0.210282 |
+| open_acc | 13 | 6 | 0.122929 |
+| open_acc | 13 | 7 | 0.116774 |
+| open_acc | 13 | 8 | 0.055629 |
+| open_acc | 13 | 9 | 0.101817 |
+| open_acc | 14 | 0 | 0.042756 |
+| open_acc | 14 | 1 | 0.203604 |
+| open_acc | 14 | 2 | 0.093821 |
+| open_acc | 14 | 3 | 0.086906 |
+| open_acc | 14 | 4 | 0.08643 |
+| open_acc | 14 | 5 | 0.214392 |
+| open_acc | 14 | 6 | 0.123555 |
+| open_acc | 14 | 7 | 0.116802 |
+| open_acc | 14 | 8 | 0.055644 |
+| open_acc | 14 | 9 | 0.101842 |
+| open_acc | 15 | 0 | 0.044732 |
+| open_acc | 15 | 1 | 0.203604 |
+| open_acc | 15 | 2 | 0.093821 |
+| open_acc | 15 | 3 | 0.089206 |
+| open_acc | 15 | 4 | 0.08643 |
+| open_acc | 15 | 5 | 0.21645 |
+| open_acc | 15 | 6 | 0.123555 |
+| open_acc | 15 | 7 | 0.116802 |
+| open_acc | 15 | 8 | 0.057479 |
+| open_acc | 15 | 9 | 0.101842 |
+| open_acc | 18 | 0 | 0.04897 |
+| open_acc | 18 | 1 | 0.202114 |
+| open_acc | 18 | 2 | 0.100876 |
+| open_acc | 18 | 3 | 0.08926 |
+| open_acc | 18 | 4 | 0.090557 |
+| open_acc | 18 | 5 | 0.225052 |
+| open_acc | 18 | 6 | 0.130572 |
+| open_acc | 18 | 7 | 0.116495 |
+| open_acc | 18 | 8 | 0.060361 |
+| open_acc | 18 | 9 | 0.102724 |
+| open_acc | 32 | 0 | 0.050651 |
+| open_acc | 32 | 1 | 0.216628 |
+| open_acc | 32 | 2 | 0.130679 |
+| open_acc | 32 | 3 | 0.119133 |
+| open_acc | 32 | 4 | 0.100269 |
+| open_acc | 32 | 5 | 0.236462 |
+| open_acc | 32 | 6 | 0.130572 |
+| open_acc | 32 | 7 | 0.125477 |
+| open_acc | 32 | 8 | 0.084437 |
+| open_acc | 32 | 9 | 0.125675 |
+| delinq_2yrs | 0 | 0 | 0.110349 |
+| delinq_2yrs | 0 | 1 | 0.054303 |
+| delinq_2yrs | 0 | 2 | 0.101562 |
+| delinq_2yrs | 0 | 3 | 0.064594 |
+| delinq_2yrs | 0 | 4 | 0.221191 |
+| delinq_2yrs | 0 | 5 | 0.095617 |
+| delinq_2yrs | 0 | 6 | 0.185742 |
+| delinq_2yrs | 0 | 7 | 0.063659 |
+| delinq_2yrs | 0 | 8 | 0.211782 |
+| delinq_2yrs | 0 | 9 | 0.14897 |
+| delinq_2yrs | 1 | 0 | 0.106063 |
+| delinq_2yrs | 1 | 1 | 0.054481 |
+| delinq_2yrs | 1 | 2 | 0.091913 |
+| delinq_2yrs | 1 | 3 | 0.063203 |
+| delinq_2yrs | 1 | 4 | 0.206148 |
+| delinq_2yrs | 1 | 5 | 0.093425 |
+| delinq_2yrs | 1 | 6 | 0.171381 |
+| delinq_2yrs | 1 | 7 | 0.063146 |
+| delinq_2yrs | 1 | 8 | 0.202489 |
+| delinq_2yrs | 1 | 9 | 0.147591 |
+| delinq_2yrs | 2 | 0 | 0.106063 |
+| delinq_2yrs | 2 | 1 | 0.057049 |
+| delinq_2yrs | 2 | 2 | 0.091913 |
+| delinq_2yrs | 2 | 3 | 0.063203 |
+| delinq_2yrs | 2 | 4 | 0.206148 |
+| delinq_2yrs | 2 | 5 | 0.093425 |
+| delinq_2yrs | 2 | 6 | 0.171381 |
+| delinq_2yrs | 2 | 7 | 0.063146 |
+| delinq_2yrs | 2 | 8 | 0.202489 |
+| delinq_2yrs | 2 | 9 | 0.147591 |
+| delinq_2yrs | 3 | 0 | 0.106063 |
+| delinq_2yrs | 3 | 1 | 0.057049 |
+| delinq_2yrs | 3 | 2 | 0.091913 |
+| delinq_2yrs | 3 | 3 | 0.063203 |
+| delinq_2yrs | 3 | 4 | 0.206148 |
+| delinq_2yrs | 3 | 5 | 0.093425 |
+| delinq_2yrs | 3 | 6 | 0.171381 |
+| delinq_2yrs | 3 | 7 | 0.063146 |
+| delinq_2yrs | 3 | 8 | 0.202489 |
+| delinq_2yrs | 3 | 9 | 0.147591 |
+| delinq_2yrs | 4 | 0 | 0.106063 |
+| delinq_2yrs | 4 | 1 | 0.057049 |
+| delinq_2yrs | 4 | 2 | 0.091913 |
+| delinq_2yrs | 4 | 3 | 0.063203 |
+| delinq_2yrs | 4 | 4 | 0.206148 |
+| delinq_2yrs | 4 | 5 | 0.093425 |
+| delinq_2yrs | 4 | 6 | 0.171381 |
+| delinq_2yrs | 4 | 7 | 0.063146 |
+| delinq_2yrs | 4 | 8 | 0.202489 |
+| delinq_2yrs | 4 | 9 | 0.147591 |
+| delinq_2yrs | 5 | 0 | 0.106063 |
+| delinq_2yrs | 5 | 1 | 0.057049 |
+| delinq_2yrs | 5 | 2 | 0.091913 |
+| delinq_2yrs | 5 | 3 | 0.063203 |
+| delinq_2yrs | 5 | 4 | 0.206148 |
+| delinq_2yrs | 5 | 5 | 0.093425 |
+| delinq_2yrs | 5 | 6 | 0.171381 |
+| delinq_2yrs | 5 | 7 | 0.063146 |
+| delinq_2yrs | 5 | 8 | 0.202489 |
+| delinq_2yrs | 5 | 9 | 0.147591 |
+| delinq_2yrs | 6 | 0 | 0.106063 |
+| delinq_2yrs | 6 | 1 | 0.057049 |
+| delinq_2yrs | 6 | 2 | 0.091913 |
+| delinq_2yrs | 6 | 3 | 0.063203 |
+| delinq_2yrs | 6 | 4 | 0.206148 |
+| delinq_2yrs | 6 | 5 | 0.093425 |
+| delinq_2yrs | 6 | 6 | 0.171381 |
+| delinq_2yrs | 6 | 7 | 0.063146 |
+| delinq_2yrs | 6 | 8 | 0.202489 |
+| delinq_2yrs | 6 | 9 | 0.147591 |
+| delinq_2yrs | 10 | 0 | 0.106063 |
+| delinq_2yrs | 10 | 1 | 0.057049 |
+| delinq_2yrs | 10 | 2 | 0.091913 |
+| delinq_2yrs | 10 | 3 | 0.063203 |
+| delinq_2yrs | 10 | 4 | 0.206148 |
+| delinq_2yrs | 10 | 5 | 0.093425 |
+| delinq_2yrs | 10 | 6 | 0.171381 |
+| delinq_2yrs | 10 | 7 | 0.063146 |
+| delinq_2yrs | 10 | 8 | 0.202489 |
+| delinq_2yrs | 10 | 9 | 0.147591 |
+| pub_rec_bankruptcies | 0 | 0 | 0.131863 |
+| pub_rec_bankruptcies | 0 | 1 | 0.064317 |
+| pub_rec_bankruptcies | 0 | 2 | 0.055414 |
+| pub_rec_bankruptcies | 0 | 3 | 0.076477 |
+| pub_rec_bankruptcies | 0 | 4 | 0.089749 |
+| pub_rec_bankruptcies | 0 | 5 | 0.162325 |
+| pub_rec_bankruptcies | 0 | 6 | 0.180168 |
+| pub_rec_bankruptcies | 0 | 7 | 0.15768 |
+| pub_rec_bankruptcies | 0 | 8 | 0.105813 |
+| pub_rec_bankruptcies | 0 | 9 | 0.053575 |
+| pub_rec_bankruptcies | 1 | 0 | 0.130933 |
+| pub_rec_bankruptcies | 1 | 1 | 0.066329 |
+| pub_rec_bankruptcies | 1 | 2 | 0.05457 |
+| pub_rec_bankruptcies | 1 | 3 | 0.077208 |
+| pub_rec_bankruptcies | 1 | 4 | 0.088764 |
+| pub_rec_bankruptcies | 1 | 5 | 0.162713 |
+| pub_rec_bankruptcies | 1 | 6 | 0.171395 |
+| pub_rec_bankruptcies | 1 | 7 | 0.157131 |
+| pub_rec_bankruptcies | 1 | 8 | 0.108281 |
+| pub_rec_bankruptcies | 1 | 9 | 0.051225 |
+| pub_rec_bankruptcies | 2 | 0 | 0.118686 |
+| pub_rec_bankruptcies | 2 | 1 | 0.059765 |
+| pub_rec_bankruptcies | 2 | 2 | 0.049062 |
+| pub_rec_bankruptcies | 2 | 3 | 0.069584 |
+| pub_rec_bankruptcies | 2 | 4 | 0.08017 |
+| pub_rec_bankruptcies | 2 | 5 | 0.147273 |
+| pub_rec_bankruptcies | 2 | 6 | 0.156043 |
+| pub_rec_bankruptcies | 2 | 7 | 0.142837 |
+| pub_rec_bankruptcies | 2 | 8 | 0.097914 |
+| pub_rec_bankruptcies | 2 | 9 | 0.046602 |
+| emp_length_years | 0 | 0 | 0.184713 |
+| emp_length_years | 0 | 1 | 0.13559 |
+| emp_length_years | 0 | 2 | 0.107592 |
+| emp_length_years | 0 | 3 | 0.105037 |
+| emp_length_years | 0 | 4 | 0.085843 |
+| emp_length_years | 0 | 5 | 0.068795 |
+| emp_length_years | 0 | 6 | 0.197712 |
+| emp_length_years | 0 | 7 | 0.075215 |
+| emp_length_years | 0 | 8 | 0.196967 |
+| emp_length_years | 0 | 9 | 0.132613 |
+| emp_length_years | 1 | 0 | 0.184713 |
+| emp_length_years | 1 | 1 | 0.13559 |
+| emp_length_years | 1 | 2 | 0.107916 |
+| emp_length_years | 1 | 3 | 0.105037 |
+| emp_length_years | 1 | 4 | 0.085843 |
+| emp_length_years | 1 | 5 | 0.069011 |
+| emp_length_years | 1 | 6 | 0.197712 |
+| emp_length_years | 1 | 7 | 0.075215 |
+| emp_length_years | 1 | 8 | 0.196967 |
+| emp_length_years | 1 | 9 | 0.132613 |
+| emp_length_years | 2 | 0 | 0.184713 |
+| emp_length_years | 2 | 1 | 0.13559 |
+| emp_length_years | 2 | 2 | 0.107916 |
+| emp_length_years | 2 | 3 | 0.106583 |
+| emp_length_years | 2 | 4 | 0.084014 |
+| emp_length_years | 2 | 5 | 0.069011 |
+| emp_length_years | 2 | 6 | 0.197712 |
+| emp_length_years | 2 | 7 | 0.075215 |
+| emp_length_years | 2 | 8 | 0.196967 |
+| emp_length_years | 2 | 9 | 0.132613 |
+| emp_length_years | 3 | 0 | 0.181523 |
+| emp_length_years | 3 | 1 | 0.129345 |
+| emp_length_years | 3 | 2 | 0.102481 |
+| emp_length_years | 3 | 3 | 0.103366 |
+| emp_length_years | 3 | 4 | 0.076259 |
+| emp_length_years | 3 | 5 | 0.067224 |
+| emp_length_years | 3 | 6 | 0.197492 |
+| emp_length_years | 3 | 7 | 0.074521 |
+| emp_length_years | 3 | 8 | 0.198751 |
+| emp_length_years | 3 | 9 | 0.132613 |
+| emp_length_years | 4 | 0 | 0.181322 |
+| emp_length_years | 4 | 1 | 0.129193 |
+| emp_length_years | 4 | 2 | 0.099465 |
+| emp_length_years | 4 | 3 | 0.103366 |
+| emp_length_years | 4 | 4 | 0.072401 |
+| emp_length_years | 4 | 5 | 0.06517 |
+| emp_length_years | 4 | 6 | 0.199892 |
+| emp_length_years | 4 | 7 | 0.074521 |
+| emp_length_years | 4 | 8 | 0.200189 |
+| emp_length_years | 4 | 9 | 0.132682 |
+| emp_length_years | 5 | 0 | 0.181322 |
+| emp_length_years | 5 | 1 | 0.129193 |
+| emp_length_years | 5 | 2 | 0.099465 |
+| emp_length_years | 5 | 3 | 0.103366 |
+| emp_length_years | 5 | 4 | 0.067687 |
+| emp_length_years | 5 | 5 | 0.061511 |
+| emp_length_years | 5 | 6 | 0.199892 |
+| emp_length_years | 5 | 7 | 0.074636 |
+| emp_length_years | 5 | 8 | 0.200189 |
+| emp_length_years | 5 | 9 | 0.135272 |
+| emp_length_years | 6 | 0 | 0.181322 |
+| emp_length_years | 6 | 1 | 0.136623 |
+| emp_length_years | 6 | 2 | 0.099961 |
+| emp_length_years | 6 | 3 | 0.103366 |
+| emp_length_years | 6 | 4 | 0.067687 |
+| emp_length_years | 6 | 5 | 0.061511 |
+| emp_length_years | 6 | 6 | 0.199892 |
+| emp_length_years | 6 | 7 | 0.082232 |
+| emp_length_years | 6 | 8 | 0.210527 |
+| emp_length_years | 6 | 9 | 0.135272 |
+| emp_length_years | 7 | 0 | 0.181322 |
+| emp_length_years | 7 | 1 | 0.134986 |
+| emp_length_years | 7 | 2 | 0.099961 |
+| emp_length_years | 7 | 3 | 0.102623 |
+| emp_length_years | 7 | 4 | 0.067182 |
+| emp_length_years | 7 | 5 | 0.061511 |
+| emp_length_years | 7 | 6 | 0.200536 |
+| emp_length_years | 7 | 7 | 0.086661 |
+| emp_length_years | 7 | 8 | 0.213402 |
+| emp_length_years | 7 | 9 | 0.133836 |
+| emp_length_years | 8 | 0 | 0.181703 |
+| emp_length_years | 8 | 1 | 0.136495 |
+| emp_length_years | 8 | 2 | 0.098103 |
+| emp_length_years | 8 | 3 | 0.098203 |
+| emp_length_years | 8 | 4 | 0.075281 |
+| emp_length_years | 8 | 5 | 0.06021 |
+| emp_length_years | 8 | 6 | 0.199373 |
+| emp_length_years | 8 | 7 | 0.086661 |
+| emp_length_years | 8 | 8 | 0.213402 |
+| emp_length_years | 8 | 9 | 0.133993 |
+| emp_length_years | 9 | 0 | 0.181703 |
+| emp_length_years | 9 | 1 | 0.136495 |
+| emp_length_years | 9 | 2 | 0.098103 |
+| emp_length_years | 9 | 3 | 0.098203 |
+| emp_length_years | 9 | 4 | 0.075281 |
+| emp_length_years | 9 | 5 | 0.06021 |
+| emp_length_years | 9 | 6 | 0.199373 |
+| emp_length_years | 9 | 7 | 0.086661 |
+| emp_length_years | 9 | 8 | 0.213402 |
+| emp_length_years | 9 | 9 | 0.133993 |
+| emp_length_years | 10 | 0 | 0.181703 |
+| emp_length_years | 10 | 1 | 0.13636 |
+| emp_length_years | 10 | 2 | 0.098103 |
+| emp_length_years | 10 | 3 | 0.098203 |
+| emp_length_years | 10 | 4 | 0.075281 |
+| emp_length_years | 10 | 5 | 0.06021 |
+| emp_length_years | 10 | 6 | 0.199373 |
+| emp_length_years | 10 | 7 | 0.088141 |
+| emp_length_years | 10 | 8 | 0.233303 |
+| emp_length_years | 10 | 9 | 0.133993 |
+| fico_mid | 662 | 0 | 0.197627 |
+| fico_mid | 662 | 1 | 0.148805 |
+| fico_mid | 662 | 2 | 0.111217 |
+| fico_mid | 662 | 3 | 0.103607 |
+| fico_mid | 662 | 4 | 0.10038 |
+| fico_mid | 662 | 5 | 0.175115 |
+| fico_mid | 662 | 6 | 0.190676 |
+| fico_mid | 662 | 7 | 0.170778 |
+| fico_mid | 662 | 8 | 0.237561 |
+| fico_mid | 662 | 9 | 0.169108 |
+| fico_mid | 667 | 0 | 0.190716 |
+| fico_mid | 667 | 1 | 0.139633 |
+| fico_mid | 667 | 2 | 0.103257 |
+| fico_mid | 667 | 3 | 0.10159 |
+| fico_mid | 667 | 4 | 0.090428 |
+| fico_mid | 667 | 5 | 0.1626 |
+| fico_mid | 667 | 6 | 0.147204 |
+| fico_mid | 667 | 7 | 0.163031 |
+| fico_mid | 667 | 8 | 0.236336 |
+| fico_mid | 667 | 9 | 0.154466 |
+| fico_mid | 672 | 0 | 0.188182 |
+| fico_mid | 672 | 1 | 0.136532 |
+| fico_mid | 672 | 2 | 0.09701 |
+| fico_mid | 672 | 3 | 0.100306 |
+| fico_mid | 672 | 4 | 0.083146 |
+| fico_mid | 672 | 5 | 0.159223 |
+| fico_mid | 672 | 6 | 0.147804 |
+| fico_mid | 672 | 7 | 0.162544 |
+| fico_mid | 672 | 8 | 0.235129 |
+| fico_mid | 672 | 9 | 0.155592 |
+| fico_mid | 677 | 0 | 0.172765 |
+| fico_mid | 677 | 1 | 0.126898 |
+| fico_mid | 677 | 2 | 0.088116 |
+| fico_mid | 677 | 3 | 0.090035 |
+| fico_mid | 677 | 4 | 0.071209 |
+| fico_mid | 677 | 5 | 0.124885 |
+| fico_mid | 677 | 6 | 0.123984 |
+| fico_mid | 677 | 7 | 0.13195 |
+| fico_mid | 677 | 8 | 0.220298 |
+| fico_mid | 677 | 9 | 0.155155 |
+| fico_mid | 682 | 0 | 0.172494 |
+| fico_mid | 682 | 1 | 0.125851 |
+| fico_mid | 682 | 2 | 0.088116 |
+| fico_mid | 682 | 3 | 0.090035 |
+| fico_mid | 682 | 4 | 0.071209 |
+| fico_mid | 682 | 5 | 0.122933 |
+| fico_mid | 682 | 6 | 0.123064 |
+| fico_mid | 682 | 7 | 0.129904 |
+| fico_mid | 682 | 8 | 0.220298 |
+| fico_mid | 682 | 9 | 0.154906 |
+| fico_mid | 682 | 0 | 0.172494 |
+| fico_mid | 682 | 1 | 0.125851 |
+| fico_mid | 682 | 2 | 0.088116 |
+| fico_mid | 682 | 3 | 0.090035 |
+| fico_mid | 682 | 4 | 0.071209 |
+| fico_mid | 682 | 5 | 0.122933 |
+| fico_mid | 682 | 6 | 0.123064 |
+| fico_mid | 682 | 7 | 0.129904 |
+| fico_mid | 682 | 8 | 0.220298 |
+| fico_mid | 682 | 9 | 0.154906 |
+| fico_mid | 692 | 0 | 0.158886 |
+| fico_mid | 692 | 1 | 0.11979 |
+| fico_mid | 692 | 2 | 0.074981 |
+| fico_mid | 692 | 3 | 0.083813 |
+| fico_mid | 692 | 4 | 0.059853 |
+| fico_mid | 692 | 5 | 0.102336 |
+| fico_mid | 692 | 6 | 0.109056 |
+| fico_mid | 692 | 7 | 0.12056 |
+| fico_mid | 692 | 8 | 0.20494 |
+| fico_mid | 692 | 9 | 0.148656 |
+| fico_mid | 692 | 0 | 0.158886 |
+| fico_mid | 692 | 1 | 0.11979 |
+| fico_mid | 692 | 2 | 0.074981 |
+| fico_mid | 692 | 3 | 0.083813 |
+| fico_mid | 692 | 4 | 0.059853 |
+| fico_mid | 692 | 5 | 0.102336 |
+| fico_mid | 692 | 6 | 0.109056 |
+| fico_mid | 692 | 7 | 0.12056 |
+| fico_mid | 692 | 8 | 0.20494 |
+| fico_mid | 692 | 9 | 0.148656 |
+| fico_mid | 697 | 0 | 0.157029 |
+| fico_mid | 697 | 1 | 0.119452 |
+| fico_mid | 697 | 2 | 0.074334 |
+| fico_mid | 697 | 3 | 0.084006 |
+| fico_mid | 697 | 4 | 0.059329 |
+| fico_mid | 697 | 5 | 0.099119 |
+| fico_mid | 697 | 6 | 0.106785 |
+| fico_mid | 697 | 7 | 0.116271 |
+| fico_mid | 697 | 8 | 0.20256 |
+| fico_mid | 697 | 9 | 0.149189 |
+| fico_mid | 702 | 0 | 0.126589 |
+| fico_mid | 702 | 1 | 0.105934 |
+| fico_mid | 702 | 2 | 0.068421 |
+| fico_mid | 702 | 3 | 0.086408 |
+| fico_mid | 702 | 4 | 0.054539 |
+| fico_mid | 702 | 5 | 0.086639 |
+| fico_mid | 702 | 6 | 0.097753 |
+| fico_mid | 702 | 7 | 0.102182 |
+| fico_mid | 702 | 8 | 0.175566 |
+| fico_mid | 702 | 9 | 0.129639 |
+| fico_mid | 712 | 0 | 0.112935 |
+| fico_mid | 712 | 1 | 0.112994 |
+| fico_mid | 712 | 2 | 0.063971 |
+| fico_mid | 712 | 3 | 0.087082 |
+| fico_mid | 712 | 4 | 0.050943 |
+| fico_mid | 712 | 5 | 0.07834 |
+| fico_mid | 712 | 6 | 0.09055 |
+| fico_mid | 712 | 7 | 0.090279 |
+| fico_mid | 712 | 8 | 0.148421 |
+| fico_mid | 712 | 9 | 0.124875 |
+| fico_mid | 722 | 0 | 0.106385 |
+| fico_mid | 722 | 1 | 0.10757 |
+| fico_mid | 722 | 2 | 0.058627 |
+| fico_mid | 722 | 3 | 0.073007 |
+| fico_mid | 722 | 4 | 0.04736 |
+| fico_mid | 722 | 5 | 0.068088 |
+| fico_mid | 722 | 6 | 0.080102 |
+| fico_mid | 722 | 7 | 0.081623 |
+| fico_mid | 722 | 8 | 0.121004 |
+| fico_mid | 722 | 9 | 0.11663 |
+| fico_mid | 732 | 0 | 0.101888 |
+| fico_mid | 732 | 1 | 0.092026 |
+| fico_mid | 732 | 2 | 0.051469 |
+| fico_mid | 732 | 3 | 0.061821 |
+| fico_mid | 732 | 4 | 0.041868 |
+| fico_mid | 732 | 5 | 0.057683 |
+| fico_mid | 732 | 6 | 0.06687 |
+| fico_mid | 732 | 7 | 0.068963 |
+| fico_mid | 732 | 8 | 0.114204 |
+| fico_mid | 732 | 9 | 0.108901 |
+| fico_mid | 752 | 0 | 0.082577 |
+| fico_mid | 752 | 1 | 0.076968 |
+| fico_mid | 752 | 2 | 0.039666 |
+| fico_mid | 752 | 3 | 0.0471 |
+| fico_mid | 752 | 4 | 0.032431 |
+| fico_mid | 752 | 5 | 0.043546 |
+| fico_mid | 752 | 6 | 0.048371 |
+| fico_mid | 752 | 7 | 0.047463 |
+| fico_mid | 752 | 8 | 0.098475 |
+| fico_mid | 752 | 9 | 0.09115 |
+| fico_mid | 827 | 0 | 0.050916 |
+| fico_mid | 827 | 1 | 0.036278 |
+| fico_mid | 827 | 2 | 0.019429 |
+| fico_mid | 827 | 3 | 0.028484 |
+| fico_mid | 827 | 4 | 0.01606 |
+| fico_mid | 827 | 5 | 0.024508 |
+| fico_mid | 827 | 6 | 0.03885 |
+| fico_mid | 827 | 7 | 0.024447 |
+| fico_mid | 827 | 8 | 0.060955 |
+| fico_mid | 827 | 9 | 0.046901 |
+| credit_history_years | 3 | 0 | 0.130312 |
+| credit_history_years | 3 | 1 | 0.073322 |
+| credit_history_years | 3 | 2 | 0.04061 |
+| credit_history_years | 3 | 3 | 0.02821 |
+| credit_history_years | 3 | 4 | 0.19259 |
+| credit_history_years | 3 | 5 | 0.11561 |
+| credit_history_years | 3 | 6 | 0.201859 |
+| credit_history_years | 3 | 7 | 0.137289 |
+| credit_history_years | 3 | 8 | 0.090978 |
+| credit_history_years | 3 | 9 | 0.15328 |
+| credit_history_years | 6.25 | 0 | 0.106872 |
+| credit_history_years | 6.25 | 1 | 0.066672 |
+| credit_history_years | 6.25 | 2 | 0.04184 |
+| credit_history_years | 6.25 | 3 | 0.024485 |
+| credit_history_years | 6.25 | 4 | 0.161764 |
+| credit_history_years | 6.25 | 5 | 0.086786 |
+| credit_history_years | 6.25 | 6 | 0.166847 |
+| credit_history_years | 6.25 | 7 | 0.123766 |
+| credit_history_years | 6.25 | 8 | 0.069806 |
+| credit_history_years | 6.25 | 9 | 0.146521 |
+| credit_history_years | 7.916667 | 0 | 0.103305 |
+| credit_history_years | 7.916667 | 1 | 0.064566 |
+| credit_history_years | 7.916667 | 2 | 0.043752 |
+| credit_history_years | 7.916667 | 3 | 0.024978 |
+| credit_history_years | 7.916667 | 4 | 0.15949 |
+| credit_history_years | 7.916667 | 5 | 0.083084 |
+| credit_history_years | 7.916667 | 6 | 0.161213 |
+| credit_history_years | 7.916667 | 7 | 0.123411 |
+| credit_history_years | 7.916667 | 8 | 0.062917 |
+| credit_history_years | 7.916667 | 9 | 0.142229 |
+| credit_history_years | 9.5 | 0 | 0.103305 |
+| credit_history_years | 9.5 | 1 | 0.064566 |
+| credit_history_years | 9.5 | 2 | 0.044812 |
+| credit_history_years | 9.5 | 3 | 0.024978 |
+| credit_history_years | 9.5 | 4 | 0.15949 |
+| credit_history_years | 9.5 | 5 | 0.083084 |
+| credit_history_years | 9.5 | 6 | 0.161213 |
+| credit_history_years | 9.5 | 7 | 0.123411 |
+| credit_history_years | 9.5 | 8 | 0.062917 |
+| credit_history_years | 9.5 | 9 | 0.145393 |
+| credit_history_years | 10.75 | 0 | 0.103305 |
+| credit_history_years | 10.75 | 1 | 0.064566 |
+| credit_history_years | 10.75 | 2 | 0.044642 |
+| credit_history_years | 10.75 | 3 | 0.024978 |
+| credit_history_years | 10.75 | 4 | 0.15949 |
+| credit_history_years | 10.75 | 5 | 0.080664 |
+| credit_history_years | 10.75 | 6 | 0.161213 |
+| credit_history_years | 10.75 | 7 | 0.123411 |
+| credit_history_years | 10.75 | 8 | 0.062917 |
+| credit_history_years | 10.75 | 9 | 0.145393 |
+| credit_history_years | 11.64881 | 0 | 0.100215 |
+| credit_history_years | 11.64881 | 1 | 0.068896 |
+| credit_history_years | 11.64881 | 2 | 0.050384 |
+| credit_history_years | 11.64881 | 3 | 0.024494 |
+| credit_history_years | 11.64881 | 4 | 0.15949 |
+| credit_history_years | 11.64881 | 5 | 0.079383 |
+| credit_history_years | 11.64881 | 6 | 0.161213 |
+| credit_history_years | 11.64881 | 7 | 0.130982 |
+| credit_history_years | 11.64881 | 8 | 0.0647 |
+| credit_history_years | 11.64881 | 9 | 0.154332 |
+| credit_history_years | 12.416667 | 0 | 0.099745 |
+| credit_history_years | 12.416667 | 1 | 0.069993 |
+| credit_history_years | 12.416667 | 2 | 0.050918 |
+| credit_history_years | 12.416667 | 3 | 0.025755 |
+| credit_history_years | 12.416667 | 4 | 0.15768 |
+| credit_history_years | 12.416667 | 5 | 0.079383 |
+| credit_history_years | 12.416667 | 6 | 0.160542 |
+| credit_history_years | 12.416667 | 7 | 0.136616 |
+| credit_history_years | 12.416667 | 8 | 0.065375 |
+| credit_history_years | 12.416667 | 9 | 0.154332 |
+| credit_history_years | 13.291667 | 0 | 0.099745 |
+| credit_history_years | 13.291667 | 1 | 0.071668 |
+| credit_history_years | 13.291667 | 2 | 0.054872 |
+| credit_history_years | 13.291667 | 3 | 0.025755 |
+| credit_history_years | 13.291667 | 4 | 0.15768 |
+| credit_history_years | 13.291667 | 5 | 0.061291 |
+| credit_history_years | 13.291667 | 6 | 0.160542 |
+| credit_history_years | 13.291667 | 7 | 0.138784 |
+| credit_history_years | 13.291667 | 8 | 0.066572 |
+| credit_history_years | 13.291667 | 9 | 0.169093 |
+| credit_history_years | 14.571429 | 0 | 0.099745 |
+| credit_history_years | 14.571429 | 1 | 0.072368 |
+| credit_history_years | 14.571429 | 2 | 0.055418 |
+| credit_history_years | 14.571429 | 3 | 0.025755 |
+| credit_history_years | 14.571429 | 4 | 0.15768 |
+| credit_history_years | 14.571429 | 5 | 0.061291 |
+| credit_history_years | 14.571429 | 6 | 0.159071 |
+| credit_history_years | 14.571429 | 7 | 0.141499 |
+| credit_history_years | 14.571429 | 8 | 0.067325 |
+| credit_history_years | 14.571429 | 9 | 0.17057 |
+| credit_history_years | 15.666667 | 0 | 0.099505 |
+| credit_history_years | 15.666667 | 1 | 0.072095 |
+| credit_history_years | 15.666667 | 2 | 0.055418 |
+| credit_history_years | 15.666667 | 3 | 0.026225 |
+| credit_history_years | 15.666667 | 4 | 0.15768 |
+| credit_history_years | 15.666667 | 5 | 0.060934 |
+| credit_history_years | 15.666667 | 6 | 0.159071 |
+| credit_history_years | 15.666667 | 7 | 0.140603 |
+| credit_history_years | 15.666667 | 8 | 0.066373 |
+| credit_history_years | 15.666667 | 9 | 0.169409 |
+| credit_history_years | 17.083333 | 0 | 0.099834 |
+| credit_history_years | 17.083333 | 1 | 0.070463 |
+| credit_history_years | 17.083333 | 2 | 0.055418 |
+| credit_history_years | 17.083333 | 3 | 0.028873 |
+| credit_history_years | 17.083333 | 4 | 0.155555 |
+| credit_history_years | 17.083333 | 5 | 0.060348 |
+| credit_history_years | 17.083333 | 6 | 0.157308 |
+| credit_history_years | 17.083333 | 7 | 0.140603 |
+| credit_history_years | 17.083333 | 8 | 0.065738 |
+| credit_history_years | 17.083333 | 9 | 0.169409 |
+| credit_history_years | 18.833333 | 0 | 0.092032 |
+| credit_history_years | 18.833333 | 1 | 0.07141 |
+| credit_history_years | 18.833333 | 2 | 0.055418 |
+| credit_history_years | 18.833333 | 3 | 0.029013 |
+| credit_history_years | 18.833333 | 4 | 0.150286 |
+| credit_history_years | 18.833333 | 5 | 0.060348 |
+| credit_history_years | 18.833333 | 6 | 0.160838 |
+| credit_history_years | 18.833333 | 7 | 0.140358 |
+| credit_history_years | 18.833333 | 8 | 0.064846 |
+| credit_history_years | 18.833333 | 9 | 0.166692 |
+| credit_history_years | 21.857143 | 0 | 0.09134 |
+| credit_history_years | 21.857143 | 1 | 0.07141 |
+| credit_history_years | 21.857143 | 2 | 0.054673 |
+| credit_history_years | 21.857143 | 3 | 0.029013 |
+| credit_history_years | 21.857143 | 4 | 0.149401 |
+| credit_history_years | 21.857143 | 5 | 0.059004 |
+| credit_history_years | 21.857143 | 6 | 0.161816 |
+| credit_history_years | 21.857143 | 7 | 0.141232 |
+| credit_history_years | 21.857143 | 8 | 0.064426 |
+| credit_history_years | 21.857143 | 9 | 0.166692 |
+| credit_history_years | 25.970238 | 0 | 0.088486 |
+| credit_history_years | 25.970238 | 1 | 0.07141 |
+| credit_history_years | 25.970238 | 2 | 0.054673 |
+| credit_history_years | 25.970238 | 3 | 0.029013 |
+| credit_history_years | 25.970238 | 4 | 0.149401 |
+| credit_history_years | 25.970238 | 5 | 0.059004 |
+| credit_history_years | 25.970238 | 6 | 0.161816 |
+| credit_history_years | 25.970238 | 7 | 0.141232 |
+| credit_history_years | 25.970238 | 8 | 0.064426 |
+| credit_history_years | 25.970238 | 9 | 0.166692 |
+| credit_history_years | 45.75 | 0 | 0.088486 |
+| credit_history_years | 45.75 | 1 | 0.070475 |
+| credit_history_years | 45.75 | 2 | 0.056611 |
+| credit_history_years | 45.75 | 3 | 0.029013 |
+| credit_history_years | 45.75 | 4 | 0.149401 |
+| credit_history_years | 45.75 | 5 | 0.058911 |
+| credit_history_years | 45.75 | 6 | 0.161816 |
+| credit_history_years | 45.75 | 7 | 0.144201 |
+| credit_history_years | 45.75 | 8 | 0.066224 |
+| credit_history_years | 45.75 | 9 | 0.177325 |
+| home_ownership | 0 | 0 | 0.14317 |
+| home_ownership | 0 | 1 | 0.170896 |
+| home_ownership | 0 | 2 | 0.097513 |
+| home_ownership | 0 | 3 | 0.055663 |
+| home_ownership | 0 | 4 | 0.197772 |
+| home_ownership | 0 | 5 | 0.134078 |
+| home_ownership | 0 | 6 | 0.119375 |
+| home_ownership | 0 | 7 | 0.119356 |
+| home_ownership | 0 | 8 | 0.088842 |
+| home_ownership | 0 | 9 | 0.107597 |
+| home_ownership | 3 | 0 | 0.141083 |
+| home_ownership | 3 | 1 | 0.170057 |
+| home_ownership | 3 | 2 | 0.096846 |
+| home_ownership | 3 | 3 | 0.059023 |
+| home_ownership | 3 | 4 | 0.202198 |
+| home_ownership | 3 | 5 | 0.138819 |
+| home_ownership | 3 | 6 | 0.122833 |
+| home_ownership | 3 | 7 | 0.117853 |
+| home_ownership | 3 | 8 | 0.087489 |
+| home_ownership | 3 | 9 | 0.11311 |
+| home_ownership | 4 | 0 | 0.157774 |
+| home_ownership | 4 | 1 | 0.1744 |
+| home_ownership | 4 | 2 | 0.0915 |
+| home_ownership | 4 | 3 | 0.055313 |
+| home_ownership | 4 | 4 | 0.198634 |
+| home_ownership | 4 | 5 | 0.12689 |
+| home_ownership | 4 | 6 | 0.147012 |
+| home_ownership | 4 | 7 | 0.147338 |
+| home_ownership | 4 | 8 | 0.090122 |
+| home_ownership | 4 | 9 | 0.148636 |
+| purpose | 0 | 0 | 0.161167 |
+| purpose | 0 | 1 | 0.081425 |
+| purpose | 0 | 2 | 0.035839 |
+| purpose | 0 | 3 | 0.074619 |
+| purpose | 0 | 4 | 0.07687 |
+| purpose | 0 | 5 | 0.187148 |
+| purpose | 0 | 6 | 0.066945 |
+| purpose | 0 | 7 | 0.086732 |
+| purpose | 0 | 8 | 0.065449 |
+| purpose | 0 | 9 | 0.1565 |
+| purpose | 1 | 0 | 0.116553 |
+| purpose | 1 | 1 | 0.080305 |
+| purpose | 1 | 2 | 0.035264 |
+| purpose | 1 | 3 | 0.068408 |
+| purpose | 1 | 4 | 0.065439 |
+| purpose | 1 | 5 | 0.14089 |
+| purpose | 1 | 6 | 0.063536 |
+| purpose | 1 | 7 | 0.081018 |
+| purpose | 1 | 8 | 0.05591 |
+| purpose | 1 | 9 | 0.104392 |
+| purpose | 2 | 0 | 0.147363 |
+| purpose | 2 | 1 | 0.089487 |
+| purpose | 2 | 2 | 0.040109 |
+| purpose | 2 | 3 | 0.104753 |
+| purpose | 2 | 4 | 0.079152 |
+| purpose | 2 | 5 | 0.17787 |
+| purpose | 2 | 6 | 0.072153 |
+| purpose | 2 | 7 | 0.081246 |
+| purpose | 2 | 8 | 0.056108 |
+| purpose | 2 | 9 | 0.13559 |
+| purpose | 3 | 0 | 0.166158 |
+| purpose | 3 | 1 | 0.095748 |
+| purpose | 3 | 2 | 0.039457 |
+| purpose | 3 | 3 | 0.111323 |
+| purpose | 3 | 4 | 0.10137 |
+| purpose | 3 | 5 | 0.198333 |
+| purpose | 3 | 6 | 0.083874 |
+| purpose | 3 | 7 | 0.087374 |
+| purpose | 3 | 8 | 0.05422 |
+| purpose | 3 | 9 | 0.165816 |
+| purpose | 4 | 0 | 0.176745 |
+| purpose | 4 | 1 | 0.092283 |
+| purpose | 4 | 2 | 0.052379 |
+| purpose | 4 | 3 | 0.082397 |
+| purpose | 4 | 4 | 0.120569 |
+| purpose | 4 | 5 | 0.195617 |
+| purpose | 4 | 6 | 0.102926 |
+| purpose | 4 | 7 | 0.095932 |
+| purpose | 4 | 8 | 0.077783 |
+| purpose | 4 | 9 | 0.165852 |
+| purpose | 5 | 0 | 0.149133 |
+| purpose | 5 | 1 | 0.081475 |
+| purpose | 5 | 2 | 0.029452 |
+| purpose | 5 | 3 | 0.068747 |
+| purpose | 5 | 4 | 0.070898 |
+| purpose | 5 | 5 | 0.166176 |
+| purpose | 5 | 6 | 0.080719 |
+| purpose | 5 | 7 | 0.092683 |
+| purpose | 5 | 8 | 0.056892 |
+| purpose | 5 | 9 | 0.13427 |
+| purpose | 6 | 0 | 0.190319 |
+| purpose | 6 | 1 | 0.135972 |
+| purpose | 6 | 2 | 0.054221 |
+| purpose | 6 | 3 | 0.129892 |
+| purpose | 6 | 4 | 0.127545 |
+| purpose | 6 | 5 | 0.240284 |
+| purpose | 6 | 6 | 0.11215 |
+| purpose | 6 | 7 | 0.114129 |
+| purpose | 6 | 8 | 0.075713 |
+| purpose | 6 | 9 | 0.188184 |
+| purpose | 7 | 0 | 0.187285 |
+| purpose | 7 | 1 | 0.145526 |
+| purpose | 7 | 2 | 0.040925 |
+| purpose | 7 | 3 | 0.122787 |
+| purpose | 7 | 4 | 0.108843 |
+| purpose | 7 | 5 | 0.237496 |
+| purpose | 7 | 6 | 0.105398 |
+| purpose | 7 | 7 | 0.136253 |
+| purpose | 7 | 8 | 0.074428 |
+| purpose | 7 | 9 | 0.16994 |
+| purpose | 8 | 0 | 0.175924 |
+| purpose | 8 | 1 | 0.148731 |
+| purpose | 8 | 2 | 0.050351 |
+| purpose | 8 | 3 | 0.142579 |
+| purpose | 8 | 4 | 0.12338 |
+| purpose | 8 | 5 | 0.257262 |
+| purpose | 8 | 6 | 0.112194 |
+| purpose | 8 | 7 | 0.102978 |
+| purpose | 8 | 8 | 0.076528 |
+| purpose | 8 | 9 | 0.17504 |
+| purpose | 10 | 0 | 0.250503 |
+| purpose | 10 | 1 | 0.19875 |
+| purpose | 10 | 2 | 0.068849 |
+| purpose | 10 | 3 | 0.153294 |
+| purpose | 10 | 4 | 0.221355 |
+| purpose | 10 | 5 | 0.293772 |
+| purpose | 10 | 6 | 0.196244 |
+| purpose | 10 | 7 | 0.189894 |
+| purpose | 10 | 8 | 0.099727 |
+| purpose | 10 | 9 | 0.240896 |
+| purpose | 11 | 0 | 0.153674 |
+| purpose | 11 | 1 | 0.12871 |
+| purpose | 11 | 2 | 0.053677 |
+| purpose | 11 | 3 | 0.145912 |
+| purpose | 11 | 4 | 0.11986 |
+| purpose | 11 | 5 | 0.2399 |
+| purpose | 11 | 6 | 0.113667 |
+| purpose | 11 | 7 | 0.127354 |
+| purpose | 11 | 8 | 0.062435 |
+| purpose | 11 | 9 | 0.164201 |
+| purpose | 12 | 0 | 0.160408 |
+| purpose | 12 | 1 | 0.092691 |
+| purpose | 12 | 2 | 0.048025 |
+| purpose | 12 | 3 | 0.096363 |
+| purpose | 12 | 4 | 0.088842 |
+| purpose | 12 | 5 | 0.171874 |
+| purpose | 12 | 6 | 0.089437 |
+| purpose | 12 | 7 | 0.094716 |
+| purpose | 12 | 8 | 0.060829 |
+| purpose | 12 | 9 | 0.160061 |
+
+### permutation_repeats
+
+| feature | repeat | roc_auc_drop |
+| --- | --- | --- |
+| loan_amnt | 0 | 0.025353 |
+| loan_amnt | 1 | 0.019991 |
+| loan_amnt | 2 | 0.022788 |
+| loan_amnt | 3 | 0.023945 |
+| loan_amnt | 4 | 0.023453 |
+| annual_inc | 0 | 0.047715 |
+| annual_inc | 1 | 0.040805 |
+| annual_inc | 2 | 0.042708 |
+| annual_inc | 3 | 0.036935 |
+| annual_inc | 4 | 0.038744 |
+| dti | 0 | 0.012203 |
+| dti | 1 | 0.011845 |
+| dti | 2 | 0.011141 |
+| dti | 3 | 0.017632 |
+| dti | 4 | 0.008376 |
+| revol_util | 0 | -0.001318 |
+| revol_util | 1 | 0.000033 |
+| revol_util | 2 | 0.002311 |
+| revol_util | 3 | 0.001568 |
+| revol_util | 4 | -0.001662 |
+| revol_bal | 0 | 0.009956 |
+| revol_bal | 1 | 0.009834 |
+| revol_bal | 2 | 0.010486 |
+| revol_bal | 3 | 0.007687 |
+| revol_bal | 4 | 0.011874 |
+| open_acc | 0 | 0.006641 |
+| open_acc | 1 | 0.006052 |
+| open_acc | 2 | 0.005758 |
+| open_acc | 3 | 0.007044 |
+| open_acc | 4 | 0.004694 |
+| delinq_2yrs | 0 | 0.00063 |
+| delinq_2yrs | 1 | 0.000457 |
+| delinq_2yrs | 2 | 0.000288 |
+| delinq_2yrs | 3 | 0.000066 |
+| delinq_2yrs | 4 | 0.000328 |
+| pub_rec_bankruptcies | 0 | 0.001392 |
+| pub_rec_bankruptcies | 1 | -0.000002 |
+| pub_rec_bankruptcies | 2 | 0.001339 |
+| pub_rec_bankruptcies | 3 | 0.001695 |
+| pub_rec_bankruptcies | 4 | 0.001107 |
+| emp_length_years | 0 | 0.004107 |
+| emp_length_years | 1 | 0.003636 |
+| emp_length_years | 2 | 0.003865 |
+| emp_length_years | 3 | 0.003717 |
+| emp_length_years | 4 | 0.005361 |
+| fico_mid | 0 | 0.067529 |
+| fico_mid | 1 | 0.066548 |
+| fico_mid | 2 | 0.069439 |
+| fico_mid | 3 | 0.069787 |
+| fico_mid | 4 | 0.065286 |
+| credit_history_years | 0 | 0.00584 |
+| credit_history_years | 1 | 0.002483 |
+| credit_history_years | 2 | 0.00531 |
+| credit_history_years | 3 | 0.004712 |
+| credit_history_years | 4 | 0.005236 |
+| home_ownership | 0 | 0.006319 |
+| home_ownership | 1 | 0.003712 |
+| home_ownership | 2 | 0.005164 |
+| home_ownership | 3 | 0.006321 |
+| home_ownership | 4 | 0.007515 |
+| purpose | 0 | 0.011982 |
+| purpose | 1 | 0.011206 |
+| purpose | 2 | 0.011864 |
+| purpose | 3 | 0.012894 |
+| purpose | 4 | 0.01225 |
+
+### permutation_importance
+
+| feature | roc_auc_drop_mean | repeat_standard_deviation |
+| --- | --- | --- |
+| fico_mid | 0.067718 | 0.001706 |
+| annual_inc | 0.041381 | 0.003713 |
+| loan_amnt | 0.023106 | 0.00177 |
+| dti | 0.012239 | 0.003012 |
+| purpose | 0.012039 | 0.000548 |
+| revol_bal | 0.009967 | 0.001351 |
+| open_acc | 0.006038 | 0.000807 |
+| home_ownership | 0.005806 | 0.001284 |
+| credit_history_years | 0.004716 | 0.001172 |
+| emp_length_years | 0.004137 | 0.000633 |
+| pub_rec_bankruptcies | 0.001106 | 0.000585 |
+| delinq_2yrs | 0.000354 | 0.000187 |
+| revol_util | 0.000187 | 0.001557 |
+
+### Full interpretation and bias manifest
+
+```json
+{
+  "status": "complete",
+  "batch_run_id": "86fe262241464da48d8c126660801e05",
+  "experiment_name": "lendingclub_interpretability_bias",
+  "experiment_id": "8",
+  "source_model_name": "hist_gradient_boosting",
+  "source_model_uri": "models:/m-c0cd1df22fa24744b5d207306fd84ac1",
+  "source_model_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "source_model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
+  "positive_class": "Charged Off",
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2",
+    "data/clean/modeling/exploratory_test.parquet": "7d98e6c095b38287a1599aa241a061d8ca786a5894370e2ab6a4aeb16a553564",
+    "data/clean/modeling/exploratory_test_metadata.parquet": "b94fdee9a5ae2d64badf43666f53d8f4f3c0c2c5f5100934a3f6aaeb15952c60"
+  },
+  "clean_source_sha256": "51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20",
+  "seed": 42,
+  "source_schema_audit_sha256": "244b38d10e129bbf2f41ad6f282397576ddb9fc6244e8c574fdf21daea385f04",
+  "canonical_source_header_sha256": "547f0ac70ac4ddb72c159a97e7c8425475f150a05ccd51e53ff4cf974fc4f30f",
+  "protected_field_schema_checked_against_actual_header": true,
+  "frozen_threshold": 0.147852896338396,
+  "threshold_source": "original 2014 F1 selection; not retuned here",
+  "comparison_threshold": 0.5,
+  "income_quartile_cutpoints_from_training": [
+    42000.0,
+    60000.0,
+    85000.0
+  ],
+  "cohorts": {
+    "validation": "2014, already used for model/threshold selection",
+    "exploratory_test": "2015, previously explored; no fresh holdout claim"
+  },
+  "min_supported_rows": 500,
+  "min_supported_positive_and_negative_rows": 50,
+  "dimensions": [
+    "home",
+    "purpose",
+    "income",
+    "fico",
+    "employment",
+    "delinquency",
+    "bankruptcy",
+    "missingness",
+    "state",
+    "application",
+    "income_home",
+    "fico_delinquency"
+  ],
+  "protected_group_fairness_established": false,
+  "protected_attributes_inferred": false,
+  "decision_policy": "flagged risk, not an observed approval or denial",
+  "incumbent_retrained": false,
+  "group_thresholds_fitted": false,
+  "versions": {
+    "interpret-core": "0.7.8",
+    "shap": "0.54.1",
+    "plotly": "7.1.0",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "mlflow": "3.18.0",
+    "duckdb": "2.0.0"
+  },
+  "result_directory": "assets/results/interpret_bias/86fe262241464da48d8c126660801e05",
+  "figure_directory": "assets/figures/interpret_bias/86fe262241464da48d8c126660801e05",
+  "model_directory": "models/interpret_bias/86fe262241464da48d8c126660801e05",
+  "completed_at_utc": "2026-11-10T00:10:54.498974+00:00",
+  "explanation_settings": {
+    "method": "InterpretML ShapKernel and PartialDependence; permutation importance as a cross-check",
+    "explained_quantity": "incumbent positive-class probability, scalar output; identity link",
+    "random_seed": 42,
+    "random_cases": 128,
+    "curated_cases": 8,
+    "kernel_background_rows": 64,
+    "coalitions_per_case": 512,
+    "kernel_l1_reg": 0,
+    "pdp_background_rows": 1000,
+    "pdp_max_continuous_points": 15,
+    "pdp_ice_rows_per_feature": 10,
+    "pdp_bands": "mean +/- one between-background-row standard deviation; not confidence intervals",
+    "global_shap_importance_sample": "random complete training-known 2014 cases only; curated cases excluded",
+    "training_rows": 157993,
+    "training_explanation_eligible_rows": 150615,
+    "validation_rows": 162570,
+    "validation_explanation_eligible_rows": 152852,
+    "maximum_additivity_residual": 2.7755575615628914e-17,
+    "numeric_missing_rows_excluded_from_interpret_only": true,
+    "all_rows_included_in_segment_and_overall_metrics": true,
+    "permutation_rows": 10000,
+    "permutation_repeats": 5,
+    "permutation_sample_baseline_auc": 0.6611355243970154,
+    "elapsed_seconds": 22.31325212199954,
+    "category_codebook": {
+      "home_ownership": [
+        "MORTGAGE",
+        "NONE",
+        "OTHER",
+        "OWN",
+        "RENT"
+      ],
+      "purpose": [
+        "car",
+        "credit_card",
+        "debt_consolidation",
+        "home_improvement",
+        "house",
+        "major_purchase",
+        "medical",
+        "moving",
+        "other",
+        "renewable_energy",
+        "small_business",
+        "vacation",
+        "wedding"
+      ]
+    }
+  },
+  "incumbent_unchanged": true,
+  "overall_metrics_match_reference": true,
+  "explanation_additivity_verified": true,
+  "group_population_reconciliation_verified": true,
+  "execution_script_sha256": "ce9c180ffb31ad4ed1b4e1fd4df4e81f6fb42a8351aae4aaff4c6da67b10c1f3",
+  "source_sha256": {
+    "scripts/14_interpret_bias.py": "ce9c180ffb31ad4ed1b4e1fd4df4e81f6fb42a8351aae4aaff4c6da67b10c1f3",
+    "util/interpretation.py": "c54249dd5897f45cd48cc80d59f9085e8fcfe42f8443c339c76f00431b11cdff",
+    "util/explanation_input.py": "55de10ed36773bd1d99e75dd6e860489841f12fc79296e70fbf57fd858132346",
+    "util/segment_audit.py": "7d25b59c4392d3f1f61f9c38c9ebe12bf3416cac6868459e8c85974013440aff",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "sql/38_audit_segments.sql": "7a7614cd31c0e49c8d63f8c0d0fb9db327aa417dc57a47764c029573647d1322",
+    "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "requirements.txt": "ca693c4b26f6942ec5f594e470065af6ca33ed839028212714bd98c7970420fc",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "results_sha256": {
+    "segment_spreads.csv": "a91958fa0f0978cc4897fc8c39c844cea3f79ad1d738d6dd2b4632770f76d926",
+    "segment_temporal_drift.csv": "fe73c1422cdd88f5d68bc34a04a56f7ac088852f28858fe880dfa88e317042d3",
+    "permutation_repeats.csv": "34ad4d7501cf0b4fab05fe563a9014c33e9e06cdc55ae372a6a3f56c91aba691",
+    "segment_metrics.csv": "7ed4d58ba97053d6122a53ef29e0d4292a236cb032cc772ad6b7b812e0ea1dd0",
+    "local_cases.csv": "6ef6dcbb54ce352de65717646ee00c3e9ae24666f84e2f0c9f372d759b47afcc",
+    "local_contributions.csv": "aefa9e01f7cb00dee02eb848d0af51b5f48a4a1b15fd5891517fa4abb64394ce",
+    "overall_metrics.csv": "bcead3b824d2e8ab911bfde21db995d3bc31fcad1a0ef40a83de9197b8fed0ea",
+    "protected_attribute_coverage.csv": "0dd25c5b22613edc7f1fb70dda5f21950ab051988421954745cb59d1214c0310",
+    "permutation_importance.csv": "f7e93b2ed141e6688053d23e39c4453eba0c1d2b2eeb795fd8fcc19e947eb676",
+    "training_count_feature_support.csv": "7ee7dbd4771bd1c200bfc4fa731b04fd7e12ad12ec3ec80346ec1f156eae8731",
+    "segment_calibration_bins.csv": "55139ab54bebe6ce70ba44b37f00c33e70bcb526982b8c8441f6aa11aa5c8fab",
+    "partial_dependence.csv": "43ca0b28176c62de01678e2b0bdcde5f9b04863b3de111e397d3a78f53e2b821",
+    "shap_global_importance.csv": "ef677f840a65b196a0619aeec54b310f0e31f44fe98f470e2c00257409dbc94b",
+    "ice_curves.csv": "faedbf9384fe9c57d81e41595c0946e6f913b6383a506b46765a70f405b3ac6e"
+  },
+  "explanation_dataset_sha256": {
+    "permutation_sample.parquet": "bf21e66e7eef84e220fa3d9ec03da54de3a03e76d316f29d8ce925fb37fe2eab",
+    "kernel_background.parquet": "05952ec910c6d027730e1a2266018eb128e6da1e60b2a789a82bdaf8d67a317a",
+    "explanation_cases.parquet": "475e8f030398c56415d6dd9a023c7675afd4959d01f064072061e6d7c2fe86ad",
+    "pdp_background.parquet": "22ef5346101799be5c751d0c6cf2dcb0a96261a02d7e9cb256445a0bf07e0a51"
+  }
+}
+```
+
+
+### Final interpretation verification
+
+101 tests passed. Source, input, result and explanation sample hashes match the completed run. The incumbent is unchanged. Group populations, support rules, Wilson intervals, supported-group spreads, local predictions, SHAP reconstruction and four numeric PDP curves were independently checked. The notebook export contains the latest batch. MLflow has one finished parent, two finished children and three dataset inputs.
+
+[Verification record](results/interpret_bias_verification.json).
