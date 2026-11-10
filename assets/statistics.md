@@ -3,28 +3,39 @@
 > Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21; separate loss models and illustrative capital scenarios are in section 22. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. InterpretML and descriptive segment-disparity results are in section 26; protected-group fairness is unassessed. Short local load tests, recovery under active load, persistent deduplication and ELK monitoring are measured in the latest sections below.
 
 <!-- pages-statistics -->
-## GitHub Pages showcase verification
+## GitHub Pages case-study notebook verification
 
-The plain HTML/CSS/JavaScript showcase is built from committed aggregate evidence.
-The Pages artifact contains **10 public files**, **20 fingerprinted evidence inputs**
-and **471400 bytes**. Raw loan files, borrower-level
-predictions, model binaries, SQLite databases and service logs are not published.
-The site build needs Python's standard library only; Node is used for syntax checking.
+The showcase is a **marimo-inspired static HTML/CSS/JS notebook** covering the
+project from data download to recovery and monitoring. It contains **18 chapters**,
+**17 recorded figures** and **12 foldable source excerpts**. It is not a live
+Python kernel. Project models and measured experiment outputs were not rerun.
 
-Browser checks passed at **375, 390, 768, 1024 and 1440 px**, including a GitHub
-project URL prefix, cohort switching, enlarged figures, Escape closing, no whole-page
-horizontal overflow, no browser errors and useful content without JavaScript.
-Axe found **0 WCAG A/AA violations** across 28 passing rule checks. This is an
-automated audit, not a complete accessibility certification. Workflow actionlint passed.
+The generated artifact has **24 public files**,
+**2395025 bytes**, and **54 fingerprinted evidence/source inputs**.
+Raw loans, borrower-level predictions, binaries, databases and service logs remain
+outside the published artifact. Figures reserve their actual PNG aspect ratios
+and lazy-load. Code excerpts quote the checked-in implementation; original stage
+manifests retain their execution versions.
 
-GitHub Pages is enabled with **GitHub Actions** as the publishing source. The
-expected URL is `https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/`.
-No remote deployment has been run: the new website and workflow still need to be
-committed and pushed to main. This status is separate from the locally verified build.
+Chromium checks passed at **320, 375, 390, 768, 900, 1024 and 1440 pixels**.
+Verified: outline search and active chapter, mobile outline, code copying, global
+code expansion/collapse, cohort values and ROC switching, enlarged figures and
+Escape closing, project-path URLs, no whole-page horizontal overflow, no browser
+errors and complete narrative/outputs without JavaScript. Axe reported **0 A/AA
+violations**, including with all source cells expanded; **34 checks passed** in
+each audit. This is automated evidence, not complete accessibility certification.
+The workflow passed actionlint.
 
-[Verification record](results/site_verification.json),
+The Pages workflow builds and deploys main pushes, and checks pull requests without
+deploying. It watches site sources, result assets, scripts, SQL, notebooks and
+utilities. The build uses Python's standard library and does not require datasets,
+model binaries, MLflow, Kafka or ELK. Deployment is reported by GitHub Actions at
+`https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/`.
+
+[Verification](results/site_verification.json),
 [desktop preview](figures/showcase/desktop.png),
-[mobile preview](figures/showcase/mobile.png), and
+[mobile preview](figures/showcase/mobile.png),
+[recorded-results preview](figures/showcase/results.png), and
 [publishing guide](../docs/github_pages.md).
 
 <!-- end-pages-statistics -->

@@ -6,16 +6,20 @@ on:
     paths:
       - 'site/**'
       - 'assets/**'
-      - 'scripts/24_build_site.py'
-      - 'scripts/25_check_site.py'
+      - 'scripts/**'
+      - 'sql/**'
+      - 'notebooks/**'
+      - 'util/**'
       - '.github/workflows/pages.yml'
   pull_request:
     branches: [main]
     paths:
       - 'site/**'
       - 'assets/**'
-      - 'scripts/24_build_site.py'
-      - 'scripts/25_check_site.py'
+      - 'scripts/**'
+      - 'sql/**'
+      - 'notebooks/**'
+      - 'util/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 

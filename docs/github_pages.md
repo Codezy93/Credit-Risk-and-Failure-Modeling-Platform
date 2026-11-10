@@ -1,9 +1,11 @@
 # GitHub Pages showcase
 
-The showcase is plain HTML, CSS and JavaScript in `site/`. It presents data
-exploration, temporal model comparisons, InterpretML, loss proxies, paced load
-tests, and crash recovery. Its headline numbers and charts are built from the
-committed aggregate results, not hand-entered benchmark values.
+The site is a long-form, marimo-inspired case study in plain HTML, CSS and
+JavaScript. Its 18 chapters follow data download, raw auditing, SQL cleaning,
+univariate/bivariate/multivariate EDA, population design, MLflow, validation,
+XGBoost and ANN research, loss proxies, InterpretML, streaming, load tests,
+recovery, deduplication, ELK, reproduction and limitations. It uses recorded
+project results; it is not an exported live marimo application or Python kernel.
 
 ## Preview locally
 
@@ -22,13 +24,18 @@ make site-check
 ```
 
 `scripts/24_build_site.py` reads the latest committed manifests and selected CSVs,
-checks available result fingerprints, and copies three existing figures. It
-renders a useful default page without JavaScript; JavaScript adds cohort
-switching, contribution bars and an accessible enlarged-figure dialog.
+checks available result fingerprints, and copies 17 existing figures. Twelve
+foldable source cells quote the checked-in scripts and SQL, with links to their
+full files. True PNG dimensions reserve figure space before lazy loading.
+
+The default page retains its narrative, tables, contribution bars and figures
+without JavaScript. JavaScript adds searchable chapter navigation, active-section
+highlighting, reading progress, a mobile outline, code copying/expand-collapse,
+cohort-and-ROC switching, an enlarged-figure dialog and a print shortcut.
 
 `scripts/25_check_site.py` checks local links, anchor IDs, image alternatives,
-relative project URLs, strict JSON and the exact public-file allowlist. Only ten
-files are published. Raw loans, borrower-level predictions, model binaries,
+relative project URLs, strict JSON, all 18 chapter anchors and the exact public-file
+allowlist. Only 24 files are published, including 17 figures. Raw loans, borrower-level predictions, model binaries,
 SQLite databases, service logs and local service URLs are excluded. The build
 artifact is ignored as `_site/`; commit the source and referenced results instead.
 
@@ -48,7 +55,8 @@ artifact is ignored as `_site/`; commit the source and referenced results instea
 The workflow uses GitHub's `configure-pages`, `upload-pages-artifact` and
 `deploy-pages` actions. Pull requests run the build and checks without deploying.
 Pushes to `main` affecting site sources, builders, aggregate assets or the
-workflow trigger a new deployment. Only the deploy job receives Pages write and
+workflow trigger a new deployment. The workflow also watches scripts, SQL,
+notebooks and utilities so quoted source changes are reflected in the page. Only the deploy job receives Pages write and
 OIDC permissions; no personal access token or custom deployment secret is needed.
 The `github-pages` environment can enforce any repository deployment protections.
 
@@ -72,12 +80,13 @@ Kibana dashboard.
 
 ## Verification
 
-The site was checked in Chromium at 375, 390, 768, 1024 and 1440 pixels, including
-a project URL prefix. Checks cover whole-page horizontal overflow, the recorded
-cohort values, figure dialog opening/Escape closing, browser errors and useful
-content with JavaScript disabled. An axe audit found no WCAG 2 A/AA or 2.1 AA
-violations; this automated check is not a complete accessibility certification.
-The Actions workflow passed actionlint. These local checks do not replace the
-first successful remote deployment.
+The notebook was checked in Chromium at 320, 375, 390, 768, 900, 1024 and
+1440 pixels, including a project URL prefix. Checks cover whole-page horizontal
+overflow, 18 chapters, source copying, source expand/collapse, the active outline
+and search, mobile navigation, cohort values and ROC paths, figure opening/Escape
+closing, browser errors and complete content without JavaScript. An axe audit
+found no WCAG 2 A/AA or 2.1 AA violations; this automated check is not a complete
+accessibility certification. The Actions workflow passed actionlint. Remote
+deployment status is reported by the workflow after each push.
 
 See [the verification record](../assets/results/site_verification.json).

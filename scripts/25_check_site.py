@@ -36,7 +36,11 @@ class Page(HTMLParser):
 def main():
     directory = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "_site"
     expected = {"index.html", "styles.css", "app.js", "favicon.svg", ".nojekyll", "assets/results.json",
-        "assets/provenance.json", "assets/eda.png", "assets/interpret.png", "assets/recovery.png"}
+        "assets/provenance.json", "assets/eda.png", "assets/interpret.png", "assets/recovery.png",
+        "assets/raw-missingness.png", "assets/status-coverage.png", "assets/tail-review.png",
+        "assets/category-outcomes.png", "assets/numeric-outcomes.png", "assets/correlations.png",
+        "assets/fico-dti.png", "assets/cohort-coverage.png", "assets/calibration.png", "assets/ann.png",
+        "assets/loss.png", "assets/partial-dependence.png", "assets/segments.png", "assets/load.png"}
     actual = {str(path.relative_to(directory)) for path in directory.rglob("*") if path.is_file()}
     assert actual == expected, f"Unexpected or missing publishable files: {actual ^ expected}"
     assert not any(path.is_symlink() for path in directory.rglob("*")), "Pages artifact must not contain symlinks."
@@ -44,6 +48,10 @@ def main():
     assert "{{" not in document and "localhost" not in document
     parser = Page();parser.feed(document)
     assert parser.headings == 1 and parser.has_language and parser.has_viewport
+    chapters = {"question", "download", "audit", "clean", "univariate", "relationships", "population",
+        "experiments", "validation", "challengers", "loss", "interpretation", "streaming", "load",
+        "recovery", "monitoring", "reproduce", "conclusions"}
+    assert chapters <= parser.ids, "Every end-to-end notebook chapter must be present."
     for reference in parser.references:
         link = urlsplit(reference)
         if link.scheme or link.netloc:
