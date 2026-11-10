@@ -164,8 +164,7 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
+# The site/ directory contains the showcase source; _site/ is the generated build.
 
 # mypy
 .mypy_cache/
