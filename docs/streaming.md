@@ -146,10 +146,10 @@ The complete streaming-environment suite passed 102 tests. Java was Temurin
 a capacity or latency claim. Earlier development messages also exist in the
 local topics; the verification filters the exact replay run ID.
 
-[Manifest](../assets/results/streaming_latest.json),
-[score parity evidence](../assets/results/streaming/spark-verified-20261110/verification.json),
-[checkpoint restart evidence](../assets/results/streaming/spark-verified-20261110/restart_verification.json),
-and [Spark query progress](../assets/results/streaming/spark-verified-20261110/query_progress.json).
+[Manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/streaming_latest.json),
+[score parity evidence](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/streaming/spark-verified-20261110/verification.json),
+[checkpoint restart evidence](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/streaming/spark-verified-20261110/restart_verification.json),
+and [Spark query progress](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/streaming/spark-verified-20261110/query_progress.json).
 
 MLflow experiment: `lendingclub_streaming_smoke`; run `fe86cfd3742d47ec8ad81f248e623566`.
 The input sample, source files, parity metrics and restart evidence are logged.

@@ -93,10 +93,10 @@ its parameters, versions, raw/clean hashes, feature sets, dataset hashes, pipeli
 artifacts, metrics, and native evaluation records. No confidence interval or
 protected-group fairness evaluation was computed.
 
-[Latest manifest](../assets/results/auc_improvement_latest.json),
-[feature/profile and comparison CSVs](../assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.csv),
-[availability audit](../assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/feature_availability.csv), and
-[figure](../assets/figures/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.png).
+[Latest manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/auc_improvement_latest.json),
+[feature/profile and comparison CSVs](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.csv),
+[availability audit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/feature_availability.csv), and
+[figure](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.png).
 
 XGBoost API references: [CPU installation](https://xgboost.readthedocs.io/en/stable/install.html)
 and [Python API/early stopping](https://xgboost.readthedocs.io/en/stable/python/python_api.html).

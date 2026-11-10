@@ -58,10 +58,10 @@ Compare the reference bundle, ANN PD alone, ANN loss components alone, and all-A
 | lgd | train | 19757 | 0.893671 | 9521301c |
 | lgd | validation | 22308 | 0.888369 | c160f33c |
 
-![Learning curves](../assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/temporal_learning_curves.png)
+![Learning curves](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/temporal_learning_curves.png)
 
-![ANN comparison](../assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/ann_comparison.png)
+![ANN comparison](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/ann_comparison.png)
 
-MLflow experiment `lendingclub_ann_challengers`, batch `c85319471ca849758abb207d833f973b`. [Manifest and complete CSVs](../assets/results/ann_experiments/c85319471ca849758abb207d833f973b/manifest.json).
+MLflow experiment `lendingclub_ann_challengers`, batch `c85319471ca849758abb207d833f973b`. [Manifest and complete CSVs](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/ann_experiments/c85319471ca849758abb207d833f973b/manifest.json).
 
 References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html), [MLPRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html).

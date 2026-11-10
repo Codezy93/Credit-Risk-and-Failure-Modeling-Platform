@@ -247,9 +247,9 @@ was warmed, but stage-specific batch/model-loading costs remain part of the run.
 Broker failure, worker failure, restart under active load and downstream
 deduplication remain untested in this benchmark. ELK monitoring is still pending.
 
-![Emission, completion and latency](../assets/results/load_test/load-20261110T140041-076d41/load_results.png)
+![Emission, completion and latency](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/results/load_test/load-20261110T140041-076d41/load_results.png)
 
-![Checkpoint lag](../assets/results/load_test/load-20261110T140041-076d41/checkpoint_lag.png)
+![Checkpoint lag](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/results/load_test/load-20261110T140041-076d41/checkpoint_lag.png)
 
 ## Reproduce
 
@@ -267,9 +267,9 @@ Results are saved by batch ID. MLflow experiment:
 child per measured stage. The query is stopped after drain. Kafka stays available
 until `make kafka-down`. No source messages, topics or checkpoints are deleted.
 
-[Full metrics](../assets/results/load_test/load-20261110T140041-076d41/stage_metrics.csv),
-[manifest](../assets/results/load_test/load-20261110T140041-076d41/manifest.json), and
-[verification](../assets/results/load_test_verification.json).
+[Full metrics](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/load_test/load-20261110T140041-076d41/stage_metrics.csv),
+[manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/load_test/load-20261110T140041-076d41/manifest.json), and
+[verification](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/load_test_verification.json).
 See the [Spark Kafka guide](https://spark.apache.org/docs/4.1.2/streaming/structured-streaming-kafka-integration.html)
 for source/sink and offset semantics.
 

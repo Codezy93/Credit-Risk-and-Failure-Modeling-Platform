@@ -141,16 +141,16 @@ status. Actual deployment claims need a separate point-in-time dataset design.
 
 - [Initial EDA](data_analysis.html), [follow-up EDA](deeper_eda.html), and
   [final notebook report](eda_completion.html).
-- [Statistics reference](../assets/statistics.md), including complete tables in section 16.
-- [Source-column audit](../assets/results/eda_source_column_audit.csv),
-  [clean dictionary](../assets/results/eda_clean_dictionary.csv), and
-  [feature decisions](../assets/results/eda_feature_decisions.csv).
-- [Numeric profile](../assets/results/20_complete_numeric_profile.csv),
-  [category profile](../assets/results/21_complete_category_profile.csv),
-  [outcome distributions](../assets/results/22_numeric_by_outcome.csv),
-  [cohort audit](../assets/results/23_final_cohort_audit.csv),
-  [value checks](../assets/results/24_clean_value_checks.csv), and
-  [source conversion checks](../assets/results/25_numeric_source_parsing.csv).
+- [Statistics reference](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/statistics.md), including complete tables in section 16.
+- [Source-column audit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/eda_source_column_audit.csv),
+  [clean dictionary](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/eda_clean_dictionary.csv), and
+  [feature decisions](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/eda_feature_decisions.csv).
+- [Numeric profile](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/20_complete_numeric_profile.csv),
+  [category profile](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/21_complete_category_profile.csv),
+  [outcome distributions](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/22_numeric_by_outcome.csv),
+  [cohort audit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/23_final_cohort_audit.csv),
+  [value checks](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/24_clean_value_checks.csv), and
+  [source conversion checks](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/25_numeric_source_parsing.csv).
 
 Run `marimo edit notebooks/03_complete_eda.py` from the project root. Export with
 `marimo export html notebooks/03_complete_eda.py -o docs/eda_completion.html --no-include-code`.

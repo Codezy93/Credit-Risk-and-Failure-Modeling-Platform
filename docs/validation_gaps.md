@@ -58,4 +58,4 @@ Run `make review` after core preparation/training. This runs the test suite, cor
 
 ## Verification
 
-93 tests passed. All seven saved XGBoost tree budgets, source/data/result/model hashes, eleven full logged-model prediction checks and native evaluations, bootstrap summaries and notebook output were verified. [Machine-readable evidence](../assets/results/validation_gaps_verification.json).
+93 tests passed. All seven saved XGBoost tree budgets, source/data/result/model hashes, eleven full logged-model prediction checks and native evaluations, bootstrap summaries and notebook output were verified. [Machine-readable evidence](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_gaps_verification.json).

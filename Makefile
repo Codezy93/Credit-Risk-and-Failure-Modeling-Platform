@@ -8,18 +8,20 @@ PYTHON := $(ENV_DIR)/bin/python
 
 .PHONY: setup test all validate auc full loss ann review interpret streaming-setup kafka-up kafka-down replay stream stream-test stream-check load-test elk-up elk-down monitor-check store-scores recovery-test
 
-.PHONY: site site-check site-serve
+DOCS_PYTHON ?= $(BOOTSTRAP_PYTHON)
+
+.PHONY: docs-setup site site-check site-serve
+
+docs-setup:
+	$(DOCS_PYTHON) -m pip install -r requirements-docs.txt
 
 site:
-	$(BOOTSTRAP_PYTHON) scripts/24_build_site.py
-	$(BOOTSTRAP_PYTHON) scripts/25_check_site.py
+	$(DOCS_PYTHON) -m mkdocs build --strict
 
-site-check:
-	$(BOOTSTRAP_PYTHON) scripts/25_check_site.py
-	node --check site/app.js
+site-check: site
 
-site-serve: site
-	$(BOOTSTRAP_PYTHON) -m http.server 8000 --bind 127.0.0.1 --directory _site
+site-serve:
+	$(DOCS_PYTHON) -m mkdocs serve --dev-addr 127.0.0.1:8000
 
 load-test:
 	$(SPARK_ENV) $(STREAM_PYTHON) scripts/18_run_load_test.py $(ARGS)

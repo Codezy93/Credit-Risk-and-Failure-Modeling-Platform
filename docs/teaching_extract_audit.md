@@ -100,6 +100,6 @@ urlretrieve(m["source"]["url"], folder / "lending_club_loan_two.csv")
 
 Run `.venv-locked/bin/python scripts/12_audit_teaching_extract.py`. The script verifies the source hash before fitting. It is intentionally excluded from the core modelling workflow.
 
-[Verification record](../assets/results/teaching_extract_audit_verification.json) checks the full holdout predictions, source/model/result hashes, finished native MLflow evaluations and unchanged incumbent. The existing 85-test suite also passes.
+[Verification record](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/teaching_extract_audit_verification.json) checks the full holdout predictions, source/model/result hashes, finished native MLflow evaluations and unchanged incumbent. The existing 85-test suite also passes.
 
 The earlier XGBoost protocol has since been superseded by the [temporal stopping review](validation_gaps.md): stopping uses 2013, comparison uses 2014, and the current post-underwriting research AUC is 0.690065. The teaching-data audit numbers above remain unchanged.

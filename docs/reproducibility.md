@@ -56,13 +56,13 @@ CSV tables reproduce the prior reference results at the same tolerances. All eig
 result CSV hashes, four saved model hashes, four logged models, and four native
 evaluation runs were checked. The 72 tests passed again; the incumbent is unchanged.
 
-[Fresh committed-script verification](../assets/results/validation_hardening_fresh_verification.json).
+[Fresh committed-script verification](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_hardening_fresh_verification.json).
 
 Machine-readable evidence and source hashes are in the
-[verification record](../assets/results/validation_hardening_verification.json).
+[verification record](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_hardening_verification.json).
 Full metrics, coefficients, bin counts, and intervals are in the
 [validation report](validation_hardening.md) and
-[statistics reference, section 21](../assets/statistics.md#21-validation-hardening).
+[statistics reference, section 21](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/statistics.md#21-validation-hardening).
 
 ## EAD/LGD experiment and updated notebooks
 
@@ -83,7 +83,7 @@ The workflow now appends the loss experiment and model-review export. `make loss
 runs those stages using existing prepared data and the incumbent. The earlier
 full-core verification retains its original date and source fingerprints.
 
-See the [loss/notebook verification record](../assets/results/basel_loss_verification.json)
+See the [loss/notebook verification record](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/basel_loss_verification.json)
 and [experiment report](basel_loss_experiment.md). Capital outputs are assumed-PD
 scenarios; no one-year PD estimation or regulatory compliance claim is made.
 
@@ -107,7 +107,7 @@ script hash matches that fresh execution. Numerical loss/audit results matched
 the earlier reference. The ANN manifest retains the exact historical loss batch
 used for its comparison rather than silently switching references.
 
-See the [ANN verification record](../assets/results/ann_experiments_verification.json)
+See the [ANN verification record](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/ann_experiments_verification.json)
 and [ANN experiment report](ann_experiments.md). `make ann` reruns the ANN stage;
 `make full` now includes both optional XGBoost and ANN research stages.
 
@@ -130,7 +130,7 @@ the remaining model-use limitations. No incumbent artifact or 2015 evaluation
 result was changed. Reproduce these review stages using `make review`.
 
 See the [validation gap review](validation_gaps.md) and
-[verification record](../assets/results/validation_gaps_verification.json).
+[verification record](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_gaps_verification.json).
 
 ## InterpretML and descriptive segment audit
 
@@ -153,7 +153,7 @@ and 2015 loans remain in the segment metrics; complete/training-known cases form
 the separately labelled explanation sample. No model or threshold is refitted.
 
 Use the [interpretation/bias report](interpret_bias.md) and
-[verification record](../assets/results/interpret_bias_verification.json). The
+[verification record](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/interpret_bias_verification.json). The
 model-review notebook displays both explanations and disparity tables. Protected
 attributes are not inferred, and absent structured attributes prevent a
 protected-group fairness assessment or legal/compliance conclusion.
@@ -169,7 +169,7 @@ A real Kafka broker accepted 100 application replays and three invalid fixtures.
 All valid scores exactly matched direct frozen-model predictions. The invalid
 fixtures were rejected, and a clean checkpoint restart read no additional input
 and wrote no additional output. Sources and the prepared input file are hashed
-in [the streaming manifest](../assets/results/streaming_latest.json).
+in [the streaming manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/streaming_latest.json).
 This finite correctness check is not a stress test or a failure-injection test.
 
 MLflow run: `fe86cfd3742d47ec8ad81f248e623566` in `lendingclub_streaming_smoke`.
@@ -191,8 +191,8 @@ from saved evidence. Historical smoke-test fingerprints retain their execution
 versions; the current streaming scripts add isolated output topics and continuous
 progress/controlled-stop support. No model metrics or model binary were changed.
 
-See [the load report](load_testing.md), [current manifest](../assets/results/load_test_latest.json)
-and [verification](../assets/results/load_test_verification.json). One MLflow
+See [the load report](load_testing.md), [current manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/load_test_latest.json)
+and [verification](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/load_test_verification.json). One MLflow
 parent and three stage children finished in `lendingclub_streaming_load_tests`.
 Only finite local loads were measured; no failure-injection or ELK claim is made.
 
@@ -212,7 +212,7 @@ monitoring document IDs across outbox re-exports. The real failure experiment
 additionally checks the storage-consumer group offsets after restart, not just
 the database and outbox.
 
-The independent [recovery verification](../assets/results/recovery_verification.json)
+The independent [recovery verification](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/recovery_verification.json)
 reconciles SQLite outcomes, model preservation, Spark checkpoint offsets, every
 output partition's committed group lag, indexed delivery counts and the eight
 Kibana dashboard references. Source/input/result hashes and the latest MLflow
@@ -222,7 +222,7 @@ artifacts, and the run rejected by the post-run offset audit is marked FAILED
 in local MLflow. Only the successful latest batch is used for reported metrics.
 
 See [the recovery and monitoring report](recovery_monitoring.md) and
-[current manifest](../assets/results/recovery_latest.json). Kafka data was
+[current manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/recovery_latest.json). Kafka data was
 preserved when introducing the persistent broker mount. Elastic 8.17.3 is a
 local demo with loopback ports and disabled Elasticsearch security; external
 notifications and broker failover are not implemented.

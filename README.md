@@ -1,15 +1,13 @@
 # Credit Risk and Failure Modeling Platform
 
-A long-form, marimo-inspired HTML/CSS/JavaScript case study is in `site/`, with an automated
-GitHub Pages build and deployment workflow. [Preview and publishing instructions](docs/github_pages.md).
-Pages is configured for GitHub Actions. After the first successful workflow deployment,
-the showcase will be at [codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform](https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/).
-The notebook has 18 chapters, 17 recorded figures, SQL/Python source excerpts,
-a searchable outline and interactive cohort/ROC views, from downloading the data
-through failure recovery and monitoring. It presents saved outputs without a live kernel.
+Project reports are published with MkDocs using its default theme:
+[read the documentation](https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/).
+Markdown sources live in `docs/`; configuration is in `mkdocs.yml`.
+[Preview and publishing instructions](docs/github_pages.md).
 
 ```bash
-make site-serve   # local preview at http://127.0.0.1:8000
+make docs-setup   # install the documentation dependency
+make site-serve   # local documentation preview
 ```
 
 A credit-risk project using LendingClub loan data. EDA is complete, with SQL

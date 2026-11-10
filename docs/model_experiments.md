@@ -69,14 +69,14 @@ are claimed. MLflow uses a local SQLite database and local model artifacts.
 
 ## Files and loading
 
-- [Latest manifest](../assets/results/model_experiments_latest.json).
-- [Full metrics](../assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/train_validation_metrics.csv),
-  [selected evaluations](../assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_metrics.csv),
-  [calibration bins](../assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/calibration_bins.csv), and
-  [curve points](../assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/curve_points.csv).
-- [Validation curves](../assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/validation_curves.png),
-  [comparison](../assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/model_comparison.png), and
-  [selected confusion matrices](../assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_confusion.png).
+- [Latest manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/model_experiments_latest.json).
+- [Full metrics](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/train_validation_metrics.csv),
+  [selected evaluations](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_metrics.csv),
+  [calibration bins](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/calibration_bins.csv), and
+  [curve points](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/curve_points.csv).
+- [Validation curves](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/validation_curves.png),
+  [comparison](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/model_comparison.png), and
+  [selected confusion matrices](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_confusion.png).
 
 Models and tracking data are local and Git-ignored. `models/selected_model.joblib`
 contains the full fitted pipeline; call `predict_proba(frame[features])[:, 1]` for
@@ -165,7 +165,7 @@ deterministic uniform sample of at most 1,000 positions, seed 42; they are previ
 not the metric population. Parent previews show the first 200 rows. No SHAP or
 InterpretML explanation evaluation was enabled.
 
-The [native evaluation CSV](../assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/mlflow_native_evaluations.csv)
+The [native evaluation CSV](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/mlflow_native_evaluations.csv)
 and statistics section 19 contain all evaluation IDs and metrics. Run
 `python scripts/06_log_mlflow_evaluations.py` to verify or repair an existing
 completed comparison. Running it again reuses the completed repair and creates

@@ -1,0 +1,31 @@
+site_name: Credit Risk and Failure Modeling
+site_url: https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/
+repo_url: https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform
+edit_uri: blob/main/docs/
+site_dir: _site
+theme:
+  name: mkdocs
+nav:
+  - Overview: index.md
+  - Data:
+      - Download and setup: data_setup.md
+      - EDA and cleaning: eda_summary.md
+      - Data dictionary: data_dictionary.md
+      - Model datasets: model_data.md
+  - Models:
+      - MLflow experiments: model_experiments.md
+      - XGBoost research: auc_improvement.md
+      - ANN experiments: ann_experiments.md
+      - EAD, LGD and loss: basel_loss_experiment.md
+      - InterpretML and bias analysis: interpret_bias.md
+  - Validation:
+      - Diagnostics and calibration: validation_hardening.md
+      - Validation gaps: validation_gaps.md
+      - Logistic coefficients: coefficient_validation.md
+      - Teaching extract audit: teaching_extract_audit.md
+  - Streaming:
+      - Kafka and PySpark: streaming.md
+      - Load testing: load_testing.md
+      - Recovery, deduplication and ELK: recovery_monitoring.md
+  - Reproducibility: reproducibility.md
+  - Publishing: github_pages.md

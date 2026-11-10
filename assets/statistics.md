@@ -3,43 +3,32 @@
 > Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21; separate loss models and illustrative capital scenarios are in section 22. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. InterpretML and descriptive segment-disparity results are in section 26; protected-group fairness is unassessed. Short local load tests, recovery under active load, persistent deduplication and ELK monitoring are measured in the latest sections below.
 
 <!-- pages-statistics -->
-## GitHub Pages case-study notebook verification
+## MkDocs documentation verification
 
-The showcase is a **marimo-inspired static HTML/CSS/JS notebook** covering the
-project from data download to recovery and monitoring. It contains **18 chapters**,
-**17 recorded figures** and **12 foldable source excerpts**. It is not a live
-Python kernel. Styling is black and white, without a logo or favicon. Text uses
-Helvetica Neue and code uses Menlo, with system font fallbacks. Recorded figures
-retain their original colors; the surrounding interface stays black and white.
-Project models and measured experiment outputs were not rerun.
+The website now uses **MkDocs 1.6.1** with the unmodified built-in **mkdocs**
+theme. The previous custom HTML/CSS/JavaScript site, builder/checker and preview
+images were removed. There are no custom stylesheets, scripts or templates.
 
-The generated artifact has **23 public files**,
-**2394249 bytes**, and **54 fingerprinted evidence/source inputs**.
-Raw loans, borrower-level predictions, binaries, databases and service logs remain
-outside the published artifact. Figures reserve their actual PNG aspect ratios
-and lazy-load. Code excerpts quote the checked-in implementation; original stage
-manifests retain their execution versions.
+The documentation contains **19 Markdown pages** and retains **4 notebook HTML
+exports**. The generated artifact contains **52 files**, totaling **11791003 bytes**.
+Figures retain their original colors and load from repository raw image URLs;
+links to full result files open the committed evidence on GitHub. Raw datasets,
+model binaries and local service databases are outside the documentation build.
 
-Chromium checks passed at **320, 375, 390, 768, 900, 1024 and 1440 pixels**.
-Verified: outline search and active chapter, mobile outline, code copying, global
-code expansion/collapse, cohort values and ROC switching, enlarged figures and
-Escape closing, project-path URLs, no whole-page horizontal overflow, no browser
-errors and complete narrative/outputs without JavaScript. Axe reported **0 A/AA
-violations**, including with all source cells expanded; **34 checks passed** in
-each audit. This is automated evidence, not complete accessibility certification.
-The workflow passed actionlint.
+`python -m mkdocs build --strict` passed without warnings. All repository-linked
+evidence paths were checked against local files. Chromium checks passed at
+**1440 pixels** and **390 pixels**, including page navigation, search for
+`deduplication`, two loaded loss-model figures, no homepage horizontal overflow
+and no browser errors. Earlier custom-site accessibility results do not apply to
+this replacement. No model experiments were rerun.
 
-The Pages workflow builds and deploys main pushes, and checks pull requests without
-deploying. It watches site sources, result assets, scripts, SQL, notebooks and
-utilities. The build uses Python's standard library and does not require datasets,
-model binaries, MLflow, Kafka or ELK. Deployment is reported by GitHub Actions at
+The GitHub Actions workflow installs the documentation dependency, builds MkDocs
+and deploys `_site/` on main pushes. Pull requests build without deploying.
+The site remains at
 `https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/`.
 
-[Verification](results/site_verification.json),
-[desktop preview](figures/showcase/desktop.png),
-[mobile preview](figures/showcase/mobile.png),
-[recorded-results preview](figures/showcase/results.png), and
-[publishing guide](../docs/github_pages.md).
+[Verification](results/site_verification.json) and
+[publishing instructions](../docs/github_pages.md).
 
 <!-- end-pages-statistics -->
 

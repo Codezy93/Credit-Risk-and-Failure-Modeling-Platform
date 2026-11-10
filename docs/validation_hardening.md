@@ -52,9 +52,9 @@ logistic_regression: sigmoid minus raw Brier change -0.000057; log-loss change +
 
 Negative Brier, log-loss, and ECE changes indicate improvement. Assess these together before choosing a calibration policy.
 
-![Calibration](../assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2/calibration.png)
+![Calibration](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2/calibration.png)
 
-![Paired differences](../assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2/paired_auc_difference.png)
+![Paired differences](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2/paired_auc_difference.png)
 
 Calibration curves show all occupied uniform-width bins, including sparse bins; counts are saved in calibration_bins.csv. Interpret the tails using those counts.
 
@@ -64,7 +64,7 @@ Shared feature policy rejects post-origination fields before preparation/trainin
 
 The coefficient CSV describes the historical logistic pipeline's transformed coordinates (including scaling, log transforms, missing flags, and one-hot categories). These are not scorecard points or causal effects.
 
-All CSVs and the hashed manifest: [assets/results/validation_hardening/62955be6d71845418f95174c621c98d2](../assets/results/validation_hardening/62955be6d71845418f95174c621c98d2/manifest.json). MLflow stores the three full role datasets, four model versions, dataset-linked metrics, and four native classifier evaluations. The incumbent model remains unchanged.
+All CSVs and the hashed manifest: [assets/results/validation_hardening/62955be6d71845418f95174c621c98d2](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_hardening/62955be6d71845418f95174c621c98d2/manifest.json). MLflow stores the three full role datasets, four model versions, dataset-linked metrics, and four native classifier evaluations. The incumbent model remains unchanged.
 
 Reproduce with `make validate` after the core workflow. Use `make all RAW_DATA=/path/to/accepted.csv` for a headless core run, or a `.csv.gz` file for local decompression.
 

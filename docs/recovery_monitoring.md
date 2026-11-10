@@ -131,13 +131,13 @@ the patched release was installed before this successful test. Historical smoke
 and load measurements retain their 4.1.2 fingerprints and are not restated as
 4.1.4 measurements. Core modelling dependencies and the model are unchanged.
 
-![Recovery checkpoint lag](../assets/results/recovery/recovery-20261110T145026-33d347/recovery_lag.png)
+![Recovery checkpoint lag](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/results/recovery/recovery-20261110T145026-33d347/recovery_lag.png)
 
 MLflow experiment: `lendingclub_streaming_recovery`; run `15ab49ecbc804015bc132ec18990485a`.
 The replay dataset, metrics, logs and source snapshots are attached.
-[Manifest](../assets/results/recovery_latest.json),
-[verification](../assets/results/recovery_verification.json), and
-[delivery ledger](../assets/results/recovery/recovery-20261110T145026-33d347/deliveries.csv.gz).
+[Manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/recovery_latest.json),
+[verification](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/recovery_verification.json), and
+[delivery ledger](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/recovery/recovery-20261110T145026-33d347/deliveries.csv.gz).
 
 <details><summary>All recovery statistics and source fingerprints</summary>
 
