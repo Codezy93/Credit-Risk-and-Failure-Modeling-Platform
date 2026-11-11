@@ -29,6 +29,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope
 from util.logging import write_event
 from util.load_test import committed_offsets
 from util.score_store import open_store
@@ -326,6 +327,7 @@ def main():
     mlflow.set_tracking_uri("sqlite:///" + str(ROOT / "models/mlflow.db"))
     mlflow.set_experiment("lendingclub_streaming_recovery")
     with mlflow.start_run(run_name=batch) as run:
+        log_risk_scope()
         metrics["mlflow_run_id"] = run.info.run_id
         mlflow.log_params({"rows": args.rows, "rate": args.rate, "downtime_seconds": args.downtime,
             "model_sha256": metrics["model_sha256"], "spark_failure": "SIGKILL of owned process group",

@@ -1,5 +1,10 @@
 # Reproducibility verification
 
+The latest [current-code experiment refresh](experiment_refresh.md) records seven new
+modeling batches, the full 110-test run and preserved historical evidence.
+
+## Earlier verification records
+
 Notebook sources now live in `notebooks/`. Historical verification records retain
 their execution-time `scripts/` paths and hashes; current commands use the new folder.
 
@@ -71,7 +76,7 @@ The final experiment's executed script matches its current source hash, and all
 model, input-dataset, and result hashes were verified. Four component models and
 four native MLflow regression evaluations were checked; each evaluation used
 22,308 eligible validation defaults. The saved bundle reproduced scores for all
-162,563 eligible validation loans. PD predictions remained identical.
+162,563 eligible validation loans. charge-off probabilities remained identical.
 
 At completion of the loss stage, the suite had 82 passing tests. All three updated EDA notebooks exported
 successfully in the isolated workspace using identical notebook sources, the same
@@ -89,7 +94,7 @@ scenarios; no one-year PD estimation or regulatory compliance claim is made.
 
 ## ANN challengers
 
-The ANN stage adds two PD classifiers and EAD/LGD regressors. Epoch selection uses
+The ANN stage adds two charge-off classifiers and EAD/LGD regressors. Epoch selection uses
 2013 after fitting on 2011–2012. The selected epoch budgets are then frozen for
 refitting on 2011–2013; 2014 compares candidates. No 2015 rows enter the experiment.
 At completion of the ANN stage, the suite had **85 passing tests**.
@@ -99,7 +104,7 @@ Four native MLflow evaluations finished and matched the custom aggregate metrics
 The saved learning curves match the fixed refit epoch counts. The ANN bundle's
 full 162,563-loan loss total reproduced, and the updated model-review notebook
 exported successfully. Source, dataset, result, and model hashes were checked.
-Incumbent PD and reference loss-bundle artifacts stayed unchanged.
+Incumbent charge-off classifier and reference loss-bundle artifacts stayed unchanged.
 
 The loss report writer was updated to preserve the later ANN statistics section.
 Its experiment was rerun from the unchanged modelling logic, and its current
@@ -226,3 +231,51 @@ See [the recovery and monitoring report](recovery_monitoring.md) and
 preserved when introducing the persistent broker mount. Elastic 8.17.3 is a
 local demo with loopback ports and disabled Elasticsearch security; external
 notifications and broker failover are not implemented.
+
+## Terminology-only clarification
+
+The current definitions are in [risk terminology](risk_terminology.md).
+A metadata-only annotation updated 128 existing local MLflow runs in 10 experiments.
+The check confirmed that metrics, parameters, run status/times and 225 result,
+manifest and model files were unchanged. The 29 existing loss/model/ANN/metric
+tests passed. The capital and loss calculations are unchanged.
+
+Run `.venv-locked/bin/python scripts/24_update_risk_terminology.py` to apply the
+same annotations to an existing local MLflow database. Historical logged report
+artifacts remain immutable execution snapshots; descriptions and scope tags
+clarify how to read them. Updated code and documentation do not claim to have
+produced historical metrics. New experiment artifacts must be generated and
+verified separately.
+
+The model-review HTML reads saved results. EDA HTML snapshots carry a terminology
+notice; their Python sources contain the same scope clarification.
+
+## Continuous integration and experiment refresh
+
+The **Test suite** GitHub Actions workflow runs on main pushes, pull requests and
+manual dispatch. It uses Python 3.14, Java 21 and the complete hash-locked streaming
+environment. The entire pytest suite runs, including Spark validation and the
+InterpretML tests. The workflow uploads a JUnit report even when tests fail.
+These fixture tests do not download Kaggle data or claim to reproduce real-data
+model metrics in CI. Kafka and ELK services are not required for this suite.
+
+With the existing raw and prepared datasets available locally, run:
+
+```bash
+make refresh-experiments
+```
+
+This runs the complete suite with no skips, then creates new MLflow batches for
+the baseline comparison, XGBoost research, validation hardening, snapshot-loss
+proxies, ANN challengers, coefficient review and InterpretML. It does not rerun
+EDA, change feature choices, obtain a new holdout or rerun the historical Kafka
+load/recovery benchmarks.
+
+The runner archives the previous manifest pointers and selected model, fingerprints
+historical result/model/figure files, and checks existing MLflow runs before and
+after execution. Existing versioned run directories remain unchanged; only latest
+pointers and current reports advance. The fresh baseline tables include Gini and
+full-threshold KS, with source hashes tying them to the metric implementation.
+Each refresh writes a verification record, source/input fingerprints and JUnit
+results under `assets/results/refresh/<timestamp>/`. Local execution logs and the
+previous selected model are retained under ignored `models/refresh/<timestamp>/`.

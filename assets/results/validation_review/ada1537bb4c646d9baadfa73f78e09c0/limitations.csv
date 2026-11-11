@@ -1,0 +1,8 @@
+item,status,finding
+target,limitation,Charged-off versus fully-paid among resolved 36-month accepted loans; no fixed one-year default horizon.
+test,limitation,2015 was previously explored and is not read in this review; no fresh holdout exists.
+label timing,limitation,Snapshot training labels may not have been known at later origination dates; not a point-in-time backtest.
+bureau timing,limitation,Added bureau-field collection/update times remain uncertified; expanded results are research only.
+logistic interpretation,reviewed,"Year, bootstrap, univariate and removal checks recorded; negative conditional coefficients are not causal protective effects or scorecard approval."
+loss targets,proxy only,EAD is residual snapshot principal; LGD uses snapshot net recoveries without event-time/discounted economic-loss validation.
+capital,illustrative only,"Capital uses assumed one-year PD scenarios; no regulatory floors, buffers, downturn-LGD validation or compliance claim."

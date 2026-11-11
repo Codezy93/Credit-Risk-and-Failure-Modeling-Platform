@@ -1,11 +1,11 @@
 {
   "status": "complete",
-  "batch_run_id": "86fe262241464da48d8c126660801e05",
+  "batch_run_id": "25ccff7634a34d3c893b37ea8ce0499d",
   "experiment_name": "lendingclub_interpretability_bias",
   "experiment_id": "8",
   "source_model_name": "hist_gradient_boosting",
-  "source_model_uri": "models:/m-c0cd1df22fa24744b5d207306fd84ac1",
-  "source_model_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "source_model_uri": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc",
+  "source_model_run_id": "f64a19bc843546e380a742697cf0bf26",
   "source_model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "features": [
     "loan_amnt",
@@ -102,10 +102,10 @@
     "mlflow": "3.18.0",
     "duckdb": "2.0.0"
   },
-  "result_directory": "assets/results/interpret_bias/86fe262241464da48d8c126660801e05",
-  "figure_directory": "assets/figures/interpret_bias/86fe262241464da48d8c126660801e05",
-  "model_directory": "models/interpret_bias/86fe262241464da48d8c126660801e05",
-  "completed_at_utc": "2026-11-10T00:10:54.498974+00:00",
+  "result_directory": "assets/results/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d",
+  "figure_directory": "assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d",
+  "model_directory": "models/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d",
+  "completed_at_utc": "2026-11-11T21:11:52.688443+00:00",
   "explanation_settings": {
     "method": "InterpretML ShapKernel and PartialDependence; permutation importance as a cross-check",
     "explained_quantity": "incumbent positive-class probability, scalar output; identity link",
@@ -130,7 +130,7 @@
     "permutation_rows": 10000,
     "permutation_repeats": 5,
     "permutation_sample_baseline_auc": 0.6611355243970154,
-    "elapsed_seconds": 22.31325212199954,
+    "elapsed_seconds": 84.43330622899884,
     "category_codebook": {
       "home_ownership": [
         "MORTGAGE",
@@ -160,9 +160,9 @@
   "overall_metrics_match_reference": true,
   "explanation_additivity_verified": true,
   "group_population_reconciliation_verified": true,
-  "execution_script_sha256": "ce9c180ffb31ad4ed1b4e1fd4df4e81f6fb42a8351aae4aaff4c6da67b10c1f3",
+  "execution_script_sha256": "8d865a59e8d6c1bc1f87cf7e5c1e126d01b5630498a0dff77e639e6ac096f301",
   "source_sha256": {
-    "scripts/14_interpret_bias.py": "ce9c180ffb31ad4ed1b4e1fd4df4e81f6fb42a8351aae4aaff4c6da67b10c1f3",
+    "scripts/14_interpret_bias.py": "8d865a59e8d6c1bc1f87cf7e5c1e126d01b5630498a0dff77e639e6ac096f301",
     "util/interpretation.py": "c54249dd5897f45cd48cc80d59f9085e8fcfe42f8443c339c76f00431b11cdff",
     "util/explanation_input.py": "55de10ed36773bd1d99e75dd6e860489841f12fc79296e70fbf57fd858132346",
     "util/segment_audit.py": "7d25b59c4392d3f1f61f9c38c9ebe12bf3416cac6868459e8c85974013440aff",

@@ -1,4 +1,4 @@
-"""Read measured results and explore the PD/loss/capital handoff in marimo."""
+"""Read measured results and explore the charge-off/loss-proxy/capital handoff in marimo."""
 
 import marimo
 
@@ -19,15 +19,32 @@ def _():
 @app.cell
 def _(mo):
     mo.md("""
-    # PD, loss modelling and illustrative capital
+    # Lifetime charge-off, snapshot losses and illustrative capital
 
     Here I read completed experiments rather than fitting models each time the
-    notebook opens. The 13 PD inputs remain unchanged. Later payment/recovery
+    notebook opens. The 13 classifier inputs remain unchanged. Later payment/recovery
     fields are used only to construct separate loss targets and diagnostics.
 
     The classification target is charged-off versus fully-paid among resolved
     36-month loans. It is not an observed one-year Basel default target. EAD/LGD
     are snapshot proxies; the capital panels use explicit assumed one-year PDs.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ## How to interpret the risk outputs
+
+    **Lifetime charge-off probability (resolved 36-month cohort)** is the
+    classification target: Charged Off = 1; Fully Paid = 0. Other statuses are
+    excluded. This is not a 12-month forecast or a Basel default probability.
+    EAD and LGD are retrospective snapshot proxies. Their product with the
+    classifier score is a lifetime snapshot-loss proxy, not regulatory one-year EL.
+    Capital/RWA panels use separately assumed one-year PDs, not classifier scores.
+    The classifier is not annualised. Legacy `pd`/`basel` identifiers are retained
+    for compatibility; historical result tables preserve their execution-time names.
     """)
     return
 
@@ -46,7 +63,7 @@ def _(Path, json, pd):
 @app.cell
 def _(mo, pd, root, validation_dir, validation_manifest):
     mo.vstack([
-        mo.md(f"""## What did the PD experiment actually show?
+        mo.md(f"""## What did the lifetime charge-off experiment actually show?
 
         Batch `{validation_manifest['batch_run_id']}`. Bootstrap intervals describe
         fitted models on the observed 2014 cohort and exclude selection uncertainty.
@@ -91,9 +108,9 @@ def _(component_metrics, duckdb, mo, root):
 
 @app.cell
 def _(loss_dir, loss_manifest, mo, pd, root):
-    mo.vstack([mo.md("""## Combine PD × LGD × EAD
+    mo.vstack([mo.md("""## Lifetime snapshot-loss composition
 
-    EAD is predicted as funded amount × predicted EAD ratio. This expected-loss
+    Snapshot EAD is predicted as funded amount × predicted EAD ratio. This lifetime loss
     proxy multiplies conditional means and ignores residual EAD/LGD dependence.
     Compare it with snapshot loss on the eligible 2014 portfolio. Selection and
     evaluation share 2014, so these are retrospective research results.

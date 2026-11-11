@@ -1,0 +1,53 @@
+name: Test suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: Pytest including Spark
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SPARK_LOCAL_IP: 127.0.0.1
+      OMP_NUM_THREADS: 2
+      OPENBLAS_NUM_THREADS: 2
+      MKL_NUM_THREADS: 2
+      MLFLOW_ENABLE_TELEMETRY: 'false'
+      MLFLOW_DISABLE_AGENT_HINT: '1'
+      MPLBACKEND: Agg
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Set up Java for Spark
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install hash-locked test environment
+        run: python scripts/setup_environment.py --env-dir .venv-ci --streaming
+      - name: Confirm optional test dependencies
+        run: .venv-ci/bin/python -c "import pyspark, confluent_kafka, interpret; print('Spark and interpretation dependencies available')"
+      - name: Run the complete test suite
+        run: .venv-ci/bin/python -m pytest -q --junitxml=test-results/pytest.xml
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: test-results/pytest.xml
+          if-no-files-found: warn

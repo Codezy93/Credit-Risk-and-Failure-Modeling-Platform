@@ -8,7 +8,11 @@ from util.feature_policy import validate_features
 
 
 def other_retail_capital(pd_one_year, lgd, ead):
-    """Undefaulted other-retail scenario; no regulatory eligibility is implied."""
+    """Illustrative performing-retail scenario with an assumed annual PD input.
+
+    The input is separate from the lifetime charge-off classifier.
+    Regulatory eligibility and parameter validation are not established here.
+    """
     pd_one_year, lgd, ead = np.broadcast_arrays(
         np.asarray(pd_one_year, dtype=float), np.asarray(lgd, dtype=float), np.asarray(ead, dtype=float))
     if not all(np.isfinite(x).all() for x in (pd_one_year, lgd, ead)):
@@ -29,6 +33,10 @@ def other_retail_capital(pd_one_year, lgd, ead):
 
 
 def expected_loss(pd_score, lgd, ead):
+    """Multiply compatible inputs; classifier composition is a lifetime snapshot-loss proxy.
+
+    The legacy name does not imply a one-year regulatory expected loss.
+    """
     pd_score, lgd, ead = np.broadcast_arrays(np.asarray(pd_score, dtype=float),
         np.asarray(lgd, dtype=float), np.asarray(ead, dtype=float))
     if not all(np.isfinite(x).all() for x in (pd_score, lgd, ead)):
@@ -39,7 +47,11 @@ def expected_loss(pd_score, lgd, ead):
 
 
 def score_loss_bundle(bundle, features, funded_amount):
-    """Score origination predictors; funding is separate exposure scaling metadata."""
+    """Return lifetime charge-off and snapshot-loss proxies.
+
+    `pd_score_resolved_outcome` is a legacy column name, not an annual Basel PD.
+    Funding is separate exposure scaling metadata; no capital is calculated here.
+    """
     validate_features(bundle["features"])
     if list(features.columns) != bundle["features"]:
         raise ValueError("Use exactly the bundle's ordered predictor columns.")

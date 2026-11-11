@@ -1,5 +1,9 @@
 # Credit Risk and Failure Modeling Platform
 
+The classifier estimates **lifetime charge-off probability (resolved 36-month cohort)**.
+EAD/LGD are snapshot proxies; capital uses separate assumed one-year PDs.
+See the [risk terminology](docs/risk_terminology.md) for definitions and legacy artifact names.
+
 Project reports are published with MkDocs using its default theme:
 [read the documentation](https://codezy93.github.io/Credit-Risk-and-Failure-Modeling-Platform/).
 Markdown sources live in `docs/`; configuration is in `mkdocs.yml`.
@@ -9,6 +13,13 @@ Markdown sources live in `docs/`; configuration is in `mkdocs.yml`.
 make docs-setup   # install the documentation dependency
 make site-serve   # local documentation preview
 ```
+
+GitHub Actions runs the full pytest suite, including Spark, using Python 3.14,
+Java 21 and the streaming dependency lock. It uploads a JUnit test report.
+To regenerate the model experiments from existing prepared data while retaining
+historical runs, use `make refresh-experiments`. See the
+[reproducibility guide](docs/reproducibility.md#continuous-integration-and-experiment-refresh).
+
 
 A credit-risk project using LendingClub loan data. EDA is complete, with SQL
 audits, three marimo notebooks, saved figures, a feature-availability review, and
@@ -23,11 +34,11 @@ The [Kafka/PySpark guide](docs/streaming.md) explains the streaming replay and
 distributed scoring stage, including checkpoint and delivery semantics.
 The [validation report](docs/validation_hardening.md) adds exact KS/Gini, paired
 AUC intervals, and a separate-year calibration experiment.
-The [Basel-style loss experiment](docs/basel_loss_experiment.md) adds separate
+The [Snapshot loss proxies and illustrative capital](docs/basel_loss_experiment.md) adds separate
 EAD/LGD snapshot-proxy models, expected loss, and illustrative capital scenarios.
 The [model review notebook](notebooks/10_model_review.py) displays these stages
 together; its [HTML export](docs/model_review.html) opens without running training.
-The [ANN experiment report](docs/ann_experiments.md) compares neural-network PD,
+The [ANN experiment report](docs/ann_experiments.md) compares neural-network charge-off classifiers,
 EAD and LGD challengers with the original models.
 The [InterpretML and segment-bias report](docs/interpret_bias.md) explains the
 incumbent and audits observed borrower-segment disparities without claiming
@@ -65,7 +76,7 @@ make test       # Fixture, feature-policy, temporal split, preprocessing and met
 make validate   # Recompute validation diagnostics using existing prepared data/models
 make review     # Temporal XGBoost search, coefficient stability/ablations, and notebook export
 make loss       # Fit EAD/LGD proxies and export the model-review notebook
-make ann        # Fit ANN PD/EAD/LGD challengers and export the model-review notebook
+make ann        # Fit ANN charge-off classifier/EAD/LGD challengers and export the model-review notebook
 make interpret  # Explain the incumbent, audit borrower segments, and export the notebook
 make full       # Also rerun the optional XGBoost and ANN research trials
 ```
@@ -112,7 +123,7 @@ and the LGD mean baseline won (MAE **0.075857**). Their combined expected-loss p
 was **$132.52 million**, against **$136.95 million** observed snapshot loss on
 162,563 eligible validation loans (**−3.23%** aggregate error). The mean/mean
 baseline had a smaller aggregate error (**−2.44%**); component selection does not
-guarantee the best portfolio-total calibration. PD validation AUC stayed **0.653889**.
+guarantee the best portfolio-total calibration. charge-off validation AUC stayed **0.653889**.
 
 MLflow experiment `lendingclub_basel_loss_proxies` contains four component models,
 four native regression evaluations, full train/validation datasets, the selected
@@ -128,17 +139,17 @@ The three original EDA notebooks now display stored validation/loss summaries;
 the model-review notebook refreshes after each new experiment in `make all`.
 The [loss and notebook verification record](assets/results/basel_loss_verification.json)
 checks all four exports, saved-model hashes, native regression metrics, the
-complete bundle-scoring output, and the unchanged PD predictions.
+complete bundle-scoring output, and the unchanged charge-off probabilities.
 
 ## ANN challengers
 
 Run `make ann` after the baseline and loss experiments. Scikit-learn multilayer
-perceptrons add no new dependencies. Two PD networks (32 and 64→32 hidden units)
+perceptrons add no new dependencies. Two charge-off networks (32 and 64→32 hidden units)
 and 32→16 EAD/LGD regressors use the original 13 predictors. Stopping fits on
 2011–2012 and uses 2013 only; each network then refits on all 2011–2013 loans for
 the frozen epoch budget before the 2014 comparison. 2015 is never loaded.
 
-The larger PD ANN reached **0.651546 validation AUC**, versus **0.653889** for the
+The larger charge-off ANN reached **0.651546 validation AUC**, versus **0.653889** for the
 incumbent boosting model. ANN EAD MAE was **0.203635**, versus **0.202030** for
 boosting; ANN LGD MAE was **0.081999**, versus **0.075857** for the mean baseline.
 Neither selected loss component was improved. Both loss ANNs reached the
@@ -710,3 +721,6 @@ This is one local failure experiment, not a production availability guarantee.
 The operational checker correctly reports warnings for the deliberate conflict
 and outage-related latency. See [the full report](docs/recovery_monitoring.md) and
 [independent verification](assets/results/recovery_verification.json).
+
+The [current-code experiment refresh](docs/experiment_refresh.md) records seven fresh
+modeling batches, 110 passing tests including Spark, and historical preservation checks.

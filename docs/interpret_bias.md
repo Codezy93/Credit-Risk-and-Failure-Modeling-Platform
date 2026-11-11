@@ -1,5 +1,7 @@
 # InterpretML and borrower-segment bias analysis
 
+Terminology: [lifetime charge-off probability, snapshot losses and capital scenarios](risk_terminology.md).
+
 This stage explains the unchanged histogram-gradient-boosting incumbent and measures descriptive disparities on 2014 validation and previously explored 2015 loans. It does not retrain a model, adjust thresholds or establish protected-group fairness.
 
 ## Main findings
@@ -149,16 +151,16 @@ The 0.5 comparison threshold can produce no flags at all. Zero flag/TPR/FPR spre
 | validation | frozen_validation_f1 | missingness | Any_missing | 9717 | 1957 | 7760 | 6599 | 1549 | 5050 | 408 | 2710 | 0.2014 | 0.18461 | -0.016789 | 0.157466 | 0.60904 | 0.266703 | 0.679119 | 0.791518 | 0.650773 | 0.208482 | 0.234733 | True | supported | 0.147853 | 0.193544 | 0.209491 | 0.669768 | 0.688328 | 0.772957 | 0.808936 | 0.640094 | 0.661303 | 0.017751 |
 | validation | frozen_validation_f1 | missingness | Complete | 152853 | 20358 | 132495 | 52121 | 10656 | 41465 | 9702 | 91030 | 0.133187 | 0.128407 | -0.00478 | 0.111636 | 0.653124 | 0.21003 | 0.340988 | 0.523431 | 0.312955 | 0.476569 | 0.204447 | True | supported | 0.147853 | 0.131493 | 0.134899 | 0.338615 | 0.343368 | 0.516566 | 0.530286 | 0.310464 | 0.315457 | 0.005497 |
 
-![feature importance](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/feature_importance.png)
+![feature importance](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/feature_importance.png)
 
-![partial dependence](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/partial_dependence.png)
+![partial dependence](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/partial_dependence.png)
 
-![local examples](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/local_examples.png)
+![local examples](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/local_examples.png)
 
-![segment disparities](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/segment_disparities.png)
+![segment disparities](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/segment_disparities.png)
 
 Native InterpretML interactive plots are saved beside the PNG/SVG figures. Their category values are display codes; readable values and the codebook are in the CSV/manifest. Interactive HTML uses a Plotly CDN; static images and tables work offline.
 
-MLflow experiment `lendingclub_interpretability_bias`, batch `86fe262241464da48d8c126660801e05`. [Manifest and complete CSVs](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/interpret_bias/86fe262241464da48d8c126660801e05/manifest.json). The main model-review notebook displays these results without refitting.
+MLflow experiment `lendingclub_interpretability_bias`, batch `25ccff7634a34d3c893b37ea8ce0499d`. [Manifest and complete CSVs](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/manifest.json). The main model-review notebook displays these results without refitting.
 
 References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKernel.html), [InterpretML PartialDependence](https://interpret.ml/docs/python/api/PartialDependence.html), [Fairlearn fairness-assessment guidance](https://fairlearn.org/v0.15/user_guide/assessment/perform_fairness_assessment.html).

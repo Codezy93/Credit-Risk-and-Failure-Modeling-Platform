@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "historical_baseline_metric_values_compared": 57,
+  "relative_tolerance": 1e-09,
+  "absolute_tolerance": 1e-12,
+  "fresh_gini_identity_verified": true,
+  "ks_range_checked": true,
+  "validation_metrics": {
+    "roc_auc": 0.65388949401906,
+    "gini": 0.3077789880381201,
+    "ks": 0.22279631304055492,
+    "average_precision": 0.21648253187511746,
+    "brier_score": 0.11437536695927923
+  },
+  "exploratory_2015_metrics": {
+    "roc_auc": 0.6543503938347552,
+    "gini": 0.3087007876695105,
+    "ks": 0.22378872690020518,
+    "average_precision": 0.23502665345702134,
+    "brier_score": 0.12227932075425754
+  },
+  "additional_historical_xgboost_models_verified": [
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_shallow.joblib",
+      "sha256": "3fdd25d88fab785904f11ba8b5a343d8babc062c151f0619bf0f493aa6dd5163"
+    },
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_shallow.joblib",
+      "sha256": "d454ee33e5422aa24abab62070857593bce8988431b3b4e222f2d4ea78bdb9cd"
+    },
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_regularized.joblib",
+      "sha256": "afc870afbbb9230afc797bdcbd9e1cb10fcccad58dbf96f7ee1b152fb3462825"
+    },
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_deep.joblib",
+      "sha256": "12442f020d2b811636800bb02a1b4384028c7ff008974434da9bc8880da9f958"
+    },
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_shallow.joblib",
+      "sha256": "592726d78b660286d3b7ee5cb6e3070f2f4ed5b40888bcca2d0d25d4b7f32b77"
+    },
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_regularized.joblib",
+      "sha256": "bdc991877f748741005622ba973879e8ad6a5bef6c52db6bd95da59305cbbc67"
+    },
+    {
+      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_deep.joblib",
+      "sha256": "0da6e0c0fb906050b4bfc1f78366b9d32a7cfe86e71a67372a3d136b50b72225"
+    }
+  ]
+}

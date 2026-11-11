@@ -1,0 +1,250 @@
+{
+  "status": "complete",
+  "experiment_name": "lendingclub_ann_challengers",
+  "experiment_id": "5",
+  "batch_run_id": "fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
+  "seed": 42,
+  "selected_model": "",
+  "model_uris": {
+    "ann_pd_32": "models:/m-37e9f607d5a2447eab15bb653594dedd",
+    "ann_pd_64x32": "models:/m-b3feca10428740fabe23a618de5d9c1c",
+    "ann_ead_32x16": "models:/m-4d7f18049b7d4e099af7c8a290109fab",
+    "ann_lgd_32x16": "models:/m-92b5b7891e7f4b7d9208da5fdfcf7873"
+  },
+  "run_ids": {
+    "ann_pd_32": "50b94b7f150b4293afdb3426fbb08cdd",
+    "ann_pd_64x32": "7e960fa6411e4f31ae9d4d2c0103b384",
+    "ann_ead_32x16": "de95763f88ea477eb9a9dbfb36f4be2f",
+    "ann_lgd_32x16": "c3d464dae8f243a99c47d0238de79fa7"
+  },
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "mlflow": "3.18.0",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "cloudpickle": "3.1.2"
+  },
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
+  },
+  "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
+  "pd_reference_batch_id": "6ccea4b79b8343cd971273181d93f680",
+  "loss_reference_batch_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
+  "pd_incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "loss_reference_bundle_sha256": "1082067bb0b813d60660234a4ca836ee57f8060529bf8cde217b767ef76f38b6",
+  "epoch_selection": "fit 2011-2012; stop on 2013 AUC or bounded MAE; refit 2011-2013 for fixed selected epochs",
+  "model_selection": "2014 average precision for charge-off classification, bounded MAE for each loss component",
+  "test_2015_read": false,
+  "data_previously_explored": true,
+  "single_seed_research": true,
+  "incumbent_replaced": false,
+  "capital_scope_changed": false,
+  "result_directory": "assets/results/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "model_directory": "models/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "figure_directory": "assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "completed_at_utc": "2026-11-11T20:57:23.663813+00:00",
+  "selected_ann_pd": "ann_pd_64x32",
+  "temporal_settings": {
+    "ann_pd_32": {
+      "hidden_layers": [
+        32
+      ],
+      "selected_epochs": 49,
+      "stopping_epochs_run": 57,
+      "stopping_best_value": 0.6461291985802513,
+      "inner_fit_rows": 57571,
+      "stopping_rows": 100422,
+      "refit_rows": 157993,
+      "max_epochs": 60,
+      "patience": 8,
+      "improvement_tolerance": 0.0001,
+      "seed": 42,
+      "parameters": {
+        "hidden_layer_sizes": [
+          32
+        ],
+        "activation": "relu",
+        "solver": "adam",
+        "alpha": 0.01,
+        "learning_rate_init": 0.001,
+        "batch_size": 1024,
+        "shuffle": true,
+        "early_stopping": false,
+        "random_state": 42
+      }
+    },
+    "ann_pd_64x32": {
+      "hidden_layers": [
+        64,
+        32
+      ],
+      "selected_epochs": 19,
+      "stopping_epochs_run": 27,
+      "stopping_best_value": 0.6463206321896705,
+      "inner_fit_rows": 57571,
+      "stopping_rows": 100422,
+      "refit_rows": 157993,
+      "max_epochs": 60,
+      "patience": 8,
+      "improvement_tolerance": 0.0001,
+      "seed": 42,
+      "parameters": {
+        "hidden_layer_sizes": [
+          64,
+          32
+        ],
+        "activation": "relu",
+        "solver": "adam",
+        "alpha": 0.01,
+        "learning_rate_init": 0.001,
+        "batch_size": 1024,
+        "shuffle": true,
+        "early_stopping": false,
+        "random_state": 42
+      }
+    },
+    "ann_ead_32x16": {
+      "hidden_layers": [
+        32,
+        16
+      ],
+      "selected_epochs": 60,
+      "stopping_epochs_run": 60,
+      "stopping_best_value": 0.20717494325235167,
+      "inner_fit_rows": 7388,
+      "stopping_rows": 12369,
+      "refit_rows": 19757,
+      "max_epochs": 60,
+      "patience": 8,
+      "improvement_tolerance": 1e-05,
+      "seed": 42,
+      "parameters": {
+        "hidden_layer_sizes": [
+          32,
+          16
+        ],
+        "activation": "relu",
+        "solver": "adam",
+        "alpha": 0.01,
+        "learning_rate_init": 0.001,
+        "batch_size": 1024,
+        "shuffle": true,
+        "early_stopping": false,
+        "random_state": 42
+      }
+    },
+    "ann_lgd_32x16": {
+      "hidden_layers": [
+        32,
+        16
+      ],
+      "selected_epochs": 60,
+      "stopping_epochs_run": 60,
+      "stopping_best_value": 0.0900913182756327,
+      "inner_fit_rows": 7388,
+      "stopping_rows": 12369,
+      "refit_rows": 19757,
+      "max_epochs": 60,
+      "patience": 8,
+      "improvement_tolerance": 1e-05,
+      "seed": 42,
+      "parameters": {
+        "hidden_layer_sizes": [
+          32,
+          16
+        ],
+        "activation": "relu",
+        "solver": "adam",
+        "alpha": 0.01,
+        "learning_rate_init": 0.001,
+        "batch_size": 1024,
+        "shuffle": true,
+        "early_stopping": false,
+        "random_state": 42
+      }
+    }
+  },
+  "execution_script_sha256": "885fd06d6f63b784c0e6f513e6e3463a58e80e113c6bf078638f107156d74067",
+  "source_sha256": {
+    "scripts/11_ann_experiments.py": "885fd06d6f63b784c0e6f513e6e3463a58e80e113c6bf078638f107156d74067",
+    "util/ann.py": "a2350788ed70f83a2fad4a12916f78a9b598b999731b5486b605ddadef9df56e",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "results_sha256": {
+    "loss_metrics.csv": "35f0082848b69ece564371d80ad0bce4313dfda7f386d72f8099503606f631cb",
+    "pd_comparison.csv": "14dfdfc5ff841ddedf7618d0a73639e53eaea77b6efba13ad8ea267ae64b30f2",
+    "pd_metrics.csv": "e9e104ed509477d8915f53746f2628b73b94ca4e4e22c007f4cf58d12a8133fa",
+    "loss_comparison.csv": "74ed8eba4b45f149209fb6e1a3d1ee6e717be0ccabfca4761ed071e6534cce00",
+    "portfolio_loss_comparison.csv": "108d7fc89c99424bd0b4a240f79ccb57e107eecdc9eb5013a51715e7d21a8bf9",
+    "dataset_roles.csv": "87b72a4650d23ccdcf25b4fbc6df3faff06228cc3dd2d4a28edd58bf70cdf6a0",
+    "native_evaluations.csv": "2030257afb3b8025f80f6029cfbacbad08d7bd7a164f75b4d1df48c5e47b742a",
+    "learning_curves.csv": "0b0e29905b2b15b7f2be8fae15bd15d7b31fcbcd0c0caa84a169193dddcfd3b7"
+  },
+  "model_sha256": {
+    "ann_lgd_32x16.joblib": "48d5063b3c5ebe50c5d3543567adf484739c7b7a8190c8ea75697ed45aedd827",
+    "ann_pd_32.joblib": "e354334653e5463560b452ffc1fef735e0fd936806cf34dce54006565b517228",
+    "ann_pd_64x32.joblib": "66e76669e1b8a983dcb80584d163ecdc1cac5d464d1c0a73eaf9823783cc4569",
+    "ann_loss_bundle.joblib": "9edefe3c42c2ec462c461e92e72baa4f538e2a3eef4d22cc2d994365a4a93fd1",
+    "ann_ead_32x16.joblib": "4d0ecf66f38078b8867e7a1d8e9549f2f900730d18db3924af828bc08d3a1956"
+  },
+  "dataset_sha256": {
+    "ead_validation.parquet": "12dd33edfd1e274711f64bb261968b26d9d623f2149f2bd8afe648dbcde2ee07",
+    "pd_validation.parquet": "712e7f7796ba1ab9195336ae8cf8c5d5d950be9bb3db0fbfb082c0b14306a133",
+    "lgd_stopping.parquet": "78315754bf904e3b3a59f8fb3b1a9c0765a30faa9e6d2ffa8b844c20d5d91cf5",
+    "pd_stopping.parquet": "72900cb083a0b105a53980206cd7af0c8aadcba40c2ae84da77c2ffed8812aa7",
+    "lgd_validation.parquet": "b7a3a1cdfb3db2dc0324441cd31398f047012cb06f8a2bd3cbbfa132d313c4b5",
+    "lgd_train.parquet": "3b733f9b6b06fef09f3a8d78f5b1c363d764ffe18c6b56df7e39e69ddd05ce25",
+    "pd_inner_fit.parquet": "705a7a02ef6f48a77cc650fe871d185cb3203b1eaf7717607f4829c231a82dea",
+    "ead_stopping.parquet": "81d83cbf6491ceafe3c246c77b61b66b050978fcb64c1aa333bf45ad5ac0b95b",
+    "pd_train.parquet": "a8991d6ed3f598a627be6ecd646ad58e4765896e6017b7f0a805269633cc8201",
+    "ead_inner_fit.parquet": "2e769ea58944cc4bfdde1d0bd658b8eff6ed2f726417c67df80a3224f5c11e4d",
+    "ead_train.parquet": "05d0192acc5646c51dd184d95412a132c59e27a05a6dcab616a84ea975a647c7",
+    "lgd_inner_fit.parquet": "6c79ae3e068a7ac8b2b67c5655d695336b67fa790cf3e19dc14a1a6588d41dfd"
+  }
+}

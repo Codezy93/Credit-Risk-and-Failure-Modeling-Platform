@@ -1,6 +1,30 @@
-# Basel-style loss experiment
+# Snapshot loss proxies and illustrative capital
 
-This experiment adds separate EAD and LGD models, resolved-outcome expected-loss proxies, and illustrative CRE31.16 other-retail capital calculations. It is not a regulatory model. The incumbent PD model is unchanged. Fit: 2011–2013; selection/evaluation: already-explored 2014. No 2015 rows are used.
+Terminology: [lifetime charge-off probability, snapshot losses and capital scenarios](risk_terminology.md).
+
+## Risk terminology and interpretation
+
+The classifier estimates lifetime charge-off probability in the resolved
+36-month cohort: Charged Off = 1 and Fully Paid = 0. Other statuses are excluded.
+This is conditional on the selected accepted-loan population and observed final
+status. It is neither a 12-month forecast nor a Basel default probability.
+
+EAD and LGD refer to retrospective snapshot proxies, not default-event EAD or
+discounted economic LGD. The lifetime snapshot-loss proxy multiplies the
+classifier score by predicted snapshot LGD and snapshot EAD. It is not a
+regulatory one-year expected loss estimate.
+
+Capital and RWA are illustrative sensitivities using explicitly assumed
+one-year PDs, separate from the classifier score. The current capital scenarios
+do not use or annualise the classifier prediction. The approximation
+1 - (1 - p_lifetime) ** (1 / 3) would require constant annual hazard; it would
+not establish a regulatory default definition or validate a 12-month PD.
+
+Legacy names containing `pd`, `basel`, `expected_loss` or `default` are retained
+for artifact/API compatibility. They do not change these definitions.
+
+
+This experiment adds separate EAD and LGD models, lifetime snapshot-loss proxies, and illustrative CRE31.16 other-retail capital calculations. It is not a regulatory model. The incumbent lifetime charge-off classifier is unchanged. Fit: 2011–2013; selection/evaluation: already-explored 2014. No 2015 rows are used.
 
 ## Targets and exclusions
 
@@ -10,13 +34,13 @@ Snapshot principal and recoveries are not event-time EAD or discounted economic 
 
 ## Component models
 
-Mean baselines and fixed gradient-boosting regressors use the same 13 origination predictors. All preprocessing is fitted on eligible training defaults only. Outcome fields form targets and dollar diagnostics; they never enter PD or loss predictor matrices. Predictions are explicitly bounded to [0,1] for composition; raw regression errors and clipping counts are also saved. Native MLflow regression evaluations use raw predictions. Selection uses validation bounded MAE.
+Mean baselines and fixed gradient-boosting regressors use the same 13 origination predictors. All preprocessing is fitted on eligible training defaults only. Outcome fields form targets and dollar diagnostics; they never enter classifier or loss-proxy predictor matrices. Predictions are explicitly bounded to [0,1] for composition; raw regression errors and clipping counts are also saved. Native MLflow regression evaluations use raw predictions. Selection uses validation bounded MAE.
 
 ## Expected loss and capital interpretation
 
-Resolved-outcome EL proxy = unchanged PD score × predicted LGD × predicted EAD. EAD prediction = funded amount × predicted EAD ratio. Multiplying conditional EAD and LGD means ignores residual dependence; validation dollar errors expose this approximation. The observed loss comparator uses the same eligible portfolio and snapshot convention.
+Lifetime snapshot-loss proxy = unchanged lifetime charge-off score × predicted snapshot LGD × predicted snapshot EAD. EAD prediction = funded amount × predicted EAD ratio. Multiplying conditional EAD and LGD means ignores residual dependence; validation dollar errors expose this approximation. The observed loss comparator uses the same eligible portfolio and snapshot convention.
 
-Capital uses explicitly assumed one-year PD scenarios, never the resolved-loan PD score. CRE31.16 correlation R = 0.03w + 0.16(1−w), w = (1−exp(−35PD))/(1−exp(−35)); K = LGD × [Phi((Phi^-1(PD)+sqrt(R)Phi^-1(0.999))/sqrt(1−R))−PD]; capital = K × EAD and RWA = 12.5 × capital. Scenario one-year EL uses the assumed PD. The scenario treats the loans as a hypothetical performing portfolio at origination; it does not apply the performing-exposure formula to their realised default state. Other-retail eligibility is assumed for illustration. No regulatory parameter floors, output floor, buffers, provisions adjustment, downturn-LGD validation or approval requirements are implemented. These are sensitivities, not a measured regulatory capital requirement.
+Capital uses explicitly assumed one-year PD scenarios, never the lifetime charge-off score. CRE31.16 correlation R = 0.03w + 0.16(1−w), w = (1−exp(−35PD))/(1−exp(−35)); K = LGD × [Phi((Phi^-1(PD)+sqrt(R)Phi^-1(0.999))/sqrt(1−R))−PD]; capital = K × EAD and RWA = 12.5 × capital. Scenario one-year EL uses the assumed PD. The scenario treats the loans as a hypothetical performing portfolio at origination; it does not apply the performing-exposure formula to their realised default state. Other-retail eligibility is assumed for illustration. No regulatory parameter floors, output floor, buffers, provisions adjustment, downturn-LGD validation or approval requirements are implemented. These are sensitivities, not a measured regulatory capital requirement.
 
 ## loss audit
 
@@ -104,15 +128,15 @@ Capital uses explicitly assumed one-year PD scenarios, never the resolved-loan P
 
 | model | evaluation_run_id | native_validation_score | native_validation_example_count | native_validation_mean_absolute_error | native_validation_mean_squared_error | native_validation_root_mean_squared_error | native_validation_sum_on_target | native_validation_mean_on_target | native_validation_r2_score | native_validation_max_error | native_validation_mean_absolute_percentage_error |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ead_mean | 4d8025e2c38d45b7baf9b64d82a4121f | -0.002078 | 22308 | 0.203347 | 0.058446 | 0.241757 | 12,729.808506 | 0.570639 | -0.002078 | 0.581632 | 2.525249 |
-| ead_boosting | 9a47dfabac3440dcab3352a61e95a918 | 0.00471 | 22308 | 0.20203 | 0.058051 | 0.240937 | 12,729.808506 | 0.570639 | 0.00471 | 0.669205 | 2.427968 |
-| lgd_mean | 393ad762a4f545f4a5fa6e0b542a0935 | -0.00192 | 22308 | 0.075857 | 0.014672 | 0.121128 | 19,817.742847 | 0.888369 | -0.00192 | 0.893671 | 180,416,805,933.865601 |
-| lgd_boosting | 98b3bb4f576843f29ae690848e64d548 | -0.001047 | 22308 | 0.076627 | 0.014659 | 0.121075 | 19,817.742847 | 0.888369 | -0.001047 | 0.936367 | 189,036,413,367.717377 |
+| ead_mean | fb7489bb77684bdabae3ab9445eae066 | -0.002078 | 22308 | 0.203347 | 0.058446 | 0.241757 | 12,729.808506 | 0.570639 | -0.002078 | 0.581632 | 2.525249 |
+| ead_boosting | a55b2504fcfa4d7aa2a02f31b29cd59b | 0.00471 | 22308 | 0.20203 | 0.058051 | 0.240937 | 12,729.808506 | 0.570639 | 0.00471 | 0.669205 | 2.427968 |
+| lgd_mean | 74164b169f8848579c19fc2838c68c1f | -0.00192 | 22308 | 0.075857 | 0.014672 | 0.121128 | 19,817.742847 | 0.888369 | -0.00192 | 0.893671 | 180,416,805,933.865601 |
+| lgd_boosting | 9e0abb2f41b24eb186af4900c10886d7 | -0.001047 | 22308 | 0.076627 | 0.014659 | 0.121075 | 19,817.742847 | 0.888369 | -0.001047 | 0.936367 | 189,036,413,367.717377 |
 
-![Loss targets](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/basel_loss/c072de3541e2496ab90ed6b7c2699137/loss_targets.png)
+![Loss targets](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_targets.png)
 
-![Loss and capital](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/basel_loss/c072de3541e2496ab90ed6b7c2699137/loss_and_capital.png)
+![Loss and capital](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_and_capital.png)
 
 Sources: [BIS CRE31.16 risk-weight functions](https://www.bis.org/committees/bcbs/basel-framework/standard/cre/31/inforce/2023-01-01/published/2020-03-27), [BIS CRE36 economic-loss requirements](https://www.bis.org/committees/bcbs/basel-framework/standard/cre/36/inforce/2023-01-01/published/2022-12-08).
 
-MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90ed6b7c2699137`. [Full manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/basel_loss/c072de3541e2496ab90ed6b7c2699137/manifest.json). The local model directory contains four component pipelines and the selected loss-model bundle.
+MLflow experiment: `lendingclub_basel_loss_proxies`, batch `bc7fbb6777cd4365b1a93a4d97fd872f`. [Full manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/manifest.json). The local model directory contains four component pipelines and the selected loss-model bundle.

@@ -10,7 +10,7 @@ PYTHON := $(ENV_DIR)/bin/python
 
 DOCS_PYTHON ?= $(BOOTSTRAP_PYTHON)
 
-.PHONY: docs-setup site site-check site-serve
+.PHONY: docs-setup site site-check site-serve refresh-experiments
 
 docs-setup:
 	$(DOCS_PYTHON) -m pip install -r requirements-docs.txt
@@ -22,6 +22,10 @@ site-check: site
 
 site-serve:
 	$(DOCS_PYTHON) -m mkdocs serve --dev-addr 127.0.0.1:8000
+
+# Existing raw and prepared datasets are required; prior run directories are retained.
+refresh-experiments: streaming-setup
+	$(SPARK_ENV) $(STREAM_PYTHON) scripts/25_refresh_experiments.py
 
 load-test:
 	$(SPARK_ENV) $(STREAM_PYTHON) scripts/18_run_load_test.py $(ARGS)

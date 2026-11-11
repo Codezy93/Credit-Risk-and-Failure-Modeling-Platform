@@ -1,5 +1,7 @@
 # Prepared model datasets
 
+Terminology: [lifetime charge-off probability, snapshot loss proxies and illustrative capital](risk_terminology.md).
+
 Prepared: 2026-11-08T15:27:11+00:00.
 
 The clean analysis table has been filtered into the EDA-approved retrospective

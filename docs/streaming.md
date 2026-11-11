@@ -1,5 +1,7 @@
 # Kafka and PySpark scoring
 
+Terminology: [lifetime charge-off probability, snapshot loss proxies and illustrative capital](risk_terminology.md).
+
 The streaming stage replays prepared LendingClub applications through Kafka and
 uses PySpark Structured Streaming to validate and score them with the existing
 frozen classifier. It does not train a Spark ML model or change the SQL cleaning

@@ -1,5 +1,7 @@
 # Logistic coefficient validation
 
+Terminology: [lifetime charge-off probability, snapshot losses and capital scenarios](risk_terminology.md).
+
 This review investigates the two questioned negative logistic coefficients using only 2011–2013 training data. Four feature-removal variants are compared on the already-explored 2014 cohort. No 2015 rows are read, no model is promoted, and no coefficients are forced to have a preferred sign. Positive class is Charged Off.
 
 ## What the signs mean
@@ -104,6 +106,6 @@ Univariate fits, observed outcome buckets and FICO-stratified slices give contex
 
 Keep the incumbent histogram-boosting model unchanged. The plain logistic baseline is not a WoE scorecard and this review does not certify monotonic economic interpretation. If a model requires monotonic delinquency/bankruptcy effects, that requirement must be enforced and validated in a separate constrained model; do not relabel conditional negative effects as beneficial borrower behaviour. Feature-removal comparisons and their paired interval show the discrimination trade-off, without turning 2014 into a fresh holdout.
 
-![Coefficient stability](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/validation_review/da3c8ad1bee14f60ac5156def8b04b14/coefficient_stability.png)
+![Coefficient stability](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/validation_review/ada1537bb4c646d9baadfa73f78e09c0/coefficient_stability.png)
 
-[Scikit-learn coefficient-interpretation guidance](https://scikit-learn.org/stable/auto_examples/inspection/plot_linear_model_coefficient_interpretation.html). MLflow experiment `lendingclub_coefficient_validation`, batch `da3c8ad1bee14f60ac5156def8b04b14`. [Full CSVs and manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_review/da3c8ad1bee14f60ac5156def8b04b14/manifest.json).
+[Scikit-learn coefficient-interpretation guidance](https://scikit-learn.org/stable/auto_examples/inspection/plot_linear_model_coefficient_interpretation.html). MLflow experiment `lendingclub_coefficient_validation`, batch `ada1537bb4c646d9baadfa73f78e09c0`. [Full CSVs and manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_review/ada1537bb4c646d9baadfa73f78e09c0/manifest.json).

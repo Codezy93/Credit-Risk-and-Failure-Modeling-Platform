@@ -30,6 +30,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope, SCOPE_NOTE
 from util.mlflow_evaluation import add_native_evaluations
 from util.modeling import build_models
 from util.metrics import calibration_table, choose_threshold, evaluate_model as evaluate
@@ -169,6 +170,7 @@ def main():
     validation_dataset = mlflow.data.from_pandas(dataset_frames["validation"], source=str(ROOT / "data/clean/modeling/validation.parquet"), targets=data["target"], name="validation")
 
     with mlflow.start_run(experiment_id=experiment_id, run_name="first_model_comparison") as batch:
+        log_risk_scope()
         batch_id = batch.info.run_id
         result_dir = RESULTS / "experiments" / batch_id
         figure_dir = ROOT / "assets/figures/experiments" / batch_id
@@ -189,6 +191,7 @@ def main():
         for name, model in models.items():
             logging.info("Training %s on %s rows", name, len(y_train))
             with mlflow.start_run(experiment_id=experiment_id, run_name=name, nested=True) as run:
+                log_risk_scope()
                 runs[name] = run.info.run_id
                 mlflow.set_tags({"model": name, "selected": "false", "benchmark": "retrospective_resolved_loans"})
                 mlflow.log_params({"feature_count": len(features), "seed": SEED})
@@ -230,6 +233,9 @@ def main():
                     "train_average_precision": train_metrics["average_precision"],
                     "validation_average_precision": validation_metrics["average_precision"],
                     "validation_roc_auc": validation_metrics["roc_auc"],
+                    "train_roc_auc": train_metrics["roc_auc"],
+                    "train_gini": train_metrics["gini"], "train_ks": train_metrics["ks"],
+                    "validation_gini": validation_metrics["gini"], "validation_ks": validation_metrics["ks"],
                     "validation_brier_score": validation_metrics["brier_score"],
                     "validation_log_loss": validation_metrics["log_loss"],
                     "fit_seconds": fit_seconds, "validation_batch_predict_seconds": validation_seconds,
@@ -251,6 +257,7 @@ def main():
             evaluation_rows.append({"model": winner, "split": "exploratory_test", "policy": policy, **evaluate(y_test, test_probabilities, cutoff)})
         evaluations = pd.DataFrame(evaluation_rows)
         with mlflow.start_run(run_id=runs[winner], nested=True):
+            log_risk_scope()
             mlflow.set_tag("selected", "true")
             mlflow.log_param("validation_f1_threshold", threshold)
             mlflow.log_metric("exploratory_test_batch_predict_seconds", test_seconds)
@@ -296,6 +303,9 @@ def main():
             "fixed_horizon": False, "deployment_backtest": False, "test_previously_explored": True,
             "data_manifest_sha256": file_hash(data_path), "data_decision_snapshot": data,
             "training_script_sha256": file_hash(Path(__file__)), "versions": versions,
+            "source_sha256": {str(path.relative_to(ROOT)): file_hash(path) for path in
+                [Path(__file__), *sorted((ROOT / "util").glob("*.py")),
+                 ROOT / "requirements.txt", ROOT / "requirements.lock"]},
             "configurations": configurations, "result_directory": str(result_dir.relative_to(ROOT)),
             "figure_directory": str(figure_dir.relative_to(ROOT)), "model_directory": str(model_dir.relative_to(ROOT)),
             "selected_joblib_sha256": file_hash(ROOT / "models/selected_model.joblib"),
@@ -322,6 +332,8 @@ def write_report(manifest, comparison, tables, result_dir, figure_dir):
     if default.predicted_positive_rate == 0:
         threshold_note = f"At threshold 0.5 this model predicts no charged-off loans: accuracy is {default.accuracy:.6f}, but recall is zero. The validation-selected threshold makes the sensitivity/false-positive trade-off explicit."
     report = f"""# First MLflow experiment comparison
+
+{SCOPE_NOTE}
 
 Completed: {manifest['completed_at_utc']}. Batch run: `{manifest['batch_run_id']}`.
 

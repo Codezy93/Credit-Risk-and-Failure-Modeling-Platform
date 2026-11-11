@@ -1,16 +1,40 @@
 # ANN challengers
 
-Two multilayer-perceptron classifiers (32 and 64→32 hidden units) and two 32→16 regressors test whether neural networks improve PD discrimination or snapshot loss proxies. They use the same 13 origination predictors as the original benchmark. No PyTorch/TensorFlow dependency is added.
+Terminology: [lifetime charge-off probability, snapshot losses and capital scenarios](risk_terminology.md).
+
+## Risk terminology and interpretation
+
+The classifier estimates lifetime charge-off probability in the resolved
+36-month cohort: Charged Off = 1 and Fully Paid = 0. Other statuses are excluded.
+This is conditional on the selected accepted-loan population and observed final
+status. It is neither a 12-month forecast nor a Basel default probability.
+
+EAD and LGD refer to retrospective snapshot proxies, not default-event EAD or
+discounted economic LGD. The lifetime snapshot-loss proxy multiplies the
+classifier score by predicted snapshot LGD and snapshot EAD. It is not a
+regulatory one-year expected loss estimate.
+
+Capital and RWA are illustrative sensitivities using explicitly assumed
+one-year PDs, separate from the classifier score. The current capital scenarios
+do not use or annualise the classifier prediction. The approximation
+1 - (1 - p_lifetime) ** (1 / 3) would require constant annual hazard; it would
+not establish a regulatory default definition or validate a 12-month PD.
+
+Legacy names containing `pd`, `basel`, `expected_loss` or `default` are retained
+for artifact/API compatibility. They do not change these definitions.
+
+
+Two multilayer-perceptron classifiers (32 and 64→32 hidden units) and two 32→16 regressors test whether neural networks improve charge-off discrimination or snapshot loss proxies. They use the same 13 origination predictors as the original benchmark. No PyTorch/TensorFlow dependency is added.
 
 ## Protocol
 
-Preprocessing is median imputation, training-only scaling, log1p for income/revolving balance, numeric missing flags, and one-hot categories. Each stopping fit learns preprocessing on 2011–2012 only. Stopping uses 2013 ROC-AUC for PD and bounded MAE for losses, with at most 60 epochs and patience 8. The chosen epoch budget is frozen, then preprocessing and network are refitted from scratch on 2011–2013. 2014 selects the ANN PD candidate by average precision and compares loss components by bounded MAE. 2014 does not select the stopping epoch. Losses train only on the identical eligible defaulted population used in the Basel-style proxy experiment. Only origination features reach neural-network inputs.
+Preprocessing is median imputation, training-only scaling, log1p for income/revolving balance, numeric missing flags, and one-hot categories. Each stopping fit learns preprocessing on 2011–2012 only. Stopping uses 2013 ROC-AUC for charge-off classification and bounded MAE for losses, with at most 60 epochs and patience 8. The chosen epoch budget is frozen, then preprocessing and network are refitted from scratch on 2011–2013. 2014 selects the ANN charge-off classifier candidate by average precision and compares loss components by bounded MAE. 2014 does not select the stopping epoch. Losses train only on the identical eligible defaulted population used in the snapshot-loss proxy experiment. Only origination features reach neural-network inputs.
 
-All networks use ReLU, Adam, alpha 0.01, learning rate 0.001, batch size 1024 and seed 42. Only one seed is studied; these are selection-influenced research results on already-explored cohorts. There is no new holdout claim. No 2015 rows are read, and incumbent PD/loss artifacts remain unchanged. The stopping cohort is subsequently included in the fixed-budget refit; it is not an independent final evaluation.
+All networks use ReLU, Adam, alpha 0.01, learning rate 0.001, batch size 1024 and seed 42. Only one seed is studied; these are selection-influenced research results on already-explored cohorts. There is no new holdout claim. No 2015 rows are read, and incumbent classifier/loss-proxy artifacts remain unchanged. The stopping cohort is subsequently included in the fixed-budget refit; it is not an independent final evaluation.
 
 ## Loss composition
 
-Compare the reference bundle, ANN PD alone, ANN loss components alone, and all-ANN composition on the same eligible portfolio. Regressor predictions are explicitly bounded to [0,1] for loss composition. Raw errors/clipping counts are saved, while native regression evaluations use raw outputs. Expected-loss outputs retain the snapshot and residual-dependence limitations from the loss report. No capital assumptions or one-year-PD claims change.
+Compare the reference bundle, ANN charge-off classifier alone, ANN loss components alone, and all-ANN composition on the same eligible portfolio. Regressor predictions are explicitly bounded to [0,1] for loss composition. Raw errors/clipping counts are saved, while native regression evaluations use raw outputs. Expected-loss outputs retain the snapshot and residual-dependence limitations from the loss report. No capital assumptions or one-year-PD claims change.
 
 ## pd comparison
 
@@ -58,10 +82,10 @@ Compare the reference bundle, ANN PD alone, ANN loss components alone, and all-A
 | lgd | train | 19757 | 0.893671 | 9521301c |
 | lgd | validation | 22308 | 0.888369 | c160f33c |
 
-![Learning curves](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/temporal_learning_curves.png)
+![Learning curves](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b/temporal_learning_curves.png)
 
-![ANN comparison](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/ann_comparison.png)
+![ANN comparison](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b/ann_comparison.png)
 
-MLflow experiment `lendingclub_ann_challengers`, batch `c85319471ca849758abb207d833f973b`. [Manifest and complete CSVs](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/ann_experiments/c85319471ca849758abb207d833f973b/manifest.json).
+MLflow experiment `lendingclub_ann_challengers`, batch `fd10b18ae1ca40f18ddcdec526bfcc6b`. [Manifest and complete CSVs](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b/manifest.json).
 
 References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html), [MLPRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html).

@@ -2,7 +2,7 @@
   "status": "complete",
   "experiment_name": "lendingclub_ann_challengers",
   "experiment_id": "5",
-  "batch_run_id": "c85319471ca849758abb207d833f973b",
+  "batch_run_id": "fd10b18ae1ca40f18ddcdec526bfcc6b",
   "features": [
     "loan_amnt",
     "annual_inc",
@@ -43,16 +43,16 @@
   "seed": 42,
   "selected_model": "",
   "model_uris": {
-    "ann_pd_32": "models:/m-5f2e6ed6164f434dbdc7bb7ef6100b05",
-    "ann_pd_64x32": "models:/m-f5ea9eb8c0cc4d40b425c85077f15e43",
-    "ann_ead_32x16": "models:/m-f7e64da1626c489faf8250f5b4ffe01b",
-    "ann_lgd_32x16": "models:/m-5618ceae85104e4e84bc0ddb622bdb48"
+    "ann_pd_32": "models:/m-37e9f607d5a2447eab15bb653594dedd",
+    "ann_pd_64x32": "models:/m-b3feca10428740fabe23a618de5d9c1c",
+    "ann_ead_32x16": "models:/m-4d7f18049b7d4e099af7c8a290109fab",
+    "ann_lgd_32x16": "models:/m-92b5b7891e7f4b7d9208da5fdfcf7873"
   },
   "run_ids": {
-    "ann_pd_32": "e759260f420a481684120cf6d701c43c",
-    "ann_pd_64x32": "2fa05064abc640efa7b08405fc0c0a4a",
-    "ann_ead_32x16": "a73f9f15d4ea41ff9e659a71feeb9bd9",
-    "ann_lgd_32x16": "c963c1714676496f8375442ddfad4f54"
+    "ann_pd_32": "50b94b7f150b4293afdb3426fbb08cdd",
+    "ann_pd_64x32": "7e960fa6411e4f31ae9d4d2c0103b384",
+    "ann_ead_32x16": "de95763f88ea477eb9a9dbfb36f4be2f",
+    "ann_lgd_32x16": "c3d464dae8f243a99c47d0238de79fa7"
   },
   "versions": {
     "scikit-learn": "1.9.1",
@@ -70,21 +70,21 @@
     "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
   },
   "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
-  "pd_reference_batch_id": "72061e0a7a1e4d68addcc79a2aae631d",
-  "loss_reference_batch_id": "30cfdd9eb8ef4720b9e4606c094c5c47",
+  "pd_reference_batch_id": "6ccea4b79b8343cd971273181d93f680",
+  "loss_reference_batch_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
   "pd_incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "loss_reference_bundle_sha256": "1082067bb0b813d60660234a4ca836ee57f8060529bf8cde217b767ef76f38b6",
   "epoch_selection": "fit 2011-2012; stop on 2013 AUC or bounded MAE; refit 2011-2013 for fixed selected epochs",
-  "model_selection": "2014 average precision for PD, bounded MAE for each loss component",
+  "model_selection": "2014 average precision for charge-off classification, bounded MAE for each loss component",
   "test_2015_read": false,
   "data_previously_explored": true,
   "single_seed_research": true,
   "incumbent_replaced": false,
   "capital_scope_changed": false,
-  "result_directory": "assets/results/ann_experiments/c85319471ca849758abb207d833f973b",
-  "model_directory": "models/ann_experiments/c85319471ca849758abb207d833f973b",
-  "figure_directory": "assets/figures/ann_experiments/c85319471ca849758abb207d833f973b",
-  "completed_at_utc": "2026-11-09T00:44:00.751096+00:00",
+  "result_directory": "assets/results/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "model_directory": "models/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "figure_directory": "assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "completed_at_utc": "2026-11-11T20:57:23.663813+00:00",
   "selected_ann_pd": "ann_pd_64x32",
   "temporal_settings": {
     "ann_pd_32": {
@@ -206,24 +206,24 @@
       }
     }
   },
-  "execution_script_sha256": "fe0fe4d87b468d9e3902a464d4a038a2bd04d43549d63ea4a9393e3b7810f0c7",
+  "execution_script_sha256": "885fd06d6f63b784c0e6f513e6e3463a58e80e113c6bf078638f107156d74067",
   "source_sha256": {
-    "scripts/11_ann_experiments.py": "fe0fe4d87b468d9e3902a464d4a038a2bd04d43549d63ea4a9393e3b7810f0c7",
+    "scripts/11_ann_experiments.py": "885fd06d6f63b784c0e6f513e6e3463a58e80e113c6bf078638f107156d74067",
     "util/ann.py": "a2350788ed70f83a2fad4a12916f78a9b598b999731b5486b605ddadef9df56e",
     "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
-    "util/basel.py": "e088c687fa14a1e2438cc92ea48d1dc5c1c9d500b5bb61f6c8d1df0a55dcedcd",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
     "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
     "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825"
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
   "results_sha256": {
     "loss_metrics.csv": "35f0082848b69ece564371d80ad0bce4313dfda7f386d72f8099503606f631cb",
-    "pd_comparison.csv": "2a8e7251d57874f893ed33223ad6a4e9a7f659ae9663295533c3a1e2c252aa14",
+    "pd_comparison.csv": "14dfdfc5ff841ddedf7618d0a73639e53eaea77b6efba13ad8ea267ae64b30f2",
     "pd_metrics.csv": "e9e104ed509477d8915f53746f2628b73b94ca4e4e22c007f4cf58d12a8133fa",
     "loss_comparison.csv": "74ed8eba4b45f149209fb6e1a3d1ee6e717be0ccabfca4761ed071e6534cce00",
     "portfolio_loss_comparison.csv": "108d7fc89c99424bd0b4a240f79ccb57e107eecdc9eb5013a51715e7d21a8bf9",
     "dataset_roles.csv": "87b72a4650d23ccdcf25b4fbc6df3faff06228cc3dd2d4a28edd58bf70cdf6a0",
-    "native_evaluations.csv": "10f204035c7b2e55dfb5fc731541ab56d670ce2e3f906d0b54c91f4e426229fe",
+    "native_evaluations.csv": "2030257afb3b8025f80f6029cfbacbad08d7bd7a164f75b4d1df48c5e47b742a",
     "learning_curves.csv": "0b0e29905b2b15b7f2be8fae15bd15d7b31fcbcd0c0caa84a169193dddcfd3b7"
   },
   "model_sha256": {

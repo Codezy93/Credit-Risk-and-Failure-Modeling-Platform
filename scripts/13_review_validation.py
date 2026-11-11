@@ -31,6 +31,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope
 from util.coefficient_review import bootstrap_numeric_coefficients, numeric_coefficients
 from util.feature_policy import validate_features
 from util.metrics import evaluate_model, paired_auc_bootstrap
@@ -93,6 +94,7 @@ def main():
     versions = {name: importlib.metadata.version(name) for name in
         ["scikit-learn", "numpy", "pandas", "scipy", "joblib", "cloudpickle", "mlflow"]}
     with mlflow.start_run(experiment_id=experiment_id, run_name="logistic_sign_stability_and_ablation") as batch:
+        log_risk_scope()
         batch_id = batch.info.run_id
         result_dir = results / "validation_review" / batch_id
         model_dir = ROOT / "models/validation_review" / batch_id
@@ -165,6 +167,7 @@ def main():
             validate_features(current_features)
             model = build_models(current_numeric, categorical)["logistic_regression"]
             with mlflow.start_run(experiment_id=experiment_id, run_name=name, nested=True) as run:
+                log_risk_scope()
                 manifest["run_ids"][name] = run.info.run_id
                 mlflow.log_input(datasets["train"], context="training")
                 mlflow.log_input(datasets["validation"], context="validation")

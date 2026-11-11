@@ -266,6 +266,22 @@
 </script>
 </head>
   <body>
+    <!-- risk-terminology-notice -->
+    <aside aria-label="Risk terminology update">
+      <h2>Risk terminology update</h2>
+      <p>This is an archived EDA output snapshot. The current notebook source includes
+      clarified terminology: lifetime charge-off probability (resolved 36-month cohort),
+      with Charged Off = 1 and Fully Paid = 0; other statuses are excluded.
+      This is not a 12-month forecast or a Basel default probability.
+      EAD/LGD are retrospective snapshot proxies. The loss composition is a lifetime
+      snapshot-loss proxy. Capital scenarios use separately assumed one-year PDs;
+      they do not use or annualise the classifier score. Legacy PD/Basel names in
+      the saved outputs should be read with these definitions.</p>
+      <p><a href="risk_terminology/">Full risk terminology</a>.
+      Saved tables and figures below have not been recomputed.</p>
+    </aside>
+    <!-- end-risk-terminology-notice -->
+
     <div id="root"></div>
     <script data-marimo="true">
       Object.defineProperty(window, "__MARIMO_MOUNT_CONFIG__", {

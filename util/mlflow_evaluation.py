@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import mlflow
+from util.risk_scope import log_risk_scope
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
@@ -125,6 +126,7 @@ def log_saved_model_evaluation(manifest, name, split, dataset):
     model_id = model_uri.split("/")[-1]
     with mlflow.start_run(experiment_id=manifest["experiment_id"],
                           run_name=f"evaluate_{name}_{split}", nested=True) as run:
+        log_risk_scope()
         mlflow.set_tags({"run_kind": "evaluation", "model": name, "dataset_split": split,
                          "source_training_run_id": manifest["run_ids"][name]})
         mlflow.log_params({"decision_threshold": 0.5, "positive_label": 1,
@@ -202,6 +204,7 @@ def add_native_evaluations(manifest):
     comparison = pd.read_csv(result_dir / "model_comparison.csv")
     records = []
     with mlflow.start_run(run_id=manifest["batch_run_id"]):
+        log_risk_scope()
         for split, dataset in datasets.items():
             context = {"train": "training", "validation": "validation", "exploratory_test": "exploratory_evaluation"}[split]
             mlflow.log_input(dataset, context=context)
@@ -274,6 +277,7 @@ def add_native_evaluations(manifest):
     (result_dir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     (ROOT / "assets/results/model_experiments_latest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     with mlflow.start_run(run_id=manifest["batch_run_id"]):
+        log_risk_scope()
         mlflow.log_dict(manifest, "experiment_manifest.json")
     write_visibility_report(manifest)
     return manifest

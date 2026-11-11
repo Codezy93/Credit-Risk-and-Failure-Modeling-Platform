@@ -1,26 +1,26 @@
 {
   "stage": "first_model_experiments",
   "status": "complete",
-  "completed_at_utc": "2026-11-08T15:45:23+00:00",
-  "batch_run_id": "72061e0a7a1e4d68addcc79a2aae631d",
+  "completed_at_utc": "2026-11-11T13:09:44+00:00",
+  "batch_run_id": "6ccea4b79b8343cd971273181d93f680",
   "experiment_id": "1",
   "experiment_name": "lendingclub_resolved_36m",
   "tracking_uri": "sqlite:////home/vir/GitHub/Credit-Risk-and-Failure-Modeling-Platform/models/mlflow.db",
   "run_ids": {
-    "dummy_prior": "e017e1e02bb743669f6f3f8e804a1c36",
-    "logistic_regression": "b6cd84c99ba24a8f854b2b7941ee3b88",
-    "random_forest": "9b8a327a8a694086819d1818c141ba76",
-    "hist_gradient_boosting": "2bb4ea9b1159440bb0b51b66925247f3"
+    "dummy_prior": "f45285c555fd4585b30cbc8e018afe72",
+    "logistic_regression": "bc902aadabe74ecd828414077ff1f9e3",
+    "random_forest": "736532a9047c44a6969455fdbdd89914",
+    "hist_gradient_boosting": "f64a19bc843546e380a742697cf0bf26"
   },
   "model_uris": {
-    "dummy_prior": "models:/m-c6c8b6403be04d378ecd4ee0149b6fdd",
-    "logistic_regression": "models:/m-9b48e925f4a54600a0eeeacf7eb183c1",
-    "random_forest": "models:/m-d5af0b19e25b4b169c0f5b3414373ad9",
-    "hist_gradient_boosting": "models:/m-c0cd1df22fa24744b5d207306fd84ac1"
+    "dummy_prior": "models:/m-189e95283b334a11a20fcef059eb47a4",
+    "logistic_regression": "models:/m-4bc0dd14ef2a45b4aa2abc5e76df4d85",
+    "random_forest": "models:/m-99c75b41427a4b89bb6693bf5b2e48d7",
+    "hist_gradient_boosting": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc"
   },
   "selected_model": "hist_gradient_boosting",
-  "selected_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
-  "selected_model_uri": "models:/m-c0cd1df22fa24744b5d207306fd84ac1",
+  "selected_run_id": "f64a19bc843546e380a742697cf0bf26",
+  "selected_model_uri": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc",
   "selection_metric": "validation_average_precision",
   "tie_breaker": "lower_validation_brier_score",
   "selected_threshold": 0.147852896338396,
@@ -66,6 +66,28 @@
   "seed": 42,
   "thread_limit": 4,
   "numeric_input_dtype": "float64",
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
   "train_rows": 157993,
   "validation_rows": 162570,
   "exploratory_test_rows": 283026,
@@ -304,7 +326,7 @@
       "pandas": "3.1.0"
     }
   },
-  "training_script_sha256": "b5b42c0665874508f73fff0040e6e80d56fa2658a7e0bc1ed987de4041952c4a",
+  "training_script_sha256": "4c01c7a4924f68fe26f204eeec1b4df0e2f610aadb7b51e382189532bb7c0683",
   "versions": {
     "scikit-learn": "1.9.1",
     "mlflow": "3.18.0",
@@ -314,6 +336,29 @@
     "joblib": "1.6.0",
     "cloudpickle": "3.1.2",
     "threadpoolctl": "3.8.0"
+  },
+  "source_sha256": {
+    "scripts/05_train_models.py": "4c01c7a4924f68fe26f204eeec1b4df0e2f610aadb7b51e382189532bb7c0683",
+    "util/ann.py": "a2350788ed70f83a2fad4a12916f78a9b598b999731b5486b605ddadef9df56e",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
+    "util/calibration.py": "3747c86cebea481223ee6207d81305a5898fb5f65a42db6e0896334bb63abf5c",
+    "util/coefficient_review.py": "39b14eb12b9a5ba8bc88221559f86077f1f11f752db272a644653a0c58bf8889",
+    "util/explanation_input.py": "55de10ed36773bd1d99e75dd6e860489841f12fc79296e70fbf57fd858132346",
+    "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/interpretation.py": "c54249dd5897f45cd48cc80d59f9085e8fcfe42f8443c339c76f00431b11cdff",
+    "util/load_test.py": "645b9dd8ddeef4770165870bef11fe48744543b930e3823ef083985509342f74",
+    "util/logging.py": "44153f54a69ecb62d6c9ba710a7c11807300afa7da30ad4a6d8cf5a782c84eec",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/mlflow_evaluation.py": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/risk_scope.py": "c46036e7a41fb27951656c4a5d8f5fffe3981af9cde083daa64be153d8745a36",
+    "util/score_store.py": "9a1092113b7058156b54e529986b007d141a7726e0198213f51bc69a7e70a7f5",
+    "util/segment_audit.py": "7d25b59c4392d3f1f61f9c38c9ebe12bf3416cac6868459e8c85974013440aff",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "util/temporal_xgboost.py": "6ff37543804fead4ddabc68f219d6f1d9d4cbd9c5c1ebb19fe8a91105aece9a3",
+    "util/validation.py": "dfad932f43a678b2eff1bf2a68bb90f86635d662b59505db6875adfb910dd036",
+    "requirements.txt": "ca693c4b26f6942ec5f594e470065af6ca33ed839028212714bd98c7970420fc",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
   "configurations": {
     "dummy_prior": {
@@ -846,19 +891,19 @@
       "model__warm_start": false
     }
   },
-  "result_directory": "assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d",
-  "figure_directory": "assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d",
-  "model_directory": "models/experiments/72061e0a7a1e4d68addcc79a2aae631d",
+  "result_directory": "assets/results/experiments/6ccea4b79b8343cd971273181d93f680",
+  "figure_directory": "assets/figures/experiments/6ccea4b79b8343cd971273181d93f680",
+  "model_directory": "models/experiments/6ccea4b79b8343cd971273181d93f680",
   "selected_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "artifact_reload_checks_passed": true,
   "stress_testing_started": false,
   "results_sha256": {
-    "model_comparison.csv": "f244f43833288f427cb13abcb642781007870738197c484a3203d3e671159466",
-    "train_validation_metrics.csv": "f07a3991f29c1b4afb336740a615867a38e2da8a4360b587ff1329cba4622525",
-    "selected_model_metrics.csv": "8112374b3b17a95cc5f9fc7ab0078820a4184c7cda6e62b89c4d6d4b17bba351",
-    "calibration_bins.csv": "314ef5ebdbce94be0df605279462a834f0a99ce4e4e0126d1e727ba9830a0904",
-    "curve_points.csv": "e5336e06d2c95b302d3dbe92b19ba4ee8941cd9baadbcc81f1a8624683493392",
-    "mlflow_native_evaluations.csv": "92d09f5f1082f8c1fe19e71856556c3cef476edc4b14f3958fb56b1259c02eb8"
+    "model_comparison.csv": "948f9a8d68d1b99d88c6f6cbab5cb9ed2f7fe50649da26c06512820fe30e797b",
+    "train_validation_metrics.csv": "94346390a901fa97ca0fc18096fbcde11c6159e3516621c31694ef7bf72b5f6d",
+    "selected_model_metrics.csv": "abf0ca3f32f877e5b7fad32a873aafdaf737413259101fcc424b8ec231ce449d",
+    "calibration_bins.csv": "ee49ee14a83c46b1f49f5422b1bb0712da090ad0d6bfedeba303c10c98d4588f",
+    "curve_points.csv": "5607d4e637023739d6bbaf066ff1f0b2928b0052018067708e46c19d4bbc4196",
+    "mlflow_native_evaluations.csv": "9519e37c11d6df41370f1f90468d2886932b50a27e41256d55c4792c871a042f"
   },
   "prior_failed_runs": [
     {
@@ -872,10 +917,9 @@
       "tags.mlflow.runName": "first_model_comparison"
     }
   ],
-  "reporting_script_sha256": "b86245fe7ed3f589ea0db99ba78006f2ecb8ae382d5c567b26852ce57e34f815",
   "native_evaluation_logging": {
     "status": "complete",
-    "completed_at_utc": "2026-11-08T16:15:06+00:00",
+    "completed_at_utc": "2026-11-11T13:11:38+00:00",
     "datasets": {
       "train": {
         "digest": "3fc22603",
@@ -891,11 +935,11 @@
       }
     },
     "evaluation_run_ids": [
-      "76124a42a3c84a639a451e8c0bf94edd",
-      "737b3f235d1949e5a15552a9ce68d142",
-      "8dcf18dc8f7744c7950bb7c0e29fba88",
-      "19d602239b3a43a595bcd17d8a39fc4a",
-      "0ba9fd0f56b8480f842795151fbfabb2"
+      "a0d755b7d949420c850bc0cdb17d64a8",
+      "fcc1cc31f70b4ba087a4398b3b44c5b0",
+      "d413640a8782473c96a3a803db1dd139",
+      "436a568b45af4ca1aa84c7586164ea87",
+      "0db9dc0169ae4a608652a608d4898989"
     ],
     "native_default_threshold": 0.5,
     "frozen_policy_threshold": 0.147852896338396,
@@ -903,7 +947,7 @@
     "model_selection_changed": false,
     "dataset_artifact_directory": "datasets",
     "row_previews_are_samples": true,
-    "source_sha256": "d03d6c603d769a8baacc67cf448dd8792df7d870dac8342df10c0e722eb960aa",
+    "source_sha256": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
     "backend_links_verified": true
   }
 }

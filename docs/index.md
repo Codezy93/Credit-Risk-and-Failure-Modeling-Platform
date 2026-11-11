@@ -1,5 +1,7 @@
 # Credit Risk and Failure Modeling
 
+Terminology: [lifetime charge-off probability, snapshot loss proxies and illustrative capital](risk_terminology.md).
+
 This project uses LendingClub accepted-loan data to study credit risk and test
 a streaming scoring pipeline. The reports below describe the data decisions,
 model experiments, validation limits and measured system behavior.
@@ -51,3 +53,6 @@ contains detailed counts, metrics and stage-specific evidence.
 
 This documentation displays saved project results. Reading it does not train
 models or connect to MLflow, Kafka or Elasticsearch.
+
+The [latest experiment refresh](experiment_refresh.md) records the current-code reruns,
+full pytest results and source/result fingerprints.

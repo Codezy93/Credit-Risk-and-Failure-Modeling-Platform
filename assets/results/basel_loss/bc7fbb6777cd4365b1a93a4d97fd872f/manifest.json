@@ -1,0 +1,137 @@
+{
+  "status": "complete",
+  "batch_run_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
+  "experiment_id": "4",
+  "experiment_name": "lendingclub_basel_loss_proxies",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
+  "seed": 42,
+  "target_scope": "bounded_snapshot_loss_proxies_on_charged_off_loans",
+  "train_years": [
+    2011,
+    2012,
+    2013
+  ],
+  "validation_years": [
+    2014
+  ],
+  "test_2015_read": false,
+  "regulatory_compliance_claim": false,
+  "one_year_pd_estimated": false,
+  "capital_pd_source": "explicit scenario assumptions",
+  "prediction_bounds": "clip regressor predictions to [0,1]; raw and bounded metrics both saved",
+  "loss_field_scope": "targets, exposure scaling, audit and retrospective dollar evaluation only",
+  "selection_rule": "lowest 2014 bounded MAE per component; exploratory selection cohort",
+  "ead_formula": "funded_amnt - total_rec_prncp; snapshot proxy, not observed default-event EAD",
+  "lgd_formula": "1 - (recoveries - collection_recovery_fee) / snapshot_ead_proxy",
+  "el_formula": "lifetime charge-off score * predicted snapshot LGD * predicted snapshot EAD",
+  "el_assumption": "product of conditional means ignores residual EAD/LGD dependence",
+  "pd_source_run_id": "f64a19bc843546e380a742697cf0bf26",
+  "pd_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
+  },
+  "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "mlflow": "3.18.0",
+    "cloudpickle": "3.1.2"
+  },
+  "result_directory": "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "model_directory": "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "figure_directory": "assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "model_uris": {
+    "ead_mean": "models:/m-05bbe941cbbb4ef59aa64836699289f1",
+    "ead_boosting": "models:/m-80058cb3e8744faeb1c232aed99af1a9",
+    "lgd_mean": "models:/m-eeb50e6c21664338b5f7863e5860dab1",
+    "lgd_boosting": "models:/m-ab1088810235482a87a8b9832b9aa063"
+  },
+  "run_ids": {
+    "ead_mean": "1b8fe236a459480ba74f2ff30f646bb2",
+    "ead_boosting": "f022c883346241dbb13f81fa970b832b",
+    "lgd_mean": "7df09403f1074b9c9eae252facea30e3",
+    "lgd_boosting": "a403b195fd65431a8d5b3d37a9a62aa8"
+  },
+  "completed_at_utc": "2026-11-11T19:50:12.728870+00:00",
+  "selected_components": {
+    "ead": "ead_boosting",
+    "lgd": "lgd_mean"
+  },
+  "execution_script_sha256": "fc7ff8624d00e7f196cd28659e896daec6209693cac6d02e7bbb733f7c77c491",
+  "pd_predictions_identical": true,
+  "source_sha256": {
+    "scripts/09_basel_loss_experiment.py": "fc7ff8624d00e7f196cd28659e896daec6209693cac6d02e7bbb733f7c77c491",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "sql/34_loss_population.sql": "95a41ae840b4fbb9a60ac922e7c728b751c1c9ff518c9c5499e42db742a04c94",
+    "sql/35_loss_audit.sql": "426ffef9f7035e71bf6a8a1e9010fd9b78e897360cc1036dca4a5f57337655bc",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "results_sha256": {
+    "loss_deciles.csv": "db584a2002e5e2fb9d28b56333393fbc91ae087b3735670effe9a7152fd9440c",
+    "portfolio_loss_metrics.csv": "699bb5b28150ea84ccfa4d4de101d70401bd82a34265eeba9333c64a29080b0a",
+    "pd_unchanged_check.csv": "bca65f300de6a340bc7e8bef95d71409efe6c05ed9ebacc8d19d27c71275aaf3",
+    "portfolio_capital_scenarios.csv": "70c46ceafae27eb46ffa655b97700e77416cdd05ce8cd5cca9452116266489dd",
+    "component_metrics.csv": "22bcca2c37ee7b232d0773e063f62de56039776949e82fdf8609a724d0d62109",
+    "native_regression_evaluations.csv": "ad21d62085c744fee52aef71b9078c6e51655742d66e7da17a54d5e0daf0d3a9",
+    "capital_sensitivity.csv": "21f4c2f4303e15c19f1820a7888f084c98a7d6691c0b686c24dd4249ac9f437b",
+    "loss_audit.csv": "2ead4e83837a30ce4a3f757f4db27f951c4411a539914cb032af79d0425f1ad0"
+  },
+  "model_sha256": {
+    "lgd_mean.joblib": "502c15f1b6a28b013ed1f51a9520df696ad1b0c19af8406a3ea9cd3f15ee03a0",
+    "ead_mean.joblib": "a631a552c400146f0d08737b9b40951996c61810c8a3ebc6e6e519ae4de31d70",
+    "lgd_boosting.joblib": "a74619a24daed33fa192da13540794e542ce0ac749e1e57f70b968204e56206f",
+    "loss_model_bundle.joblib": "1082067bb0b813d60660234a4ca836ee57f8060529bf8cde217b767ef76f38b6",
+    "ead_boosting.joblib": "447b8f352cbdaa9326fdc35eeaabf778f19bbe813d8c639230641006fddb1d5a"
+  },
+  "dataset_sha256": {
+    "ead_validation.parquet": "12dd33edfd1e274711f64bb261968b26d9d623f2149f2bd8afe648dbcde2ee07",
+    "lgd_validation.parquet": "b7a3a1cdfb3db2dc0324441cd31398f047012cb06f8a2bd3cbbfa132d313c4b5",
+    "validation_loss_scores.parquet": "03810e2baa2fa756531d54f23e1e7c8e4e752246863efb07f31704b55b41f80c",
+    "lgd_train.parquet": "3b733f9b6b06fef09f3a8d78f5b1c363d764ffe18c6b56df7e39e69ddd05ce25",
+    "ead_train.parquet": "05d0192acc5646c51dd184d95412a132c59e27a05a6dcab616a84ea975a647c7"
+  }
+}

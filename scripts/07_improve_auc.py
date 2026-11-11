@@ -25,6 +25,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope
 from util.mlflow_evaluation import log_saved_model_evaluation, markdown_table
 from util.feature_policy import validate_features
 from util.metrics import evaluate_model
@@ -115,6 +116,7 @@ def main():
         experiment_name, artifact_location=(ROOT / "models/mlartifacts/auc_ablation").as_uri())
 
     with mlflow.start_run(experiment_id=experiment_id, run_name="temporal_stopping_auc_ablation") as parent:
+        log_risk_scope()
         batch_id = parent.info.run_id
         result_dir = RESULTS / "auc_experiments" / batch_id
         figure_dir = ROOT / "assets/figures/auc_experiments" / batch_id
@@ -175,6 +177,7 @@ def main():
                 name = f"{set_name}_{config['name']}"
                 logging.info("Training %s: %s features", name, len(features))
                 with mlflow.start_run(experiment_id=experiment_id, run_name=name, nested=True) as run:
+                    log_risk_scope()
                     mlflow.set_tags({"feature_set": set_name, "scoring_point": "post_underwriting" if set_name == "post_underwriting" else "independent_risk_candidate",
                                      "test_used": "false", "run_kind": "training"})
                     mlflow.log_input(datasets["train"], context="training")

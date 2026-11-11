@@ -1,6 +1,6 @@
 {
   "status": "complete",
-  "batch_run_id": "c072de3541e2496ab90ed6b7c2699137",
+  "batch_run_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
   "experiment_id": "4",
   "experiment_name": "lendingclub_basel_loss_proxies",
   "features": [
@@ -59,9 +59,9 @@
   "selection_rule": "lowest 2014 bounded MAE per component; exploratory selection cohort",
   "ead_formula": "funded_amnt - total_rec_prncp; snapshot proxy, not observed default-event EAD",
   "lgd_formula": "1 - (recoveries - collection_recovery_fee) / snapshot_ead_proxy",
-  "el_formula": "unchanged resolved-loan PD score * predicted LGD * predicted EAD",
+  "el_formula": "lifetime charge-off score * predicted snapshot LGD * predicted snapshot EAD",
   "el_assumption": "product of conditional means ignores residual EAD/LGD dependence",
-  "pd_source_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "pd_source_run_id": "f64a19bc843546e380a742697cf0bf26",
   "pd_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "input_sha256": {
     "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
@@ -79,36 +79,36 @@
     "mlflow": "3.18.0",
     "cloudpickle": "3.1.2"
   },
-  "result_directory": "assets/results/basel_loss/c072de3541e2496ab90ed6b7c2699137",
-  "model_directory": "models/basel_loss/c072de3541e2496ab90ed6b7c2699137",
-  "figure_directory": "assets/figures/basel_loss/c072de3541e2496ab90ed6b7c2699137",
+  "result_directory": "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "model_directory": "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "figure_directory": "assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
   "model_uris": {
-    "ead_mean": "models:/m-36a9adca37ed4dc3a583640983bbccf2",
-    "ead_boosting": "models:/m-1d6a49de6150498192790b1631752cdc",
-    "lgd_mean": "models:/m-10bbf7f599d34de988bbff2983fde8c2",
-    "lgd_boosting": "models:/m-30da2e615c894759a01ea6f5fc1aca63"
+    "ead_mean": "models:/m-05bbe941cbbb4ef59aa64836699289f1",
+    "ead_boosting": "models:/m-80058cb3e8744faeb1c232aed99af1a9",
+    "lgd_mean": "models:/m-eeb50e6c21664338b5f7863e5860dab1",
+    "lgd_boosting": "models:/m-ab1088810235482a87a8b9832b9aa063"
   },
   "run_ids": {
-    "ead_mean": "325924537ccf4d0ea1d3d627056e4e67",
-    "ead_boosting": "3a41675000194a4494e6529d4625310f",
-    "lgd_mean": "34f21f8d75b84405a5de10f6f8948fa4",
-    "lgd_boosting": "f536d860830e42ad9f54e243b2925b71"
+    "ead_mean": "1b8fe236a459480ba74f2ff30f646bb2",
+    "ead_boosting": "f022c883346241dbb13f81fa970b832b",
+    "lgd_mean": "7df09403f1074b9c9eae252facea30e3",
+    "lgd_boosting": "a403b195fd65431a8d5b3d37a9a62aa8"
   },
-  "completed_at_utc": "2026-11-09T00:45:03.916171+00:00",
+  "completed_at_utc": "2026-11-11T19:50:12.728870+00:00",
   "selected_components": {
     "ead": "ead_boosting",
     "lgd": "lgd_mean"
   },
-  "execution_script_sha256": "5cb543c72c219cf436fe725c0872d2d9d1305b9cbb4f3ef3a600dace21f6cff5",
+  "execution_script_sha256": "fc7ff8624d00e7f196cd28659e896daec6209693cac6d02e7bbb733f7c77c491",
   "pd_predictions_identical": true,
   "source_sha256": {
-    "scripts/09_basel_loss_experiment.py": "5cb543c72c219cf436fe725c0872d2d9d1305b9cbb4f3ef3a600dace21f6cff5",
-    "util/basel.py": "e088c687fa14a1e2438cc92ea48d1dc5c1c9d500b5bb61f6c8d1df0a55dcedcd",
+    "scripts/09_basel_loss_experiment.py": "fc7ff8624d00e7f196cd28659e896daec6209693cac6d02e7bbb733f7c77c491",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
     "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
     "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
     "sql/34_loss_population.sql": "95a41ae840b4fbb9a60ac922e7c728b751c1c9ff518c9c5499e42db742a04c94",
     "sql/35_loss_audit.sql": "426ffef9f7035e71bf6a8a1e9010fd9b78e897360cc1036dca4a5f57337655bc",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825"
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
   "results_sha256": {
     "loss_deciles.csv": "db584a2002e5e2fb9d28b56333393fbc91ae087b3735670effe9a7152fd9440c",
@@ -116,7 +116,7 @@
     "pd_unchanged_check.csv": "bca65f300de6a340bc7e8bef95d71409efe6c05ed9ebacc8d19d27c71275aaf3",
     "portfolio_capital_scenarios.csv": "70c46ceafae27eb46ffa655b97700e77416cdd05ce8cd5cca9452116266489dd",
     "component_metrics.csv": "22bcca2c37ee7b232d0773e063f62de56039776949e82fdf8609a724d0d62109",
-    "native_regression_evaluations.csv": "e7472cbec5efa1dd1c21f3f17f5c66d4f279abed1d5151d1e1ea0c48600eb940",
+    "native_regression_evaluations.csv": "ad21d62085c744fee52aef71b9078c6e51655742d66e7da17a54d5e0daf0d3a9",
     "capital_sensitivity.csv": "21f4c2f4303e15c19f1820a7888f084c98a7d6691c0b686c24dd4249ac9f437b",
     "loss_audit.csv": "2ead4e83837a30ce4a3f757f4db27f951c4411a539914cb032af79d0425f1ad0"
   },

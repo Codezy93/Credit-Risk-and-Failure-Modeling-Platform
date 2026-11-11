@@ -1,4 +1,4 @@
-"""ANN PD and loss challengers with 2013 stopping and 2014 model comparison."""
+"""ANN charge-off classifier and loss challengers with 2013 stopping and 2014 model comparison."""
 
 from datetime import datetime, timezone
 import hashlib
@@ -25,6 +25,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope, SCOPE_NOTE
 from util.ann import fit_temporal_ann
 from util.basel import score_loss_bundle
 from util.feature_policy import validate_features
@@ -98,7 +99,7 @@ def main():
     pd_path = ROOT / "models/selected_model.joblib"
     pd_hash = file_hash(pd_path)
     if pd_hash != pd_reference["selected_joblib_sha256"] or pd_hash != loss_reference["pd_joblib_sha256"]:
-        raise ValueError("The incumbent PD artifact changed.")
+        raise ValueError("The incumbent charge-off classifier artifact changed.")
     loss_bundle_path = loss_dir / "loss_model_bundle.joblib"
     loss_bundle_hash = file_hash(loss_bundle_path)
     if loss_bundle_hash != loss_reference["model_sha256"][loss_bundle_path.name]:
@@ -116,6 +117,7 @@ def main():
         "lgd": ({s: defaults[defaults.split == s] for s in ("train", "validation")},
                 defaults[defaults.split == "train"].issue_year.to_numpy(), "lgd_snapshot_proxy", "regression")}
     with mlflow.start_run(experiment_id=experiment_id, run_name="ann_pd_ead_lgd_comparison") as batch:
+        log_risk_scope()
         batch_id = batch.info.run_id
         result_dir = results / "ann_experiments" / batch_id
         model_dir = ROOT / "models/ann_experiments" / batch_id
@@ -129,7 +131,7 @@ def main():
             "pd_reference_batch_id": pd_reference["batch_run_id"], "loss_reference_batch_id": loss_reference["batch_run_id"],
             "pd_incumbent_sha256": pd_hash, "loss_reference_bundle_sha256": loss_bundle_hash,
             "epoch_selection": "fit 2011-2012; stop on 2013 AUC or bounded MAE; refit 2011-2013 for fixed selected epochs",
-            "model_selection": "2014 average precision for PD, bounded MAE for each loss component",
+            "model_selection": "2014 average precision for charge-off classification, bounded MAE for each loss component",
             "test_2015_read": False, "data_previously_explored": True, "single_seed_research": True,
             "incumbent_replaced": False, "capital_scope_changed": False,
             "result_directory": str(result_dir.relative_to(ROOT)), "model_directory": str(model_dir.relative_to(ROOT)),
@@ -157,6 +159,7 @@ def main():
                 name = f"ann_{component}_" + "x".join(map(str, hidden))
                 print(f"Training {name}: 2013 stopping, then refitting all training years", flush=True)
                 with mlflow.start_run(experiment_id=experiment_id, run_name=name, nested=True) as run:
+                    log_risk_scope()
                     manifest["run_ids"][name] = run.info.run_id
                     for role, dataset in datasets.items():
                         mlflow.log_input(dataset, context=role)
@@ -198,6 +201,7 @@ def main():
                     native_rows.append({"component": component, **log_saved_model_evaluation(manifest, name, "validation", datasets["validation"])})
                 else:
                     with mlflow.start_run(experiment_id=experiment_id, run_name=f"evaluate_{name}", nested=True) as evaluation:
+                        log_risk_scope()
                         mlflow.set_tags({"run_kind": "evaluation", "source_training_run_id": run.info.run_id})
                         result = mlflow.models.evaluate(model=info.model_uri, model_id=info.model_uri.split("/")[-1],
                             data=datasets["validation"], model_type="regressor", evaluators="default",
@@ -247,7 +251,7 @@ def main():
             axis = axes[0] if name.startswith("ann_pd") else axes[1]
             axis.plot(group.epoch, group.stopping_value, label=name)
             axis.axvline(details[name]["selected_epochs"], linestyle=":", alpha=0.5)
-        axes[0].set(xlabel="Epoch", ylabel="2013 ROC-AUC", title="PD stopping, before 2014 comparison")
+        axes[0].set(xlabel="Epoch", ylabel="2013 ROC-AUC", title="Charge-off classifier stopping, before 2014 comparison")
         axes[1].set(xlabel="Epoch", ylabel="2013 bounded MAE", title="Loss-component stopping")
         for axis in axes:
             axis.legend(fontsize=8)
@@ -292,24 +296,24 @@ def save_figure(figure, directory, name):
 
 
 def write_report(manifest, tables):
-    report = "# ANN challengers\n\n"
+    report = "# ANN challengers\n\n" + SCOPE_NOTE + "\n\n"
     report += ("Two multilayer-perceptron classifiers (32 and 64→32 hidden units) and two "
-        "32→16 regressors test whether neural networks improve PD discrimination or snapshot loss proxies. "
+        "32→16 regressors test whether neural networks improve charge-off discrimination or snapshot loss proxies. "
         "They use the same 13 origination predictors as the original benchmark. No PyTorch/TensorFlow dependency is added.\n\n"
         "## Protocol\n\n"
         "Preprocessing is median imputation, training-only scaling, log1p for income/revolving balance, "
         "numeric missing flags, and one-hot categories. Each stopping fit learns preprocessing on 2011–2012 only. "
-        "Stopping uses 2013 ROC-AUC for PD and bounded MAE for losses, with at most 60 epochs and patience 8. "
+        "Stopping uses 2013 ROC-AUC for charge-off classification and bounded MAE for losses, with at most 60 epochs and patience 8. "
         "The chosen epoch budget is frozen, then preprocessing and network are refitted from scratch on 2011–2013. "
-        "2014 selects the ANN PD candidate by average precision and compares loss components by bounded MAE. "
+        "2014 selects the ANN charge-off classifier candidate by average precision and compares loss components by bounded MAE. "
         "2014 does not select the stopping epoch. Losses train only on the identical eligible defaulted population "
-        "used in the Basel-style proxy experiment. Only origination features reach neural-network inputs.\n\n"
+        "used in the snapshot-loss proxy experiment. Only origination features reach neural-network inputs.\n\n"
         "All networks use ReLU, Adam, alpha 0.01, learning rate 0.001, batch size 1024 and seed 42. "
         "Only one seed is studied; these are selection-influenced research results on already-explored cohorts. "
-        "There is no new holdout claim. No 2015 rows are read, and incumbent PD/loss artifacts remain unchanged. "
+        "There is no new holdout claim. No 2015 rows are read, and incumbent classifier/loss-proxy artifacts remain unchanged. "
         "The stopping cohort is subsequently included in the fixed-budget refit; it is not an independent final evaluation.\n\n"
         "## Loss composition\n\n"
-        "Compare the reference bundle, ANN PD alone, ANN loss components alone, and all-ANN composition on "
+        "Compare the reference bundle, ANN charge-off classifier alone, ANN loss components alone, and all-ANN composition on "
         "the same eligible portfolio. Regressor predictions are explicitly bounded to [0,1] for loss composition. "
         "Raw errors/clipping counts are saved, while native regression evaluations use raw outputs. "
         "Expected-loss outputs retain the snapshot and residual-dependence limitations from the loss report. "
@@ -325,7 +329,10 @@ def write_report(manifest, tables):
     (ROOT / "docs/ann_experiments.md").write_text(report)
     marker = "<!-- ann-experiment-statistics -->"
     path = ROOT / "assets/statistics.md"
-    original = path.read_text().split(marker)[0].rstrip()
+    contents = path.read_text()
+    later_marker = "<!-- teaching-extract-audit-statistics -->"
+    later = "\n\n" + later_marker + contents.split(later_marker, 1)[1] if later_marker in contents else ""
+    original = contents.split(marker)[0].rstrip()
     toc = "23. [ANN challengers](#23-ann-challengers)"
     if toc not in original:
         original = original.replace("22. [Basel-style loss experiment](#22-basel-style-loss-experiment)",
@@ -344,7 +351,7 @@ def write_report(manifest, tables):
     for name, table in tables.items():
         section += f"\n\n### {name}\n\n" + markdown_table(table)
     section += "\n\n### Full ANN manifest\n\n```json\n" + json.dumps(manifest, indent=2) + "\n```\n"
-    path.write_text(("\n".join(lines) + section).rstrip() + "\n")
+    path.write_text(("\n".join(lines) + section + later).rstrip() + "\n")
     return f"Saved ANN report: {ROOT / 'docs/ann_experiments.md'}"
 
 

@@ -1,6 +1,30 @@
 # First MLflow experiment comparison
 
-Completed: 2026-11-08T15:45:23+00:00. Batch run: `72061e0a7a1e4d68addcc79a2aae631d`.
+Terminology: [lifetime charge-off probability, snapshot losses and capital scenarios](risk_terminology.md).
+
+## Risk terminology and interpretation
+
+The classifier estimates lifetime charge-off probability in the resolved
+36-month cohort: Charged Off = 1 and Fully Paid = 0. Other statuses are excluded.
+This is conditional on the selected accepted-loan population and observed final
+status. It is neither a 12-month forecast nor a Basel default probability.
+
+EAD and LGD refer to retrospective snapshot proxies, not default-event EAD or
+discounted economic LGD. The lifetime snapshot-loss proxy multiplies the
+classifier score by predicted snapshot LGD and snapshot EAD. It is not a
+regulatory one-year expected loss estimate.
+
+Capital and RWA are illustrative sensitivities using explicitly assumed
+one-year PDs, separate from the classifier score. The current capital scenarios
+do not use or annualise the classifier prediction. The approximation
+1 - (1 - p_lifetime) ** (1 / 3) would require constant annual hazard; it would
+not establish a regulatory default definition or validate a 12-month PD.
+
+Legacy names containing `pd`, `basel`, `expected_loss` or `default` are retained
+for artifact/API compatibility. They do not change these definitions.
+
+
+Completed: 2026-11-11T13:09:44+00:00. Batch run: `6ccea4b79b8343cd971273181d93f680`.
 
 Four pipelines were fitted on 157,993 training loans and
 compared on 162,570 validation loans. Selection used
@@ -10,12 +34,12 @@ No cross-validation, hyperparameter search, or independent calibration fit was r
 
 ## Comparison
 
-| model | run_id | model_uri | train_average_precision | validation_average_precision | validation_roc_auc | validation_brier_score | validation_log_loss | fit_seconds | validation_batch_predict_seconds | model_bytes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| hist_gradient_boosting | 2bb4ea9b1159440bb0b51b66925247f3 | models:/m-c0cd1df22fa24744b5d207306fd84ac1 | 0.239525 | 0.216483 | 0.653889 | 0.114375 | 0.382348 | 2.025974 | 0.765676 | 412,754 |
-| random_forest | 9b8a327a8a694086819d1818c141ba76 | models:/m-d5af0b19e25b4b169c0f5b3414373ad9 | 0.266368 | 0.213944 | 0.649133 | 0.114923 | 0.384513 | 13.763563 | 0.92611 | 11,497,147 |
-| logistic_regression | b6cd84c99ba24a8f854b2b7941ee3b88 | models:/m-9b48e925f4a54600a0eeeacf7eb183c1 | 0.199628 | 0.21028 | 0.646231 | 0.114869 | 0.384341 | 0.958238 | 0.273507 | 7,242 |
-| dummy_prior | e017e1e02bb743669f6f3f8e804a1c36 | models:/m-c6c8b6403be04d378ecd4ee0149b6fdd | 0.125195 | 0.137264 | 0.5 | 0.118568 | 0.400613 | 0.555652 | 0.235392 | 4,882 |
+| model | run_id | model_uri | train_average_precision | validation_average_precision | validation_roc_auc | train_roc_auc | train_gini | train_ks | validation_gini | validation_ks | validation_brier_score | validation_log_loss | fit_seconds | validation_batch_predict_seconds | model_bytes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hist_gradient_boosting | f64a19bc843546e380a742697cf0bf26 | models:/m-dc3900fe2e2e4bf093dea10d7c5250bc | 0.239525 | 0.216483 | 0.653889 | 0.684525 | 0.369051 | 0.265112 | 0.307779 | 0.222796 | 0.114375 | 0.382348 | 5.390043 | 2.407201 | 412,754 |
+| random_forest | 736532a9047c44a6969455fdbdd89914 | models:/m-99c75b41427a4b89bb6693bf5b2e48d7 | 0.266368 | 0.213944 | 0.649133 | 0.711889 | 0.423779 | 0.307458 | 0.298265 | 0.216818 | 0.114923 | 0.384513 | 28.412081 | 2.801744 | 11,497,147 |
+| logistic_regression | bc902aadabe74ecd828414077ff1f9e3 | models:/m-4bc0dd14ef2a45b4aa2abc5e76df4d85 | 0.199628 | 0.21028 | 0.646231 | 0.650936 | 0.301871 | 0.218646 | 0.292462 | 0.213711 | 0.114869 | 0.384341 | 2.407796 | 0.709517 | 7,242 |
+| dummy_prior | f45285c555fd4585b30cbc8e018afe72 | models:/m-189e95283b334a11a20fcef059eb47a4 | 0.125195 | 0.137264 | 0.5 | 0.5 | 0 | 0 | 0 | 0 | 0.118568 | 0.400613 | 1.500485 | 0.628898 | 4,882 |
 
 The selected pipeline is **hist_gradient_boosting**. It was not refitted on
 validation. Only this model scored the 283,026 2015
@@ -25,11 +49,11 @@ not a cost-optimized approval policy. Default-0.5 results are also preserved.
 
 ## Selected-model evaluations
 
-| model | split | policy | rows | observed_positive_rate | threshold | roc_auc | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| hist_gradient_boosting | validation | validation_f1 | 162,570 | 0.137264 | 0.147853 | 0.653889 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93,740 | 46,515 | 10,110 | 12,205 |
-| hist_gradient_boosting | exploratory_test | default_0.5 | 283,026 | 0.148863 | 0.5 | 0.65435 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240,894 | 0 | 42,132 | 0 |
-| hist_gradient_boosting | exploratory_test | validation_f1 | 283,026 | 0.148863 | 0.147853 | 0.65435 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161,141 | 79,753 | 19,174 | 22,958 |
+| model | split | policy | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hist_gradient_boosting | validation | validation_f1 | 162,570 | 0.137264 | 0.131767 | 0.147853 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93,740 | 46,515 | 10,110 | 12,205 |
+| hist_gradient_boosting | exploratory_test | default_0.5 | 283,026 | 0.148863 | 0.132223 | 0.5 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240,894 | 0 | 42,132 | 0 |
+| hist_gradient_boosting | exploratory_test | validation_f1 | 283,026 | 0.148863 | 0.132223 | 0.147853 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161,141 | 79,753 | 19,174 | 22,958 |
 
 At the frozen threshold, exploratory ROC-AUC is 0.654350, average
 precision is 0.235027, and Brier score is 0.122279.
@@ -70,13 +94,13 @@ are claimed. MLflow uses a local SQLite database and local model artifacts.
 ## Files and loading
 
 - [Latest manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/model_experiments_latest.json).
-- [Full metrics](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/train_validation_metrics.csv),
-  [selected evaluations](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_metrics.csv),
-  [calibration bins](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/calibration_bins.csv), and
-  [curve points](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/curve_points.csv).
-- [Validation curves](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/validation_curves.png),
-  [comparison](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/model_comparison.png), and
-  [selected confusion matrices](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_confusion.png).
+- [Full metrics](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/6ccea4b79b8343cd971273181d93f680/train_validation_metrics.csv),
+  [selected evaluations](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/6ccea4b79b8343cd971273181d93f680/selected_model_metrics.csv),
+  [calibration bins](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/6ccea4b79b8343cd971273181d93f680/calibration_bins.csv), and
+  [curve points](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/6ccea4b79b8343cd971273181d93f680/curve_points.csv).
+- [Validation curves](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/6ccea4b79b8343cd971273181d93f680/validation_curves.png),
+  [comparison](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/6ccea4b79b8343cd971273181d93f680/model_comparison.png), and
+  [selected confusion matrices](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/figures/experiments/6ccea4b79b8343cd971273181d93f680/selected_model_confusion.png).
 
 Models and tracking data are local and Git-ignored. `models/selected_model.joblib`
 contains the full fitted pipeline; call `predict_proba(frame[features])[:, 1]` for
@@ -104,8 +128,9 @@ At threshold 0.5 this model predicts no charged-off loans: accuracy is 0.851137,
 2015 was inspected during EDA and remains exploratory. The target is charged off
 among selected resolved 36-month loans, not fixed-horizon default probability.
 Snapshot label timing prevents a historical deployment-backtest claim. The data
-contains accepted loans only. Model explanations, protected-group bias evaluation,
-economic stress scenarios, Kafka load testing, and ELK monitoring have not run.
+contains accepted loans only. This classification batch does not evaluate interpretation, protected-group fairness,
+economic stress or streaming infrastructure. Separate reports cover descriptive
+interpretation/segment analysis and the completed local Kafka/ELK experiments.
 No fairness or causality conclusion follows from these scores.
 
 Run `python scripts/05_train_models.py` from the project root. Open the local UI
@@ -117,7 +142,7 @@ for the underlying APIs.
 <!-- native-mlflow-evaluation-visibility -->
 ## MLflow datasets and native evaluations
 
-Dataset/evaluation logging repaired at 2026-11-08T16:15:06+00:00 without retraining,
+Dataset/evaluation logging repaired at 2026-11-11T13:11:38+00:00 without retraining,
 model reselection, or threshold changes. The original integration attached dataset
 inputs only to training runs and logged custom metrics/CSV artifacts. It omitted
 comparison-run inputs, dataset-bound model metrics, and native classifier evaluations.
@@ -147,11 +172,11 @@ In experiment **lendingclub_resolved_36m**, expand `first_model_comparison`:
 
 | model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| dummy_prior | validation | 76124a42a3c84a639a451e8c0bf94edd | e017e1e02bb743669f6f3f8e804a1c36 | m-c6c8b6403be04d378ecd4ee0149b6fdd | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.400613 | 0.5 | 0.137264 |
-| logistic_regression | validation | 737b3f235d1949e5a15552a9ce68d142 | b6cd84c99ba24a8f854b2b7941ee3b88 | m-9b48e925f4a54600a0eeeacf7eb183c1 | validation | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
-| random_forest | validation | 8dcf18dc8f7744c7950bb7c0e29fba88 | 9b8a327a8a694086819d1818c141ba76 | m-d5af0b19e25b4b169c0f5b3414373ad9 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.384513 | 0.649133 | 0.213944 |
-| hist_gradient_boosting | validation | 19d602239b3a43a595bcd17d8a39fc4a | 2bb4ea9b1159440bb0b51b66925247f3 | m-c0cd1df22fa24744b5d207306fd84ac1 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.382348 | 0.653889 | 0.216483 |
-| hist_gradient_boosting | exploratory_test | 0ba9fd0f56b8480f842795151fbfabb2 | 2bb4ea9b1159440bb0b51b66925247f3 | m-c0cd1df22fa24744b5d207306fd84ac1 | exploratory_test | 38c881ae | 0.5 | 0.851137 | 240894 | 0 | 42132 | 0 | 283026 | 0.851137 | 0 | 0 | 0 | 0.402502 | 0.65435 | 0.235027 |
+| dummy_prior | validation | a0d755b7d949420c850bc0cdb17d64a8 | f45285c555fd4585b30cbc8e018afe72 | m-189e95283b334a11a20fcef059eb47a4 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.400613 | 0.5 | 0.137264 |
+| logistic_regression | validation | fcc1cc31f70b4ba087a4398b3b44c5b0 | bc902aadabe74ecd828414077ff1f9e3 | m-4bc0dd14ef2a45b4aa2abc5e76df4d85 | validation | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
+| random_forest | validation | d413640a8782473c96a3a803db1dd139 | 736532a9047c44a6969455fdbdd89914 | m-99c75b41427a4b89bb6693bf5b2e48d7 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.384513 | 0.649133 | 0.213944 |
+| hist_gradient_boosting | validation | 436a568b45af4ca1aa84c7586164ea87 | f64a19bc843546e380a742697cf0bf26 | m-dc3900fe2e2e4bf093dea10d7c5250bc | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.382348 | 0.653889 | 0.216483 |
+| hist_gradient_boosting | exploratory_test | 0db9dc0169ae4a608652a608d4898989 | f64a19bc843546e380a742697cf0bf26 | m-dc3900fe2e2e4bf093dea10d7c5250bc | exploratory_test | 38c881ae | 0.5 | 0.851137 | 240894 | 0 | 42132 | 0 | 283026 | 0.851137 | 0 | 0 | 0 | 0.402502 | 0.65435 | 0.235027 |
 
 Native evaluations use each sklearn classifier's default decision rule (0.5 for
 these pipelines). They do not replace the frozen F1-policy results: the selected
@@ -165,7 +190,7 @@ deterministic uniform sample of at most 1,000 positions, seed 42; they are previ
 not the metric population. Parent previews show the first 200 rows. No SHAP or
 InterpretML explanation evaluation was enabled.
 
-The [native evaluation CSV](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/72061e0a7a1e4d68addcc79a2aae631d/mlflow_native_evaluations.csv)
+The [native evaluation CSV](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/experiments/6ccea4b79b8343cd971273181d93f680/mlflow_native_evaluations.csv)
 and statistics section 19 contain all evaluation IDs and metrics. Run
 `python scripts/06_log_mlflow_evaluations.py` to verify or repair an existing
 completed comparison. Running it again reuses the completed repair and creates

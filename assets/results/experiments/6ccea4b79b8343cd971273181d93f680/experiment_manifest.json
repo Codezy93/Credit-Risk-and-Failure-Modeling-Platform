@@ -1,0 +1,953 @@
+{
+  "stage": "first_model_experiments",
+  "status": "complete",
+  "completed_at_utc": "2026-11-11T13:09:44+00:00",
+  "batch_run_id": "6ccea4b79b8343cd971273181d93f680",
+  "experiment_id": "1",
+  "experiment_name": "lendingclub_resolved_36m",
+  "tracking_uri": "sqlite:////home/vir/GitHub/Credit-Risk-and-Failure-Modeling-Platform/models/mlflow.db",
+  "run_ids": {
+    "dummy_prior": "f45285c555fd4585b30cbc8e018afe72",
+    "logistic_regression": "bc902aadabe74ecd828414077ff1f9e3",
+    "random_forest": "736532a9047c44a6969455fdbdd89914",
+    "hist_gradient_boosting": "f64a19bc843546e380a742697cf0bf26"
+  },
+  "model_uris": {
+    "dummy_prior": "models:/m-189e95283b334a11a20fcef059eb47a4",
+    "logistic_regression": "models:/m-4bc0dd14ef2a45b4aa2abc5e76df4d85",
+    "random_forest": "models:/m-99c75b41427a4b89bb6693bf5b2e48d7",
+    "hist_gradient_boosting": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc"
+  },
+  "selected_model": "hist_gradient_boosting",
+  "selected_run_id": "f64a19bc843546e380a742697cf0bf26",
+  "selected_model_uri": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc",
+  "selection_metric": "validation_average_precision",
+  "tie_breaker": "lower_validation_brier_score",
+  "selected_threshold": 0.147852896338396,
+  "threshold_rule": "maximum validation F1; ties choose lowest threshold",
+  "default_threshold": 0.5,
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "numeric_features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years"
+  ],
+  "categorical_features": [
+    "home_ownership",
+    "purpose"
+  ],
+  "positive_class": 1,
+  "class_order": [
+    0,
+    1
+  ],
+  "seed": 42,
+  "thread_limit": 4,
+  "numeric_input_dtype": "float64",
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
+  "train_rows": 157993,
+  "validation_rows": 162570,
+  "exploratory_test_rows": 283026,
+  "test_scored_models": [
+    "hist_gradient_boosting"
+  ],
+  "refit_on_validation": false,
+  "fixed_horizon": false,
+  "deployment_backtest": false,
+  "test_previously_explored": true,
+  "data_manifest_sha256": "30c0f906e863958036341518c8ed53fccf3f558e1a371887c18880430bbdb2f9",
+  "data_decision_snapshot": {
+    "stage": "model_data_preparation",
+    "status": "complete",
+    "completed_at_utc": "2026-11-08T15:27:11+00:00",
+    "source_path": "data/clean/loans.parquet",
+    "source_sha256": "51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20",
+    "eda_manifest_sha256": "44721c561c377b6077161e0bd19298016eb7e74819a354f5e3aa37d355af823e",
+    "eda_decision_snapshot": {
+      "stage": "eda",
+      "status": "complete",
+      "completed_at_utc": "2026-11-08T15:19:48+00:00",
+      "source_columns": 151,
+      "clean_columns": 26,
+      "candidate_feature_count": 14,
+      "candidate_features": [
+        "loan_amnt",
+        "annual_inc",
+        "dti",
+        "revol_util",
+        "revol_bal",
+        "open_acc",
+        "delinq_2yrs",
+        "pub_rec_bankruptcies",
+        "emp_length_years",
+        "fico_mid",
+        "credit_history_years",
+        "home_ownership",
+        "purpose",
+        "application_type"
+      ],
+      "target": "charged_off_among_selected_resolved_loans",
+      "fixed_horizon": false,
+      "benchmark_term_months": 36,
+      "train_years": [
+        2011,
+        2012,
+        2013
+      ],
+      "validation_years": [
+        2014
+      ],
+      "exploratory_test_years": [
+        2015
+      ],
+      "test_previously_explored": true,
+      "deployment_backtest": false,
+      "checks_passed": true,
+      "model_training_started": false,
+      "splits": [
+        {
+          "proposed_split": "train",
+          "all_loans": 157993,
+          "eligible_resolved_loans": 157993,
+          "excluded_other_status": 0,
+          "fully_paid": 138213,
+          "charged_off": 19780,
+          "resolved_pct": 100.0,
+          "charged_off_pct": 12.519542005025539
+        },
+        {
+          "proposed_split": "validation",
+          "all_loans": 162570,
+          "eligible_resolved_loans": 162570,
+          "excluded_other_status": 0,
+          "fully_paid": 140255,
+          "charged_off": 22315,
+          "resolved_pct": 100.0,
+          "charged_off_pct": 13.726394783785446
+        },
+        {
+          "proposed_split": "exploratory_test",
+          "all_loans": 283173,
+          "eligible_resolved_loans": 283026,
+          "excluded_other_status": 147,
+          "fully_paid": 240894,
+          "charged_off": 42132,
+          "resolved_pct": 99.94808827112755,
+          "charged_off_pct": 14.886264866125373
+        }
+      ]
+    },
+    "candidate_features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose",
+      "application_type"
+    ],
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "numeric_features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years"
+    ],
+    "categorical_features": [
+      "home_ownership",
+      "purpose"
+    ],
+    "training_only_dropped_features": [
+      "application_type"
+    ],
+    "target": "charged_off",
+    "positive_class": 1,
+    "positive_class_meaning": "Charged Off",
+    "negative_class_meaning": "Fully Paid",
+    "benchmark_term_months": 36,
+    "train_years": [
+      2011,
+      2012,
+      2013
+    ],
+    "validation_years": [
+      2014
+    ],
+    "exploratory_test_years": [
+      2015
+    ],
+    "fixed_horizon": false,
+    "deployment_backtest": false,
+    "test_previously_explored": true,
+    "preprocessing_fitted": false,
+    "model_training_started": false,
+    "row_order": [
+      "issue_date",
+      "loan_id"
+    ],
+    "artifacts": [
+      {
+        "path": "data/clean/modeling/train.parquet",
+        "split": "train",
+        "kind": "features_and_target",
+        "rows": 157993,
+        "columns": 14,
+        "bytes": 2051149,
+        "sha256": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4"
+      },
+      {
+        "path": "data/clean/modeling/train_metadata.parquet",
+        "split": "train",
+        "kind": "metadata",
+        "rows": 157993,
+        "columns": 4,
+        "bytes": 239324,
+        "sha256": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738"
+      },
+      {
+        "path": "data/clean/modeling/validation.parquet",
+        "split": "validation",
+        "kind": "features_and_target",
+        "rows": 162570,
+        "columns": 14,
+        "bytes": 2119125,
+        "sha256": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc"
+      },
+      {
+        "path": "data/clean/modeling/validation_metadata.parquet",
+        "split": "validation",
+        "kind": "metadata",
+        "rows": 162570,
+        "columns": 4,
+        "bytes": 239708,
+        "sha256": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
+      },
+      {
+        "path": "data/clean/modeling/exploratory_test.parquet",
+        "split": "exploratory_test",
+        "kind": "features_and_target",
+        "rows": 283026,
+        "columns": 14,
+        "bytes": 3662090,
+        "sha256": "7d98e6c095b38287a1599aa241a061d8ca786a5894370e2ab6a4aeb16a553564"
+      },
+      {
+        "path": "data/clean/modeling/exploratory_test_metadata.parquet",
+        "split": "exploratory_test",
+        "kind": "metadata",
+        "rows": 283026,
+        "columns": 4,
+        "bytes": 394587,
+        "sha256": "b94fdee9a5ae2d64badf43666f53d8f4f3c0c2c5f5100934a3f6aaeb15952c60"
+      }
+    ],
+    "sql_sha256": {
+      "26_model_population.sql": "c53b3bedc6975bc3a86bff179ab155180933d8190408fb74f314d22fe1701d47",
+      "27_training_feature_profile.sql": "882c57698c7e65494d49da534c158df7e65988d5d6d1b932d88a15e2bad5d66b",
+      "28_model_split_summary.sql": "95f148c2b14b3d189572e9ba371b9f1cc370685b83f77481df0d94c938ff6478",
+      "29_model_missingness.sql": "5f799b2d8cefdfef23568b9a5ac0880933145e8346200a1b05573150f61f66d8",
+      "30_model_category_coverage.sql": "fb314763a1acf2cd331d3cbb7edd6259b60b60c0370bd78fd85ac4f87891634b",
+      "31_model_unknown_categories.sql": "9ec0b4459498808ab48ac7f3453db667d4e1712f0bc786f61f57fa4a7b46f35f"
+    },
+    "script_sha256": "2cc18e929041378744bc5d4ab3cd0ee0e942ec1232e430d78708a47831665138",
+    "versions": {
+      "duckdb": "2.0.0",
+      "pandas": "3.1.0"
+    }
+  },
+  "training_script_sha256": "4c01c7a4924f68fe26f204eeec1b4df0e2f610aadb7b51e382189532bb7c0683",
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "mlflow": "3.18.0",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "cloudpickle": "3.1.2",
+    "threadpoolctl": "3.8.0"
+  },
+  "source_sha256": {
+    "scripts/05_train_models.py": "4c01c7a4924f68fe26f204eeec1b4df0e2f610aadb7b51e382189532bb7c0683",
+    "util/ann.py": "a2350788ed70f83a2fad4a12916f78a9b598b999731b5486b605ddadef9df56e",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
+    "util/calibration.py": "3747c86cebea481223ee6207d81305a5898fb5f65a42db6e0896334bb63abf5c",
+    "util/coefficient_review.py": "39b14eb12b9a5ba8bc88221559f86077f1f11f752db272a644653a0c58bf8889",
+    "util/explanation_input.py": "55de10ed36773bd1d99e75dd6e860489841f12fc79296e70fbf57fd858132346",
+    "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/interpretation.py": "c54249dd5897f45cd48cc80d59f9085e8fcfe42f8443c339c76f00431b11cdff",
+    "util/load_test.py": "645b9dd8ddeef4770165870bef11fe48744543b930e3823ef083985509342f74",
+    "util/logging.py": "44153f54a69ecb62d6c9ba710a7c11807300afa7da30ad4a6d8cf5a782c84eec",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/mlflow_evaluation.py": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/risk_scope.py": "c46036e7a41fb27951656c4a5d8f5fffe3981af9cde083daa64be153d8745a36",
+    "util/score_store.py": "9a1092113b7058156b54e529986b007d141a7726e0198213f51bc69a7e70a7f5",
+    "util/segment_audit.py": "7d25b59c4392d3f1f61f9c38c9ebe12bf3416cac6868459e8c85974013440aff",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "util/temporal_xgboost.py": "6ff37543804fead4ddabc68f219d6f1d9d4cbd9c5c1ebb19fe8a91105aece9a3",
+    "util/validation.py": "dfad932f43a678b2eff1bf2a68bb90f86635d662b59505db6875adfb910dd036",
+    "requirements.txt": "ca693c4b26f6942ec5f594e470065af6ca33ed839028212714bd98c7970420fc",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "configurations": {
+    "dummy_prior": {
+      "memory": null,
+      "steps": [
+        [
+          "prepare",
+          "ColumnTransformer(transformers=[('numeric', SimpleImputer(strategy='median'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('missing_flags',\n                                 MissingIndicator(error_on_new=False,\n                                                  features='all'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OneHotEncoder(handle_unknown='ignore',\n                                                                sparse_output=False))]),\n                                 ['home_ownership', 'purpose'])])"
+        ],
+        [
+          "model",
+          "DummyClassifier()"
+        ]
+      ],
+      "transform_input": null,
+      "verbose": false,
+      "prepare": "ColumnTransformer(transformers=[('numeric', SimpleImputer(strategy='median'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('missing_flags',\n                                 MissingIndicator(error_on_new=False,\n                                                  features='all'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OneHotEncoder(handle_unknown='ignore',\n                                                                sparse_output=False))]),\n                                 ['home_ownership', 'purpose'])])",
+      "model": "DummyClassifier()",
+      "prepare__n_jobs": null,
+      "prepare__remainder": "drop",
+      "prepare__sparse_threshold": 0.3,
+      "prepare__transformer_weights": null,
+      "prepare__transformers": [
+        [
+          "numeric",
+          "SimpleImputer(strategy='median')",
+          [
+            "loan_amnt",
+            "annual_inc",
+            "dti",
+            "revol_util",
+            "revol_bal",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "missing_flags",
+          "MissingIndicator(error_on_new=False, features='all')",
+          [
+            "loan_amnt",
+            "annual_inc",
+            "dti",
+            "revol_util",
+            "revol_bal",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "categories",
+          "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OneHotEncoder(handle_unknown='ignore', sparse_output=False))])",
+          [
+            "home_ownership",
+            "purpose"
+          ]
+        ]
+      ],
+      "prepare__verbose": false,
+      "prepare__verbose_feature_names_out": true,
+      "prepare__numeric": "SimpleImputer(strategy='median')",
+      "prepare__missing_flags": "MissingIndicator(error_on_new=False, features='all')",
+      "prepare__categories": "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OneHotEncoder(handle_unknown='ignore', sparse_output=False))])",
+      "prepare__numeric__add_indicator": false,
+      "prepare__numeric__copy": true,
+      "prepare__numeric__fill_value": null,
+      "prepare__numeric__keep_empty_features": false,
+      "prepare__numeric__missing_values": NaN,
+      "prepare__numeric__strategy": "median",
+      "prepare__missing_flags__error_on_new": false,
+      "prepare__missing_flags__features": "all",
+      "prepare__missing_flags__missing_values": NaN,
+      "prepare__missing_flags__sparse": "auto",
+      "prepare__categories__memory": null,
+      "prepare__categories__steps": [
+        [
+          "impute",
+          "SimpleImputer(fill_value='Missing', strategy='constant')"
+        ],
+        [
+          "encode",
+          "OneHotEncoder(handle_unknown='ignore', sparse_output=False)"
+        ]
+      ],
+      "prepare__categories__transform_input": null,
+      "prepare__categories__verbose": false,
+      "prepare__categories__impute": "SimpleImputer(fill_value='Missing', strategy='constant')",
+      "prepare__categories__encode": "OneHotEncoder(handle_unknown='ignore', sparse_output=False)",
+      "prepare__categories__impute__add_indicator": false,
+      "prepare__categories__impute__copy": true,
+      "prepare__categories__impute__fill_value": "Missing",
+      "prepare__categories__impute__keep_empty_features": false,
+      "prepare__categories__impute__missing_values": NaN,
+      "prepare__categories__impute__strategy": "constant",
+      "prepare__categories__encode__categories": "auto",
+      "prepare__categories__encode__drop": null,
+      "prepare__categories__encode__dtype": "<class 'numpy.float64'>",
+      "prepare__categories__encode__feature_name_combiner": "concat",
+      "prepare__categories__encode__handle_unknown": "ignore",
+      "prepare__categories__encode__max_categories": null,
+      "prepare__categories__encode__min_frequency": null,
+      "prepare__categories__encode__sparse_output": false,
+      "model__constant": null,
+      "model__random_state": null,
+      "model__strategy": "prior"
+    },
+    "logistic_regression": {
+      "memory": null,
+      "steps": [
+        [
+          "prepare",
+          "ColumnTransformer(transformers=[('numeric',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(strategy='median')),\n                                                 ('scale', StandardScaler())]),\n                                 ['loan_amnt', 'dti', 'revol_util', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('log_numeric',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(strategy='median')),\n                                                 ('log1p'...\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OneHotEncoder(handle_unknown='ignore',\n                                                                sparse_output=False))]),\n                                 ['home_ownership', 'purpose'])])"
+        ],
+        [
+          "model",
+          "LogisticRegression(max_iter=1000, random_state=42)"
+        ]
+      ],
+      "transform_input": null,
+      "verbose": false,
+      "prepare": "ColumnTransformer(transformers=[('numeric',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(strategy='median')),\n                                                 ('scale', StandardScaler())]),\n                                 ['loan_amnt', 'dti', 'revol_util', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('log_numeric',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(strategy='median')),\n                                                 ('log1p'...\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OneHotEncoder(handle_unknown='ignore',\n                                                                sparse_output=False))]),\n                                 ['home_ownership', 'purpose'])])",
+      "model": "LogisticRegression(max_iter=1000, random_state=42)",
+      "prepare__n_jobs": null,
+      "prepare__remainder": "drop",
+      "prepare__sparse_threshold": 0.3,
+      "prepare__transformer_weights": null,
+      "prepare__transformers": [
+        [
+          "numeric",
+          "Pipeline(steps=[('impute', SimpleImputer(strategy='median')),\n                ('scale', StandardScaler())])",
+          [
+            "loan_amnt",
+            "dti",
+            "revol_util",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "log_numeric",
+          "Pipeline(steps=[('impute', SimpleImputer(strategy='median')),\n                ('log1p',\n                 FunctionTransformer(feature_names_out='one-to-one',\n                                     func=<ufunc 'log1p'>)),\n                ('scale', StandardScaler())])",
+          [
+            "annual_inc",
+            "revol_bal"
+          ]
+        ],
+        [
+          "missing_flags",
+          "MissingIndicator(error_on_new=False, features='all')",
+          [
+            "loan_amnt",
+            "annual_inc",
+            "dti",
+            "revol_util",
+            "revol_bal",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "categories",
+          "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OneHotEncoder(handle_unknown='ignore', sparse_output=False))])",
+          [
+            "home_ownership",
+            "purpose"
+          ]
+        ]
+      ],
+      "prepare__verbose": false,
+      "prepare__verbose_feature_names_out": true,
+      "prepare__numeric": "Pipeline(steps=[('impute', SimpleImputer(strategy='median')),\n                ('scale', StandardScaler())])",
+      "prepare__log_numeric": "Pipeline(steps=[('impute', SimpleImputer(strategy='median')),\n                ('log1p',\n                 FunctionTransformer(feature_names_out='one-to-one',\n                                     func=<ufunc 'log1p'>)),\n                ('scale', StandardScaler())])",
+      "prepare__missing_flags": "MissingIndicator(error_on_new=False, features='all')",
+      "prepare__categories": "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OneHotEncoder(handle_unknown='ignore', sparse_output=False))])",
+      "prepare__numeric__memory": null,
+      "prepare__numeric__steps": [
+        [
+          "impute",
+          "SimpleImputer(strategy='median')"
+        ],
+        [
+          "scale",
+          "StandardScaler()"
+        ]
+      ],
+      "prepare__numeric__transform_input": null,
+      "prepare__numeric__verbose": false,
+      "prepare__numeric__impute": "SimpleImputer(strategy='median')",
+      "prepare__numeric__scale": "StandardScaler()",
+      "prepare__numeric__impute__add_indicator": false,
+      "prepare__numeric__impute__copy": true,
+      "prepare__numeric__impute__fill_value": null,
+      "prepare__numeric__impute__keep_empty_features": false,
+      "prepare__numeric__impute__missing_values": NaN,
+      "prepare__numeric__impute__strategy": "median",
+      "prepare__numeric__scale__copy": true,
+      "prepare__numeric__scale__with_mean": true,
+      "prepare__numeric__scale__with_std": true,
+      "prepare__log_numeric__memory": null,
+      "prepare__log_numeric__steps": [
+        [
+          "impute",
+          "SimpleImputer(strategy='median')"
+        ],
+        [
+          "log1p",
+          "FunctionTransformer(feature_names_out='one-to-one', func=<ufunc 'log1p'>)"
+        ],
+        [
+          "scale",
+          "StandardScaler()"
+        ]
+      ],
+      "prepare__log_numeric__transform_input": null,
+      "prepare__log_numeric__verbose": false,
+      "prepare__log_numeric__impute": "SimpleImputer(strategy='median')",
+      "prepare__log_numeric__log1p": "FunctionTransformer(feature_names_out='one-to-one', func=<ufunc 'log1p'>)",
+      "prepare__log_numeric__scale": "StandardScaler()",
+      "prepare__log_numeric__impute__add_indicator": false,
+      "prepare__log_numeric__impute__copy": true,
+      "prepare__log_numeric__impute__fill_value": null,
+      "prepare__log_numeric__impute__keep_empty_features": false,
+      "prepare__log_numeric__impute__missing_values": NaN,
+      "prepare__log_numeric__impute__strategy": "median",
+      "prepare__log_numeric__log1p__accept_sparse": false,
+      "prepare__log_numeric__log1p__check_inverse": true,
+      "prepare__log_numeric__log1p__feature_names_out": "one-to-one",
+      "prepare__log_numeric__log1p__func": "<ufunc 'log1p'>",
+      "prepare__log_numeric__log1p__inv_kw_args": null,
+      "prepare__log_numeric__log1p__inverse_func": null,
+      "prepare__log_numeric__log1p__kw_args": null,
+      "prepare__log_numeric__log1p__validate": false,
+      "prepare__log_numeric__scale__copy": true,
+      "prepare__log_numeric__scale__with_mean": true,
+      "prepare__log_numeric__scale__with_std": true,
+      "prepare__missing_flags__error_on_new": false,
+      "prepare__missing_flags__features": "all",
+      "prepare__missing_flags__missing_values": NaN,
+      "prepare__missing_flags__sparse": "auto",
+      "prepare__categories__memory": null,
+      "prepare__categories__steps": [
+        [
+          "impute",
+          "SimpleImputer(fill_value='Missing', strategy='constant')"
+        ],
+        [
+          "encode",
+          "OneHotEncoder(handle_unknown='ignore', sparse_output=False)"
+        ]
+      ],
+      "prepare__categories__transform_input": null,
+      "prepare__categories__verbose": false,
+      "prepare__categories__impute": "SimpleImputer(fill_value='Missing', strategy='constant')",
+      "prepare__categories__encode": "OneHotEncoder(handle_unknown='ignore', sparse_output=False)",
+      "prepare__categories__impute__add_indicator": false,
+      "prepare__categories__impute__copy": true,
+      "prepare__categories__impute__fill_value": "Missing",
+      "prepare__categories__impute__keep_empty_features": false,
+      "prepare__categories__impute__missing_values": NaN,
+      "prepare__categories__impute__strategy": "constant",
+      "prepare__categories__encode__categories": "auto",
+      "prepare__categories__encode__drop": null,
+      "prepare__categories__encode__dtype": "<class 'numpy.float64'>",
+      "prepare__categories__encode__feature_name_combiner": "concat",
+      "prepare__categories__encode__handle_unknown": "ignore",
+      "prepare__categories__encode__max_categories": null,
+      "prepare__categories__encode__min_frequency": null,
+      "prepare__categories__encode__sparse_output": false,
+      "model__C": 1.0,
+      "model__class_weight": null,
+      "model__dual": false,
+      "model__fit_intercept": true,
+      "model__intercept_scaling": 1,
+      "model__l1_ratio": 0.0,
+      "model__max_iter": 1000,
+      "model__n_jobs": null,
+      "model__penalty": "deprecated",
+      "model__random_state": 42,
+      "model__solver": "lbfgs",
+      "model__tol": 0.0001,
+      "model__verbose": 0,
+      "model__warm_start": false
+    },
+    "random_forest": {
+      "memory": null,
+      "steps": [
+        [
+          "prepare",
+          "ColumnTransformer(transformers=[('numeric', SimpleImputer(strategy='median'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('missing_flags',\n                                 MissingIndicator(error_on_new=False,\n                                                  features='all'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OneHotEncoder(handle_unknown='ignore',\n                                                                sparse_output=False))]),\n                                 ['home_ownership', 'purpose'])])"
+        ],
+        [
+          "model",
+          "RandomForestClassifier(max_depth=12, min_samples_leaf=50, n_estimators=150,\n                       n_jobs=4, random_state=42)"
+        ]
+      ],
+      "transform_input": null,
+      "verbose": false,
+      "prepare": "ColumnTransformer(transformers=[('numeric', SimpleImputer(strategy='median'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('missing_flags',\n                                 MissingIndicator(error_on_new=False,\n                                                  features='all'),\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OneHotEncoder(handle_unknown='ignore',\n                                                                sparse_output=False))]),\n                                 ['home_ownership', 'purpose'])])",
+      "model": "RandomForestClassifier(max_depth=12, min_samples_leaf=50, n_estimators=150,\n                       n_jobs=4, random_state=42)",
+      "prepare__n_jobs": null,
+      "prepare__remainder": "drop",
+      "prepare__sparse_threshold": 0.3,
+      "prepare__transformer_weights": null,
+      "prepare__transformers": [
+        [
+          "numeric",
+          "SimpleImputer(strategy='median')",
+          [
+            "loan_amnt",
+            "annual_inc",
+            "dti",
+            "revol_util",
+            "revol_bal",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "missing_flags",
+          "MissingIndicator(error_on_new=False, features='all')",
+          [
+            "loan_amnt",
+            "annual_inc",
+            "dti",
+            "revol_util",
+            "revol_bal",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "categories",
+          "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OneHotEncoder(handle_unknown='ignore', sparse_output=False))])",
+          [
+            "home_ownership",
+            "purpose"
+          ]
+        ]
+      ],
+      "prepare__verbose": false,
+      "prepare__verbose_feature_names_out": true,
+      "prepare__numeric": "SimpleImputer(strategy='median')",
+      "prepare__missing_flags": "MissingIndicator(error_on_new=False, features='all')",
+      "prepare__categories": "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OneHotEncoder(handle_unknown='ignore', sparse_output=False))])",
+      "prepare__numeric__add_indicator": false,
+      "prepare__numeric__copy": true,
+      "prepare__numeric__fill_value": null,
+      "prepare__numeric__keep_empty_features": false,
+      "prepare__numeric__missing_values": NaN,
+      "prepare__numeric__strategy": "median",
+      "prepare__missing_flags__error_on_new": false,
+      "prepare__missing_flags__features": "all",
+      "prepare__missing_flags__missing_values": NaN,
+      "prepare__missing_flags__sparse": "auto",
+      "prepare__categories__memory": null,
+      "prepare__categories__steps": [
+        [
+          "impute",
+          "SimpleImputer(fill_value='Missing', strategy='constant')"
+        ],
+        [
+          "encode",
+          "OneHotEncoder(handle_unknown='ignore', sparse_output=False)"
+        ]
+      ],
+      "prepare__categories__transform_input": null,
+      "prepare__categories__verbose": false,
+      "prepare__categories__impute": "SimpleImputer(fill_value='Missing', strategy='constant')",
+      "prepare__categories__encode": "OneHotEncoder(handle_unknown='ignore', sparse_output=False)",
+      "prepare__categories__impute__add_indicator": false,
+      "prepare__categories__impute__copy": true,
+      "prepare__categories__impute__fill_value": "Missing",
+      "prepare__categories__impute__keep_empty_features": false,
+      "prepare__categories__impute__missing_values": NaN,
+      "prepare__categories__impute__strategy": "constant",
+      "prepare__categories__encode__categories": "auto",
+      "prepare__categories__encode__drop": null,
+      "prepare__categories__encode__dtype": "<class 'numpy.float64'>",
+      "prepare__categories__encode__feature_name_combiner": "concat",
+      "prepare__categories__encode__handle_unknown": "ignore",
+      "prepare__categories__encode__max_categories": null,
+      "prepare__categories__encode__min_frequency": null,
+      "prepare__categories__encode__sparse_output": false,
+      "model__bootstrap": true,
+      "model__ccp_alpha": 0.0,
+      "model__class_weight": null,
+      "model__criterion": "gini",
+      "model__max_depth": 12,
+      "model__max_features": "sqrt",
+      "model__max_leaf_nodes": null,
+      "model__max_samples": null,
+      "model__min_impurity_decrease": 0.0,
+      "model__min_samples_leaf": 50,
+      "model__min_samples_split": 2,
+      "model__min_weight_fraction_leaf": 0.0,
+      "model__monotonic_cst": null,
+      "model__n_estimators": 150,
+      "model__n_jobs": 4,
+      "model__oob_score": false,
+      "model__random_state": 42,
+      "model__verbose": 0,
+      "model__warm_start": false
+    },
+    "hist_gradient_boosting": {
+      "memory": null,
+      "steps": [
+        [
+          "prepare",
+          "ColumnTransformer(transformers=[('numeric', 'passthrough',\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OrdinalEncoder(handle_unknown='use_encoded_value',\n                                                                 unknown_value=-1))]),\n                                 ['home_ownership', 'purpose'])])"
+        ],
+        [
+          "model",
+          "HistGradientBoostingClassifier(categorical_features=[11, 12],\n                               early_stopping=False, l2_regularization=1.0,\n                               learning_rate=0.05, max_iter=200,\n                               max_leaf_nodes=15, min_samples_leaf=50,\n                               random_state=42)"
+        ]
+      ],
+      "transform_input": null,
+      "verbose": false,
+      "prepare": "ColumnTransformer(transformers=[('numeric', 'passthrough',\n                                 ['loan_amnt', 'annual_inc', 'dti',\n                                  'revol_util', 'revol_bal', 'open_acc',\n                                  'delinq_2yrs', 'pub_rec_bankruptcies',\n                                  'emp_length_years', 'fico_mid',\n                                  'credit_history_years']),\n                                ('categories',\n                                 Pipeline(steps=[('impute',\n                                                  SimpleImputer(fill_value='Missing',\n                                                                strategy='constant')),\n                                                 ('encode',\n                                                  OrdinalEncoder(handle_unknown='use_encoded_value',\n                                                                 unknown_value=-1))]),\n                                 ['home_ownership', 'purpose'])])",
+      "model": "HistGradientBoostingClassifier(categorical_features=[11, 12],\n                               early_stopping=False, l2_regularization=1.0,\n                               learning_rate=0.05, max_iter=200,\n                               max_leaf_nodes=15, min_samples_leaf=50,\n                               random_state=42)",
+      "prepare__n_jobs": null,
+      "prepare__remainder": "drop",
+      "prepare__sparse_threshold": 0.3,
+      "prepare__transformer_weights": null,
+      "prepare__transformers": [
+        [
+          "numeric",
+          "passthrough",
+          [
+            "loan_amnt",
+            "annual_inc",
+            "dti",
+            "revol_util",
+            "revol_bal",
+            "open_acc",
+            "delinq_2yrs",
+            "pub_rec_bankruptcies",
+            "emp_length_years",
+            "fico_mid",
+            "credit_history_years"
+          ]
+        ],
+        [
+          "categories",
+          "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OrdinalEncoder(handle_unknown='use_encoded_value',\n                                unknown_value=-1))])",
+          [
+            "home_ownership",
+            "purpose"
+          ]
+        ]
+      ],
+      "prepare__verbose": false,
+      "prepare__verbose_feature_names_out": true,
+      "prepare__numeric": "passthrough",
+      "prepare__categories": "Pipeline(steps=[('impute',\n                 SimpleImputer(fill_value='Missing', strategy='constant')),\n                ('encode',\n                 OrdinalEncoder(handle_unknown='use_encoded_value',\n                                unknown_value=-1))])",
+      "prepare__categories__memory": null,
+      "prepare__categories__steps": [
+        [
+          "impute",
+          "SimpleImputer(fill_value='Missing', strategy='constant')"
+        ],
+        [
+          "encode",
+          "OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)"
+        ]
+      ],
+      "prepare__categories__transform_input": null,
+      "prepare__categories__verbose": false,
+      "prepare__categories__impute": "SimpleImputer(fill_value='Missing', strategy='constant')",
+      "prepare__categories__encode": "OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)",
+      "prepare__categories__impute__add_indicator": false,
+      "prepare__categories__impute__copy": true,
+      "prepare__categories__impute__fill_value": "Missing",
+      "prepare__categories__impute__keep_empty_features": false,
+      "prepare__categories__impute__missing_values": NaN,
+      "prepare__categories__impute__strategy": "constant",
+      "prepare__categories__encode__categories": "auto",
+      "prepare__categories__encode__dtype": "<class 'numpy.float64'>",
+      "prepare__categories__encode__encoded_missing_value": NaN,
+      "prepare__categories__encode__handle_unknown": "use_encoded_value",
+      "prepare__categories__encode__max_categories": null,
+      "prepare__categories__encode__min_frequency": null,
+      "prepare__categories__encode__unknown_value": -1,
+      "model__categorical_features": [
+        11,
+        12
+      ],
+      "model__class_weight": null,
+      "model__early_stopping": false,
+      "model__interaction_cst": null,
+      "model__l2_regularization": 1.0,
+      "model__learning_rate": 0.05,
+      "model__loss": "log_loss",
+      "model__max_bins": 255,
+      "model__max_depth": null,
+      "model__max_features": 1.0,
+      "model__max_iter": 200,
+      "model__max_leaf_nodes": 15,
+      "model__min_samples_leaf": 50,
+      "model__monotonic_cst": null,
+      "model__n_iter_no_change": 10,
+      "model__random_state": 42,
+      "model__scoring": "loss",
+      "model__tol": 1e-07,
+      "model__validation_fraction": 0.1,
+      "model__verbose": 0,
+      "model__warm_start": false
+    }
+  },
+  "result_directory": "assets/results/experiments/6ccea4b79b8343cd971273181d93f680",
+  "figure_directory": "assets/figures/experiments/6ccea4b79b8343cd971273181d93f680",
+  "model_directory": "models/experiments/6ccea4b79b8343cd971273181d93f680",
+  "selected_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "artifact_reload_checks_passed": true,
+  "stress_testing_started": false,
+  "results_sha256": {
+    "model_comparison.csv": "948f9a8d68d1b99d88c6f6cbab5cb9ed2f7fe50649da26c06512820fe30e797b",
+    "train_validation_metrics.csv": "94346390a901fa97ca0fc18096fbcde11c6159e3516621c31694ef7bf72b5f6d",
+    "selected_model_metrics.csv": "abf0ca3f32f877e5b7fad32a873aafdaf737413259101fcc424b8ec231ce449d",
+    "calibration_bins.csv": "ee49ee14a83c46b1f49f5422b1bb0712da090ad0d6bfedeba303c10c98d4588f",
+    "curve_points.csv": "5607d4e637023739d6bbaf066ff1f0b2928b0052018067708e46c19d4bbc4196",
+    "mlflow_native_evaluations.csv": "9519e37c11d6df41370f1f90468d2886932b50a27e41256d55c4792c871a042f"
+  },
+  "prior_failed_runs": [
+    {
+      "run_id": "6af601cdfa0e4a64b4782434a2365f14",
+      "status": "FAILED",
+      "tags.mlflow.runName": "logistic_regression"
+    },
+    {
+      "run_id": "18a7762e46144ccf86a18277cf2013f7",
+      "status": "FAILED",
+      "tags.mlflow.runName": "first_model_comparison"
+    }
+  ],
+  "native_evaluation_logging": {
+    "status": "complete",
+    "completed_at_utc": "2026-11-11T13:11:38+00:00",
+    "datasets": {
+      "train": {
+        "digest": "3fc22603",
+        "rows": 157993
+      },
+      "validation": {
+        "digest": "722bf1f9",
+        "rows": 162570
+      },
+      "exploratory_test": {
+        "digest": "38c881ae",
+        "rows": 283026
+      }
+    },
+    "evaluation_run_ids": [
+      "a0d755b7d949420c850bc0cdb17d64a8",
+      "fcc1cc31f70b4ba087a4398b3b44c5b0",
+      "d413640a8782473c96a3a803db1dd139",
+      "436a568b45af4ca1aa84c7586164ea87",
+      "0db9dc0169ae4a608652a608d4898989"
+    ],
+    "native_default_threshold": 0.5,
+    "frozen_policy_threshold": 0.147852896338396,
+    "models_retrained": false,
+    "model_selection_changed": false,
+    "dataset_artifact_directory": "datasets",
+    "row_previews_are_samples": true,
+    "source_sha256": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
+    "backend_links_verified": true
+  }
+}

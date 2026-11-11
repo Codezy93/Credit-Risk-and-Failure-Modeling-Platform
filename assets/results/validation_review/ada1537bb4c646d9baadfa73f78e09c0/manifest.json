@@ -1,0 +1,122 @@
+{
+  "status": "complete",
+  "batch_run_id": "ada1537bb4c646d9baadfa73f78e09c0",
+  "experiment_id": "7",
+  "experiment_name": "lendingclub_coefficient_validation",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "feature_policy": {
+    "policy_version": 1,
+    "policy_sha256": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "scope": "independent_baseline",
+    "features": [
+      "loan_amnt",
+      "annual_inc",
+      "dti",
+      "revol_util",
+      "revol_bal",
+      "open_acc",
+      "delinq_2yrs",
+      "pub_rec_bankruptcies",
+      "emp_length_years",
+      "fico_mid",
+      "credit_history_years",
+      "home_ownership",
+      "purpose"
+    ],
+    "scope_note": "Original candidate fields; requested/approved amount and issue-time history require application-time verification.",
+    "deployment_approved": false
+  },
+  "selected_model": "",
+  "model_uris": {
+    "full_reference_refit": "models:/m-94ca40c13d0941b5b34bc5059c87c211",
+    "drop_delinq": "models:/m-3bc9aea630bf4000b03e4a48c0bf25d7",
+    "drop_bankruptcies": "models:/m-439ebdeab0d543a58ad35978ee5a3c6f",
+    "drop_both": "models:/m-bec79d5bcb74443db5b370197afc307b"
+  },
+  "run_ids": {
+    "full_reference_refit": "509ffe14e16d408aa1e9c996e13d439a",
+    "drop_delinq": "71dd1a12654b48e2bfff0ab3ee29cc35",
+    "drop_bankruptcies": "80a60bca56bb4949b016ca1443322cbe",
+    "drop_both": "47846acdc6cd44efaf5d3ee456be0947"
+  },
+  "seed": 42,
+  "bootstrap_resamples": 200,
+  "bootstrap_strata": "issue year x observed binary outcome",
+  "bootstrap_refits_preprocessing": true,
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
+  },
+  "reference_batch_id": "6ccea4b79b8343cd971273181d93f680",
+  "protected_artifact_sha256": {
+    "models/selected_model.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/logistic_regression.joblib": "7c70538e2601b9c56c448c5f12de9b51639c9f9fecae01c24c5a7a3ad42fe211"
+  },
+  "test_2015_read": false,
+  "incumbent_replaced": false,
+  "scorecard_claim": false,
+  "loss_scope_batch_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
+  "regulatory_compliance_claim": false,
+  "one_year_pd_estimated": false,
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "cloudpickle": "3.1.2",
+    "mlflow": "3.18.0"
+  },
+  "result_directory": "assets/results/validation_review/ada1537bb4c646d9baadfa73f78e09c0",
+  "model_directory": "models/validation_review/ada1537bb4c646d9baadfa73f78e09c0",
+  "figure_directory": "assets/figures/validation_review/ada1537bb4c646d9baadfa73f78e09c0",
+  "completed_at_utc": "2026-11-11T21:08:32.542227+00:00",
+  "execution_script_sha256": "9dcc77aa279fa4a37ce6f5bff177f939e93a55b49aca202f512aff27aaee029a",
+  "source_sha256": {
+    "scripts/13_review_validation.py": "9dcc77aa279fa4a37ce6f5bff177f939e93a55b49aca202f512aff27aaee029a",
+    "util/coefficient_review.py": "39b14eb12b9a5ba8bc88221559f86077f1f11f752db272a644653a0c58bf8889",
+    "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "sql/37_coefficient_outcomes.sql": "92730d9b8f5018d903d4bd8d729e6c8abddd3da859c2f022be9e2216fccd5b40",
+    "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "results_sha256": {
+    "year_coefficients.csv": "b5fdfa5052f4aad1301365a424a546e876c0a280f93aec8894a6d7333fc88f68",
+    "ablation_auc_interval.csv": "39841779c5daa85d5306ab8bc691c96f5fd196165602c3bded7867161b4f42a0",
+    "coefficient_summary.csv": "e92f0d6ae69ff5d8fad5dc6f7fe2a0e62ba2eed98038e970a4a0f33d4a14ea6f",
+    "univariate_vs_adjusted.csv": "df8bb46e3a855df07b07db0a6f4f7c089516ee7072e2cb77eea24081848a8c30",
+    "training_outcome_buckets.csv": "b800a4de09db3a8ac7c5e19aca2cf0b209a3515856bf4ddb0d80d0a7423b34fd",
+    "paired_ablation_auc_bootstrap.csv": "7e1d6ab70b0cfd91341bac678760355ff665384f54703ffd84b306a96f160986",
+    "coefficient_bootstrap.csv": "c302220022a8c67f6a4a6f69d4db6ceebd45ecab5b97f812864b21e071a95411",
+    "spearman_correlations.csv": "885a5d24894feadfea8f43175490e8d65c157c7e5200f1aeadcc6149ed95604e",
+    "native_evaluations.csv": "b93ac72737ebdac5416f9bca108ec8d06859288d7fa1af282a222dec9143dd60",
+    "ablation_metrics.csv": "0b9c01c6c0024b3ee1d4ff7857b277a47b4e887cdf53e5bca0c5c7222516a710",
+    "limitations.csv": "eb38fee5e1596b89f54b1970b0c9f15bdd77b7a6bf94b968069197b47a4208bc",
+    "point_coefficients.csv": "f145302c460db823e41f5ea0bad9f6a5bdf56ed5445db60b6eb2f527a83577c4"
+  },
+  "model_sha256": {
+    "drop_both.joblib": "77e6780fe63ed76b265a8ef8aa1e892a4144d954b936aee7bdd8b6b4e1f4aee2",
+    "logistic_2013.joblib": "dbb3b171c58def494174a25d0b8f5eecaa3c89d22a603897c42808e0fd2e5a82",
+    "full_reference_refit.joblib": "a632bca23ee112f2e904cb43ab8f9d75f7b4adf4968458008cc00b54fee273b4",
+    "drop_bankruptcies.joblib": "7db4a75f08eb6b1d67d0b96be90bb37bb0e414a1195f54c09a81d1180348a5cd",
+    "logistic_2012.joblib": "bca7ee555ec43b0dbb838372b50ff21a53b3a4a3a841a4979e572abbe71010fe",
+    "logistic_2011.joblib": "96272a7c025c2cad2888fb3851e6067384c62a7273c81c8b6e8ce3ecaafa989c",
+    "drop_delinq.joblib": "453569d34f063b13e0c109613b738e3bfcf6105532a1a2cc21958a23769c0460"
+  }
+}

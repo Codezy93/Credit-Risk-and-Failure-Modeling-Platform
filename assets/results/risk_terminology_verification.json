@@ -1,0 +1,63 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-11-11T11:58:33.135271+00:00",
+  "scope": "Terminology annotations only; no fitting, scoring or metric regeneration",
+  "experiments": [
+    {
+      "experiment": "lendingclub_resolved_36m",
+      "runs_annotated": 13
+    },
+    {
+      "experiment": "lendingclub_auc_ablation",
+      "runs_annotated": 30
+    },
+    {
+      "experiment": "lendingclub_validation_hardening",
+      "runs_annotated": 20
+    },
+    {
+      "experiment": "lendingclub_basel_loss_proxies",
+      "runs_annotated": 27
+    },
+    {
+      "experiment": "lendingclub_ann_challengers",
+      "runs_annotated": 9
+    },
+    {
+      "experiment": "lendingclub_coefficient_validation",
+      "runs_annotated": 9
+    },
+    {
+      "experiment": "lendingclub_interpretability_bias",
+      "runs_annotated": 9
+    },
+    {
+      "experiment": "lendingclub_streaming_smoke",
+      "runs_annotated": 1
+    },
+    {
+      "experiment": "lendingclub_streaming_load_tests",
+      "runs_annotated": 8
+    },
+    {
+      "experiment": "lendingclub_streaming_recovery",
+      "runs_annotated": 2
+    }
+  ],
+  "runs_annotated": 128,
+  "run_metrics_params_status_times_unchanged": true,
+  "evidence_files_unchanged": 225,
+  "evidence_hashes_fingerprint": "92e4290ca312e4bd3c4bbb15b83aa4431992ba8df9197166381665c175537bba",
+  "scope_tags": {
+    "risk_scope.classifier_target": "Lifetime charge-off probability (resolved 36-month cohort)",
+    "risk_scope.classifier_horizon": "lifetime outcome on resolved 36-month loans; not 12 months",
+    "risk_scope.basel_pd_estimated": "false",
+    "risk_scope.loss": "lifetime snapshot-loss proxy; not regulatory one-year EL",
+    "risk_scope.capital": "illustrative assumed-one-year-PD sensitivity; no model-PD input"
+  },
+  "historical_manifests_and_logged_artifacts_rewritten": false,
+  "source_sha256": {
+    "scripts/24_update_risk_terminology.py": "456cbb1a6f9b5a90727dd169986388f9fa1c45eb7a1e75f850e0bba2e8c0bf11",
+    "util/risk_scope.py": "c46036e7a41fb27951656c4a5d8f5fffe3981af9cde083daa64be153d8745a36"
+  }
+}

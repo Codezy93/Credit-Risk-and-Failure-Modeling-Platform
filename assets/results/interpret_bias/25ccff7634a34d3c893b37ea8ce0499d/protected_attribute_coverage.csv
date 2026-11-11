@@ -1,0 +1,9 @@
+attribute,matching_structured_source_fields,available_as_structured_source_field,protected_group_audit_performed,scope_note
+race,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+ethnicity,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+sex_or_gender,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+age_or_birth_date,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+disability,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+marital_status,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+religion,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."
+national_origin,,False,False,"Not inferred from names, text, state, income, or credit history; unavailable in current model inputs."

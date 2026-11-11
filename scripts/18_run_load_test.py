@@ -27,6 +27,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope
 from util.load_test import summarize_stage, committed_offsets
 
 
@@ -219,10 +220,12 @@ def main():
     mlflow.set_tracking_uri("sqlite:///"+str(ROOT/'models/mlflow.db'))
     mlflow.set_experiment("lendingclub_streaming_load_tests")
     with mlflow.start_run(run_name=batch) as parent:
+        log_risk_scope()
         output["mlflow_run_id"] = parent.info.run_id
         mlflow.log_params({"duration_seconds":args.duration,"rates":str(args.rates),"model_sha256":model_sha,"spark_master":"local[2]","failure_injection":False})
         for stage in stages:
             with mlflow.start_run(run_name=stage["stage"],nested=True):
+                log_risk_scope()
                 mlflow.log_params({"target_rows_per_second":stage["target_rows_per_second"],"expected_rows":stage["expected_rows"]})
                 mlflow.log_metrics({key:float(value) for key,value in stage.items() if isinstance(value,(int,float)) and value is not None and np.isfinite(value)})
                 mlflow.log_artifacts(str(directory/stage["stage"]))

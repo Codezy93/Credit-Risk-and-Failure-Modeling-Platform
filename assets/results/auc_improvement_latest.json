@@ -1,7 +1,7 @@
 {
   "status": "complete",
-  "completed_at_utc": "2026-11-09T02:25:10+00:00",
-  "batch_run_id": "2d9a9d65b9004aa1ade7337465576f17",
+  "completed_at_utc": "2026-11-11T19:42:16+00:00",
+  "batch_run_id": "921ccc76e18340b89e608c1fcced9526",
   "experiment_id": "2",
   "experiment_name": "lendingclub_auc_ablation",
   "tracking_uri": "sqlite:////home/vir/GitHub/Credit-Risk-and-Failure-Modeling-Platform/models/mlflow.db",
@@ -326,7 +326,7 @@
   "temporal_protocol": "fit 2011-2012, stop on 2013, refit 2011-2013 at fixed tree count, compare 2014",
   "validation_used_for_early_stopping": false,
   "final_refit_used_eval_set": false,
-  "previous_auc_batch_id": "709d47fa0d5348f391bdef42dbb6174c",
+  "previous_auc_batch_id": "2d9a9d65b9004aa1ade7337465576f17",
   "temporal_details": {
     "base13_shallow": {
       "inner_fit_rows": 57571,
@@ -463,73 +463,73 @@
   },
   "dataset_fingerprints": {
     "base13_inner_fit": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_inner_fit.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_inner_fit.parquet",
       "sha256": "1b7f88d9dfd8f76ca34d042e67a8a86c9502640b5ac66fa7617e06db93cd9a0c",
       "mlflow_digest": "f2d0b047",
       "rows": 57571
     },
     "base13_stopping": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_stopping.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_stopping.parquet",
       "sha256": "b45e39709318805a21419215b3a1d706e67db41e3c7b780e8c06542adde432ee",
       "mlflow_digest": "342aece7",
       "rows": 100422
     },
     "base13_train": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_train.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_train.parquet",
       "sha256": "bc6257e5f8a2ac6ec11fe4be6fd577732f0d1c8b3f4430ed5495a01c548bd106",
       "mlflow_digest": "3fc22603",
       "rows": 157993
     },
     "base13_validation": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_validation.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_validation.parquet",
       "sha256": "e033e8ea6598c7e07cd1f6a50c54fefa369c191701e54c1e80d83c653c81498c",
       "mlflow_digest": "7b0440d0",
       "rows": 162570
     },
     "expanded_bureau_inner_fit": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_inner_fit.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_inner_fit.parquet",
       "sha256": "428770e346cf2a3e4298056a9dec14c04048d12fa185df61fde6a7a417a26100",
       "mlflow_digest": "5b877a45",
       "rows": 57571
     },
     "expanded_bureau_stopping": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_stopping.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_stopping.parquet",
       "sha256": "2af1c8b738d0382c5012977efe21263269fd8e86498ca024e21c665e0636635e",
       "mlflow_digest": "bde2673c",
       "rows": 100422
     },
     "expanded_bureau_train": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_train.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_train.parquet",
       "sha256": "0a1a2c038dc0a29cd1df9e62122ba6e2180f50c7bfd72b6c3a53125a59100d0b",
       "mlflow_digest": "7b8864dc",
       "rows": 157993
     },
     "expanded_bureau_validation": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_validation.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_validation.parquet",
       "sha256": "a87dc81d9411cf894c4bd50b63a9d320f3b52b28b5a93e0dc7862870fe6b2730",
       "mlflow_digest": "e7edb5f9",
       "rows": 162570
     },
     "post_underwriting_inner_fit": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_inner_fit.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_inner_fit.parquet",
       "sha256": "288a254ac488caf09f0474b38272d03839cf0c031955d7c8025301184d7dae3a",
       "mlflow_digest": "4665a8f9",
       "rows": 57571
     },
     "post_underwriting_stopping": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_stopping.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_stopping.parquet",
       "sha256": "c557466807bf7fc63d03a4a41b952d2918b7c37b416a8b62d7b9d1354477169b",
       "mlflow_digest": "a21821b7",
       "rows": 100422
     },
     "post_underwriting_train": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_train.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_train.parquet",
       "sha256": "ef7c5c981b5bc4760769f15d1a803d9d334d2ba06eb29e072ee299595dd8bba6",
       "mlflow_digest": "89ebc42f",
       "rows": 157993
     },
     "post_underwriting_validation": {
-      "path": "data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_validation.parquet",
+      "path": "data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_validation.parquet",
       "sha256": "84d7deb6be0eedb779b3584c57be4e2a4904dc5a6140b873226d1df3c9570d7c",
       "mlflow_digest": "7f86e93f",
       "rows": 162570
@@ -537,11 +537,11 @@
   },
   "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
   "clean_source_sha256": "51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20",
-  "script_sha256": "344b1f86507ede3407dffd69b5a99c69d52b222357263f21f39031a3787b9cc4",
+  "script_sha256": "33e2a319d0297e0ea0f0030bbd49ff95f691ba681432c0c39c57f23527a2bd9d",
   "model_artifacts": [
     {
       "trial": "base13_shallow",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_shallow.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_shallow.joblib",
       "sha256": "3fdd25d88fab785904f11ba8b5a343d8babc062c151f0619bf0f493aa6dd5163",
       "features": [
         "loan_amnt",
@@ -561,7 +561,7 @@
     },
     {
       "trial": "expanded_bureau_shallow",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_shallow.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_shallow.joblib",
       "sha256": "d454ee33e5422aa24abab62070857593bce8988431b3b4e222f2d4ea78bdb9cd",
       "features": [
         "loan_amnt",
@@ -626,7 +626,7 @@
     },
     {
       "trial": "expanded_bureau_regularized",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_regularized.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_regularized.joblib",
       "sha256": "afc870afbbb9230afc797bdcbd9e1cb10fcccad58dbf96f7ee1b152fb3462825",
       "features": [
         "loan_amnt",
@@ -691,7 +691,7 @@
     },
     {
       "trial": "expanded_bureau_deep",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_deep.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_deep.joblib",
       "sha256": "12442f020d2b811636800bb02a1b4384028c7ff008974434da9bc8880da9f958",
       "features": [
         "loan_amnt",
@@ -756,7 +756,7 @@
     },
     {
       "trial": "post_underwriting_shallow",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_shallow.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_shallow.joblib",
       "sha256": "592726d78b660286d3b7ee5cb6e3070f2f4ed5b40888bcca2d0d25d4b7f32b77",
       "features": [
         "loan_amnt",
@@ -824,7 +824,7 @@
     },
     {
       "trial": "post_underwriting_regularized",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_regularized.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_regularized.joblib",
       "sha256": "bdc991877f748741005622ba973879e8ad6a5bef6c52db6bd95da59305cbbc67",
       "features": [
         "loan_amnt",
@@ -892,7 +892,7 @@
     },
     {
       "trial": "post_underwriting_deep",
-      "path": "models/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_deep.joblib",
+      "path": "models/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_deep.joblib",
       "sha256": "0da6e0c0fb906050b4bfc1f78366b9d32a7cfe86e71a67372a3d136b50b72225",
       "features": [
         "loan_amnt",
@@ -960,21 +960,21 @@
     }
   ],
   "source_sha256": {
-    "scripts/07_improve_auc.py": "344b1f86507ede3407dffd69b5a99c69d52b222357263f21f39031a3787b9cc4",
+    "scripts/07_improve_auc.py": "33e2a319d0297e0ea0f0030bbd49ff95f691ba681432c0c39c57f23527a2bd9d",
     "util/temporal_xgboost.py": "6ff37543804fead4ddabc68f219d6f1d9d4cbd9c5c1ebb19fe8a91105aece9a3",
     "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825"
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
-  "result_directory": "assets/results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17",
-  "figure_directory": "assets/figures/auc_experiments/2d9a9d65b9004aa1ade7337465576f17",
+  "result_directory": "assets/results/auc_experiments/921ccc76e18340b89e608c1fcced9526",
+  "figure_directory": "assets/figures/auc_experiments/921ccc76e18340b89e608c1fcced9526",
   "additional_bureau_asof_timing_source_certified": false,
   "results_sha256": {
-    "auc_comparison.csv": "e5530816dc7703825b8d5c373d778495ba1166ffddb3cf40ac510314d7ebdc71",
+    "auc_comparison.csv": "0e57de9b6cbc6c6e9c2a810f153d05f78e53f325e12bbb6035c5c1ffe3bc4c15",
     "temporal_roles.csv": "c738678d0189ce75852733f0a833d06281355657c6e2832f02545d52b72ccb0f",
     "feature_profile.csv": "6df4d211b9b7bf72197076302a2559b7362087bacc78c4d48abc07326ce64cd9",
     "stopping_learning_curves.csv": "1f0abfde2a06e726a9e69eb8f683aa98d1b5d4adb06e7c4af7daacd1ada3bba3",
-    "native_evaluations.csv": "74b0218460ef93d6e66cdeac42089159b749344fc80579a57d6f2808331a9ee0",
+    "native_evaluations.csv": "cf79574b544d692ab98b8f15ba6e109c4809d5b3d1a29079db88659ff5f80029",
     "feature_availability.csv": "7f5eae9faf162c302c8573438c907360a56d0c1d424ef416f36297e5c94657e8",
-    "protocol_comparison.csv": "406129ac5949ec7920c3456cbe7eb9d482ab49e7e14355ce120360d66f4c33ae"
+    "protocol_comparison.csv": "993feaf494c51b53cb0a5c306158fb8b29922497fda1f2d89c521f09d5ae19d9"
   }
 }

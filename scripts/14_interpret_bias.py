@@ -23,6 +23,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope
 from util.feature_policy import validate_features
 from util.interpretation import explain_incumbent
 from util.metrics import evaluate_model
@@ -161,6 +162,7 @@ def main():
     versions = {package: importlib.metadata.version(package) for package in
         ["interpret-core", "shap", "plotly", "scikit-learn", "numpy", "pandas", "scipy", "mlflow", "duckdb"]}
     with mlflow.start_run(experiment_id=experiment_id, run_name="incumbent_explanations_and_segment_audit") as run:
+        log_risk_scope()
         batch_id = run.info.run_id
         result_dir = ROOT / "assets/results/interpret_bias" / batch_id
         figure_dir = ROOT / "assets/figures/interpret_bias" / batch_id
@@ -198,6 +200,7 @@ def main():
         print("Auditing two frozen thresholds across 12 borrower-segment dimensions", flush=True)
         segment_rows, calibration_rows = [], []
         with mlflow.start_run(experiment_id=experiment_id, run_name="borrower_segment_disparities", nested=True):
+            log_risk_scope()
             for dimension in DIMENSIONS:
                 for (split, group_name), group in labels.groupby(["split", f"{dimension}_group"], sort=True):
                     for policy_name, cutoff in [("frozen_validation_f1", threshold), ("default_0_5", 0.5)]:
@@ -213,6 +216,7 @@ def main():
             mlflow.log_table(segments, artifact_file="segment_metrics.json")
             mlflow.log_table(disparities, artifact_file="segment_spreads.json")
         with mlflow.start_run(experiment_id=experiment_id, run_name="interpretml_and_permutation", nested=True):
+            log_risk_scope()
             explanation_tables, settings, local, global_explanation = explain_incumbent(model, frames["train"],
                 frames["validation"], features, categorical, threshold, model_dir,
                 random_cases=args.local_cases, coalitions=args.coalitions)

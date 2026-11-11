@@ -7,6 +7,7 @@ theme:
   name: mkdocs
 nav:
   - Overview: index.md
+  - Risk terminology: risk_terminology.md
   - Data:
       - Download and setup: data_setup.md
       - EDA and cleaning: eda_summary.md
@@ -27,5 +28,6 @@ nav:
       - Kafka and PySpark: streaming.md
       - Load testing: load_testing.md
       - Recovery, deduplication and ELK: recovery_monitoring.md
+  - Latest experiment refresh: experiment_refresh.md
   - Reproducibility: reproducibility.md
   - Publishing: github_pages.md

@@ -1,0 +1,101 @@
+{
+  "status": "complete",
+  "batch_run_id": "6191324074c14b32a83b0430e4c16078",
+  "experiment_id": "6",
+  "experiment_name": "lendingclub_teaching_extract_audit",
+  "source": {
+    "repository": "dicksondurosakin/Loan-Prediction",
+    "commit": "9efa1b357ab5b4c10e96e4a49aace5364c2d682d",
+    "url": "https://raw.githubusercontent.com/dicksondurosakin/Loan-Prediction/9efa1b357ab5b4c10e96e4a49aace5364c2d682d/lending_club_loan_two.csv",
+    "sha256": "fb1dd172c4a3bbc9c2db55ea0863c266e76008e937ff970af89902ba65e140fb",
+    "bytes": 99561334,
+    "matches_reviewers_exact_file": "not established; reviewer hash unavailable"
+  },
+  "rows": 396030,
+  "columns": 27,
+  "source_columns": [
+    "loan_amnt",
+    "term",
+    "int_rate",
+    "installment",
+    "grade",
+    "sub_grade",
+    "emp_title",
+    "emp_length",
+    "home_ownership",
+    "annual_inc",
+    "verification_status",
+    "issue_d",
+    "loan_status",
+    "purpose",
+    "title",
+    "dti",
+    "earliest_cr_line",
+    "open_acc",
+    "pub_rec",
+    "revol_bal",
+    "revol_util",
+    "total_acc",
+    "initial_list_status",
+    "application_type",
+    "mort_acc",
+    "pub_rec_bankruptcies",
+    "address"
+  ],
+  "charged_off_rows": 77673,
+  "charged_off_rate": 0.1961290811302174,
+  "postcode_values": 10,
+  "train_rows": 316824,
+  "test_rows": 79206,
+  "split": "stratified random 80/20, seed 42",
+  "notebook_exact_reproduction": false,
+  "reviewers_exact_file_identity_verified": false,
+  "construction_mechanism_verified": false,
+  "production_feature_policy_changed": false,
+  "xgboost_parameters": {
+    "n_estimators": 300,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "min_child_weight": 10,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 10,
+    "tree_method": "hist",
+    "n_jobs": 4,
+    "random_state": 42,
+    "eval_metric": "auc"
+  },
+  "incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+  "result_directory": "assets/results/teaching_extract_audit/6191324074c14b32a83b0430e4c16078",
+  "model_directory": "models/teaching_extract_audit/6191324074c14b32a83b0430e4c16078",
+  "model_uris": {
+    "xgboost_without_postcode": "models:/m-06e0fff21f1747cfb89feb0ff3ea782c",
+    "xgboost_with_postcode": "models:/m-35ba9182295f4d74affb97a3afa6bb46"
+  },
+  "run_ids": {
+    "xgboost_without_postcode": "02f4d580e39c467ca47c888ed4b83e09",
+    "xgboost_with_postcode": "d73edd725dd14614811de8857e5fb20e"
+  },
+  "selected_model": "",
+  "completed_at_utc": "2026-11-09T01:09:33.525004+00:00",
+  "pure_paid_postcodes": [
+    "00813",
+    "05113",
+    "29597"
+  ],
+  "pure_charged_off_postcodes": [
+    "11650",
+    "86630",
+    "93700"
+  ],
+  "postcode_only_heldout_auc": 0.8396448472288981,
+  "controlled_postcode_auc_gain": 0.18688335424727232,
+  "execution_script_sha256": "69e7c7677c6cb64e140bc3558b32bc0dd91fe054b5f652f823d26cea5b338d13",
+  "incumbent_unchanged": true,
+  "results_sha256": {
+    "postcode_status_counts.csv": "3bae4e1aaebc3198daa1617b2d8a4206ab3baf941571d629abcd9a29067e33fb",
+    "native_evaluations.csv": "812c0ed61ed99ae2248524279e809cad8bb40530ee403d955d4449b87fdd09ab",
+    "schema_comparison.csv": "03322ee554c42576564a0b21054d3ef5c1ad3033167b7dc261fdf926193a91f4",
+    "score_comparison.csv": "9445c60597b0b62c95dd14624e6b759084a8e0ed67b25d99cbb2432c6f15eb86"
+  }
+}

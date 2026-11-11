@@ -23,6 +23,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope
 from util.calibration import fit_sigmoid
 from util.feature_policy import validate_features
 from util.metrics import calibration_table, evaluate_model, paired_auc_bootstrap
@@ -108,6 +109,7 @@ def main():
     versions = {name: importlib.metadata.version(name) for name in
                 ["scikit-learn", "mlflow", "numpy", "pandas", "scipy", "joblib", "cloudpickle", "threadpoolctl"]}
     with mlflow.start_run(experiment_id=experiment_id, run_name="validation_hardening") as batch:
+        log_risk_scope()
         batch_id = batch.info.run_id
         result_dir = results / "validation_hardening" / batch_id
         figure_dir = ROOT / "assets/figures/validation_hardening" / batch_id
@@ -186,6 +188,7 @@ def main():
                 table["model"], table["version"] = name, version
                 bins.append(table)
                 with mlflow.start_run(experiment_id=experiment_id, run_name=label, nested=True) as run:
+                    log_risk_scope()
                     manifest["run_ids"][label] = run.info.run_id
                     mlflow.log_input(datasets["model_fit"], context="training")
                     if version == "sigmoid":

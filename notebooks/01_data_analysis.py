@@ -40,6 +40,23 @@ def _(mo):
 
 
 @app.cell
+def _(mo):
+    mo.md("""
+    ## How to interpret the risk outputs
+
+    **Lifetime charge-off probability (resolved 36-month cohort)** is the
+    classification target: Charged Off = 1; Fully Paid = 0. Other statuses are
+    excluded. This is not a 12-month forecast or a Basel default probability.
+    EAD and LGD are retrospective snapshot proxies. Their product with the
+    classifier score is a lifetime snapshot-loss proxy, not regulatory one-year EL.
+    Capital/RWA panels use separately assumed one-year PDs, not classifier scores.
+    The classifier is not annualised. Legacy `pd`/`basel` identifiers are retained
+    for compatibility; historical result tables preserve their execution-time names.
+    """)
+    return
+
+
+@app.cell
 def _(Path, duckdb, mo, plt, sns):
     root = Path(__file__).resolve().parents[1]
     sql_dir = root / "sql"
@@ -508,7 +525,7 @@ def _(mo, pd, root):
     ## Current modelling results
 
     The EDA above records the original investigation. The completed validation
-    and Basel-style loss experiment below are separate later stages.
+    and snapshot-loss proxy experiment below are separate later stages.
     Open `notebooks/10_model_review.py` for SQL summaries, calibration figures,
     loss diagnostics, and the explicit capital assumptions.
     """)]
@@ -516,7 +533,7 @@ def _(mo, pd, root):
     if _validation_path.exists():
         _validation_manifest = _review_json.loads(_validation_path.read_text())
         _validation_results = root / _validation_manifest["result_directory"]
-        _review_outputs += [mo.md("### Exact PD validation and separate-year calibration"),
+        _review_outputs += [mo.md("### Exact charge-off validation and separate-year calibration"),
             mo.ui.table(pd.read_csv(_validation_results / "auc_confidence_intervals.csv")),
             mo.ui.table(pd.read_csv(_validation_results / "calibration_metrics.csv"))]
     _loss_path = root / "assets/results/basel_loss_latest.json"
@@ -527,9 +544,9 @@ def _(mo, pd, root):
         ### EAD, LGD, expected loss and capital scenarios
 
         EAD/LGD are bounded snapshot proxies. Recovery fields form loss targets,
-        never PD predictors. Capital uses assumed one-year PD scenarios;
+        never classifier predictors. Capital uses assumed one-year PD scenarios;
         the classifier score remains a resolved-loan score. This is illustrative,
-        with no regulatory compliance claim. PD predictions are unchanged.
+        with no regulatory compliance claim. charge-off probabilities are unchanged.
         """), mo.ui.table(pd.read_csv(_loss_results / "component_metrics.csv")),
             mo.ui.table(pd.read_csv(_loss_results / "portfolio_loss_metrics.csv")),
             mo.ui.table(pd.read_csv(_loss_results / "portfolio_capital_scenarios.csv"))]

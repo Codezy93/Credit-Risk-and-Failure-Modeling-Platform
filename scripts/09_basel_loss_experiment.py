@@ -29,6 +29,7 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from util.risk_scope import log_risk_scope, SCOPE_NOTE
 from util.basel import expected_loss, other_retail_capital, score_loss_bundle
 from util.feature_policy import validate_features
 from util.metrics import evaluate_model
@@ -61,7 +62,7 @@ def main():
         destination[artifact["split"]] = pd.read_parquet(path)
     historical = {item["path"]: item["sha256"] for item in pd_manifest["data_decision_snapshot"]["artifacts"]}
     if any(historical.get(path) != digest for path, digest in input_hashes.items()) or features != pd_manifest["features"]:
-        raise ValueError("PD model inputs differ from the prepared loss inputs.")
+        raise ValueError("lifetime charge-off classifier inputs differ from the prepared loss inputs.")
     validate_periods(metadata)
     contracts = []
     for split in ("train", "validation"):
@@ -94,7 +95,7 @@ def main():
     pd_path = ROOT / "models/selected_model.joblib"
     pd_hash = file_hash(pd_path)
     if pd_hash != pd_manifest["selected_joblib_sha256"]:
-        raise ValueError("The incumbent PD artifact changed.")
+        raise ValueError("The incumbent charge-off classifier artifact changed.")
     pd_model = joblib.load(pd_path)
     before_scores = pd_model.predict_proba(frames["validation"][features])[:, 1]
     pd_metrics = evaluate_model(frames["validation"].charged_off, before_scores)
@@ -109,6 +110,7 @@ def main():
     preprocessor = build_models(data["numeric_features"], data["categorical_features"])["hist_gradient_boosting"].named_steps["prepare"]
     targets = {"ead": "ead_ratio_proxy", "lgd": "lgd_snapshot_proxy"}
     with mlflow.start_run(experiment_id=experiment_id, run_name="ead_lgd_el_capital_proxies") as batch:
+        log_risk_scope()
         batch_id = batch.info.run_id
         result_dir = results / "basel_loss" / batch_id
         model_dir = ROOT / "models/basel_loss" / batch_id
@@ -126,7 +128,7 @@ def main():
             "selection_rule": "lowest 2014 bounded MAE per component; exploratory selection cohort",
             "ead_formula": "funded_amnt - total_rec_prncp; snapshot proxy, not observed default-event EAD",
             "lgd_formula": "1 - (recoveries - collection_recovery_fee) / snapshot_ead_proxy",
-            "el_formula": "unchanged resolved-loan PD score * predicted LGD * predicted EAD",
+            "el_formula": "lifetime charge-off score * predicted snapshot LGD * predicted snapshot EAD",
             "el_assumption": "product of conditional means ignores residual EAD/LGD dependence",
             "pd_source_run_id": pd_manifest["selected_run_id"], "pd_joblib_sha256": pd_hash,
             "input_sha256": input_hashes, "raw_source_sha256": file_hash(raw), "versions": versions,
@@ -155,6 +157,7 @@ def main():
                 print(f"Fitting {label}: {len(train):,} defaulted training loans", flush=True)
                 model = Pipeline([("prepare", clone(preprocessor)), ("model", estimator)])
                 with mlflow.start_run(experiment_id=experiment_id, run_name=label, nested=True) as run:
+                    log_risk_scope()
                     manifest["run_ids"][label] = run.info.run_id
                     model.fit(train[features], train[target])
                     models[label] = model
@@ -180,6 +183,7 @@ def main():
                         input_example=train[features].head(5), pip_requirements=[f"{key}=={value}" for key, value in versions.items()])
                     manifest["model_uris"][label] = info.model_uri
                 with mlflow.start_run(experiment_id=experiment_id, run_name=f"evaluate_{label}", nested=True) as evaluation:
+                    log_risk_scope()
                     mlflow.set_tags({"run_kind": "evaluation", "source_training_run_id": run.info.run_id})
                     result = mlflow.models.evaluate(model=info.model_uri, model_id=info.model_uri.split("/")[-1],
                         data=datasets["validation"], model_type="regressor", evaluators="default",
@@ -219,7 +223,7 @@ def main():
         sensitivity = other_retail_capital(*np.array(list(itertools.product([0.005, 0.01, 0.03, 0.05], [0.25, 0.45, 0.65, 0.85], [10000]))).T)
         after_scores = pd_model.predict_proba(frames["validation"][features])[:, 1]
         if not np.array_equal(before_scores, after_scores) or file_hash(pd_path) != pd_hash:
-            raise ValueError("The PD model changed during the loss experiment.")
+            raise ValueError("The lifetime charge-off classifier changed during the loss experiment.")
         pd_check = pd.DataFrame([{"stage": "before_loss_layers", **pd_metrics},
                                  {"stage": "after_loss_layers", **evaluate_model(frames["validation"].charged_off, after_scores)}])
         tables = {"loss_audit": audit, "component_metrics": metrics, "portfolio_loss_metrics": pd.DataFrame(el_rows),
@@ -280,10 +284,10 @@ def save_figure(figure, directory, name):
 
 
 def write_report(manifest, tables):
-    report = "# Basel-style loss experiment\n\n"
-    report += ("This experiment adds separate EAD and LGD models, resolved-outcome expected-loss proxies, "
+    report = "# Snapshot loss proxies and illustrative capital\n\n" + SCOPE_NOTE + "\n\n"
+    report += ("This experiment adds separate EAD and LGD models, lifetime snapshot-loss proxies, "
         "and illustrative CRE31.16 other-retail capital calculations. It is not a regulatory model. "
-        "The incumbent PD model is unchanged. Fit: 2011–2013; selection/evaluation: already-explored 2014. No 2015 rows are used.\n\n"
+        "The incumbent lifetime charge-off classifier is unchanged. Fit: 2011–2013; selection/evaluation: already-explored 2014. No 2015 rows are used.\n\n"
         "## Targets and exclusions\n\n"
         "On charged-off loans only, snapshot EAD = funded amount − principal received; LGD = "
         "1 − net recoveries / snapshot EAD. Positive funded amounts, nonnegative source inputs, positive EAD, "
@@ -296,15 +300,15 @@ def write_report(manifest, tables):
         "## Component models\n\n"
         "Mean baselines and fixed gradient-boosting regressors use the same 13 origination predictors. "
         "All preprocessing is fitted on eligible training defaults only. Outcome fields form targets and "
-        "dollar diagnostics; they never enter PD or loss predictor matrices. Predictions are explicitly "
+        "dollar diagnostics; they never enter classifier or loss-proxy predictor matrices. Predictions are explicitly "
         "bounded to [0,1] for composition; raw regression errors and clipping counts are also saved. "
         "Native MLflow regression evaluations use raw predictions. Selection uses validation bounded MAE.\n\n"
         "## Expected loss and capital interpretation\n\n"
-        "Resolved-outcome EL proxy = unchanged PD score × predicted LGD × predicted EAD. "
+        "Lifetime snapshot-loss proxy = unchanged lifetime charge-off score × predicted snapshot LGD × predicted snapshot EAD. "
         "EAD prediction = funded amount × predicted EAD ratio. Multiplying conditional EAD and LGD means "
         "ignores residual dependence; validation dollar errors expose this approximation. The observed "
         "loss comparator uses the same eligible portfolio and snapshot convention.\n\n"
-        "Capital uses explicitly assumed one-year PD scenarios, never the resolved-loan PD score. "
+        "Capital uses explicitly assumed one-year PD scenarios, never the lifetime charge-off score. "
         "CRE31.16 correlation R = 0.03w + 0.16(1−w), w = (1−exp(−35PD))/(1−exp(−35)); "
         "K = LGD × [Phi((Phi^-1(PD)+sqrt(R)Phi^-1(0.999))/sqrt(1−R))−PD]; "
         "capital = K × EAD and RWA = 12.5 × capital. Scenario one-year EL uses the assumed PD. "

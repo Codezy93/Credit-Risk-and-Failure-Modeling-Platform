@@ -2,6 +2,82 @@
 
 > Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21; separate loss models and illustrative capital scenarios are in section 22. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. InterpretML and descriptive segment-disparity results are in section 26; protected-group fairness is unassessed. Short local load tests, recovery under active load, persistent deduplication and ELK monitoring are measured in the latest sections below.
 
+<!-- current-experiment-refresh-statistics -->
+## Latest current-code experiment refresh
+
+Completed: 2026-11-11T21:12:03.598701+00:00. Refresh `20261111T130647666235Z`.
+**110 tests passed, zero failures/errors/skips**, including Spark. GitHub Actions
+now has a full-suite workflow with Python 3.14, Java 21, the streaming hash lock
+and JUnit uploads. GitHub execution awaits a push; this is local execution evidence.
+
+| Cohort | ROC-AUC | Gini | Exact KS | Brier |
+| --- | --- | --- | --- | --- |
+| Validation 2014 | 0.653889 | 0.307779 | 0.222796 | 0.114375 |
+| Exploratory 2015 | 0.654350 | 0.308701 | 0.223789 | 0.122279 |
+
+All 57 comparable baseline metric values reproduced (rtol `1e-9`, atol `1e-12`).
+The fresh baseline tables now record Gini and full-threshold KS. The selected-model
+bytes are unchanged. Seven modeling stages were re-executed from current code;
+all new result CSV fingerprints and executed script hashes were checked.
+
+| Stage | Previous batch | Fresh batch | Verified result CSVs |
+| --- | --- | --- | --- |
+| 05_train_models | `72061e0a7a1e4d68addcc79a2aae631d` | `6ccea4b79b8343cd971273181d93f680` | 6 |
+| 07_improve_auc | `2d9a9d65b9004aa1ade7337465576f17` | `921ccc76e18340b89e608c1fcced9526` | 7 |
+| 08_validate_models | `62955be6d71845418f95174c621c98d2` | `e7ebdf9092274ee3b039af91de5b5acb` | 8 |
+| 09_basel_loss_experiment | `c072de3541e2496ab90ed6b7c2699137` | `bc7fbb6777cd4365b1a93a4d97fd872f` | 8 |
+| 11_ann_experiments | `c85319471ca849758abb207d833f973b` | `fd10b18ae1ca40f18ddcdec526bfcc6b` | 8 |
+| 13_review_validation | `da3c8ad1bee14f60ac5156def8b04b14` | `ada1537bb4c646d9baadfa73f78e09c0` | 12 |
+| 14_interpret_bias | `86fe262241464da48d8c126660801e05` | `25ccff7634a34d3c893b37ea8ce0499d` | 14 |
+
+**159 historical files** and **133 existing MLflow runs**
+were preserved unchanged. Prepared inputs and execution sources remained fixed.
+Historical records below retain their dates, scope and original code fingerprints.
+The earlier terminology-only update is a separate historical step; this section
+records the subsequent actual experiment reruns. 2015 remains exploratory.
+Kafka/ELK load and recovery benchmarks were not rerun in this modeling refresh.
+
+[Refresh verification](refresh/20261111T130647666235Z/verification.json),
+[JUnit](refresh/20261111T130647666235Z/pytest.xml),
+[metric comparison](refresh/20261111T130647666235Z/metric_comparison.json),
+[report](../docs/experiment_refresh.md).
+
+<!-- end-current-experiment-refresh-statistics -->
+
+<!-- risk-terminology-statistics -->
+## Risk terminology clarification
+
+The classifier is now described as **lifetime charge-off probability (resolved
+36-month cohort)**: Charged Off = 1, Fully Paid = 0, other statuses excluded.
+It is not a 12-month forecast or a Basel default probability. The EAD/LGD
+components are retrospective snapshot proxies; their composition with the
+classifier score is a **lifetime snapshot-loss proxy**, not regulatory one-year EL.
+Capital/RWA remain **illustrative assumed-one-year-PD sensitivities**. The model
+score is neither annualised nor passed into the capital function.
+
+This terminology update annotated **128 existing MLflow runs across
+10 experiments** with descriptions and `risk_scope.*` tags. It confirmed
+unchanged metrics, parameters, run status/times and **225 saved evidence files**
+(result CSVs, latest stage manifests and model binaries). No models were fitted
+and no evaluation CSVs were regenerated. The selected validation ROC-AUC remains
+**0.653889** and exploratory 2015 ROC-AUC remains **0.654350**.
+
+All four notebook sources include the scope clarification. The model-review HTML
+was re-exported from saved results; three archived EDA HTML snapshots carry a
+terminology notice without recomputing their tables or figures. Legacy `pd`,
+`basel` and `expected_loss` identifiers and historical manifests/artifacts retain
+their execution-time names for compatibility and provenance. Historical wording
+elsewhere in this reference should be interpreted using these definitions.
+
+Checks: **29 existing loss/model/ANN/metric tests passed**; the capital/loss
+function ASTs are unchanged apart from docstrings. Metric regeneration and new
+validation experiments remain a separate step.
+
+[Definitions](../docs/risk_terminology.md) and
+[metadata verification](results/risk_terminology_verification.json).
+
+<!-- end-risk-terminology-statistics -->
+
 <!-- pages-statistics -->
 ## MkDocs documentation verification
 
@@ -9,18 +85,20 @@ The website now uses **MkDocs 1.6.1** with the unmodified built-in **mkdocs**
 theme. The previous custom HTML/CSS/JavaScript site, builder/checker and preview
 images were removed. There are no custom stylesheets, scripts or templates.
 
-The documentation contains **19 Markdown pages** and retains **4 notebook HTML
-exports**. The generated artifact contains **52 files**, totaling **11791003 bytes**.
+The documentation contains **21 Markdown pages** and retains **4 notebook HTML
+exports**. The generated artifact contains **54 files**, totaling **11884104 bytes**.
 Figures retain their original colors and load from repository raw image URLs;
 links to full result files open the committed evidence on GitHub. Raw datasets,
 model binaries and local service databases are outside the documentation build.
 
 `python -m mkdocs build --strict` passed without warnings. All repository-linked
-evidence paths were checked against local files. Chromium checks passed at
+evidence paths were checked against local files. The preceding layout build passed Chromium checks at
 **1440 pixels** and **390 pixels**, including page navigation, search for
 `deduplication`, two loaded loss-model figures, no homepage horizontal overflow
 and no browser errors. Earlier custom-site accessibility results do not apply to
-this replacement. No model experiments were rerun.
+this replacement. Browser layout checks were not repeated for the terminology and experiment-result updates;
+the current strict build passed. The subsequent seven-stage experiment rerun is
+recorded in the latest refresh section above.
 
 The GitHub Actions workflow installs the documentation dependency, builds MkDocs
 and deploys `_site/` on main pushes. Pull requests build without deploying.
@@ -680,11 +758,11 @@ Use this file for factual project answers. Counts are exact integers; displayed 
 | Other / unresolved loans, all years | 915,358 |
 | Charged off among resolved loans, all years (%) | 19.962611 |
 | Entirely missing source columns | 1 |
-| Saved figure sets | 51 |
-| Saved image files | 102 |
-| Saved result CSVs | 159 |
+| Saved figure sets | 58 |
+| Saved image files | 116 |
+| Saved result CSVs | 208 |
 | Deterministic scatterplot sample | 20,000 |
-| Models trained / MLflow evaluation metrics | Baselines, current seven-trial temporal XGBoost search, ANN/loss challengers, and coefficient review; see sections 18–25 |
+| Models trained / MLflow evaluation metrics | Four baseline pipelines (section 18); seven AUC trials (section 20) |
 | Kafka stress-test performance | Not measured; streaming/stress-test stage not implemented |
 
 The headline charged-off rate is a **resolved-loan share**, not a validated fixed-horizon probability of default or a model metric. The provisional split counts above include unresolved loans; they are not final model-training sample sizes.
@@ -3057,41 +3135,41 @@ EDA count/label reconciliation, unique IDs across splits, separated date ranges,
 
 ## 18. Model experiments
 
-Completed: 2026-11-08T15:45:23+00:00.
+Completed: 2026-11-11T13:09:44+00:00.
 
-Batch `72061e0a7a1e4d68addcc79a2aae631d`; selected `hist_gradient_boosting`. Selection uses validation average precision; threshold maximizes validation F1 before exploratory scoring. No refitting on validation and no fixed-horizon/deployment claim.
+Batch `6ccea4b79b8343cd971273181d93f680`; selected `hist_gradient_boosting`. Selection uses validation average precision; threshold maximizes validation F1 before exploratory scoring. No refitting on validation and no fixed-horizon/deployment claim.
 
 [Report](../docs/model_experiments.md), [latest manifest](results/model_experiments_latest.json). All rates below are fractions, not percentages. Fit/prediction times are single wall-clock observations, not stress-test metrics.
 
 ### Run and artifact identifiers
 
-| model | run_id | model_uri | train_average_precision | validation_average_precision | validation_roc_auc | validation_brier_score | validation_log_loss | fit_seconds | validation_batch_predict_seconds | model_bytes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| hist_gradient_boosting | 2bb4ea9b1159440bb0b51b66925247f3 | models:/m-c0cd1df22fa24744b5d207306fd84ac1 | 0.239525 | 0.216483 | 0.653889 | 0.114375 | 0.382348 | 2.025974 | 0.765676 | 412,754 |
-| random_forest | 9b8a327a8a694086819d1818c141ba76 | models:/m-d5af0b19e25b4b169c0f5b3414373ad9 | 0.266368 | 0.213944 | 0.649133 | 0.114923 | 0.384513 | 13.763563 | 0.92611 | 11,497,147 |
-| logistic_regression | b6cd84c99ba24a8f854b2b7941ee3b88 | models:/m-9b48e925f4a54600a0eeeacf7eb183c1 | 0.199628 | 0.21028 | 0.646231 | 0.114869 | 0.384341 | 0.958238 | 0.273507 | 7,242 |
-| dummy_prior | e017e1e02bb743669f6f3f8e804a1c36 | models:/m-c6c8b6403be04d378ecd4ee0149b6fdd | 0.125195 | 0.137264 | 0.5 | 0.118568 | 0.400613 | 0.555652 | 0.235392 | 4,882 |
+| model | run_id | model_uri | train_average_precision | validation_average_precision | validation_roc_auc | train_roc_auc | train_gini | train_ks | validation_gini | validation_ks | validation_brier_score | validation_log_loss | fit_seconds | validation_batch_predict_seconds | model_bytes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hist_gradient_boosting | f64a19bc843546e380a742697cf0bf26 | models:/m-dc3900fe2e2e4bf093dea10d7c5250bc | 0.239525 | 0.216483 | 0.653889 | 0.684525 | 0.369051 | 0.265112 | 0.307779 | 0.222796 | 0.114375 | 0.382348 | 5.390043 | 2.407201 | 412,754 |
+| random_forest | 736532a9047c44a6969455fdbdd89914 | models:/m-99c75b41427a4b89bb6693bf5b2e48d7 | 0.266368 | 0.213944 | 0.649133 | 0.711889 | 0.423779 | 0.307458 | 0.298265 | 0.216818 | 0.114923 | 0.384513 | 28.412081 | 2.801744 | 11,497,147 |
+| logistic_regression | bc902aadabe74ecd828414077ff1f9e3 | models:/m-4bc0dd14ef2a45b4aa2abc5e76df4d85 | 0.199628 | 0.21028 | 0.646231 | 0.650936 | 0.301871 | 0.218646 | 0.292462 | 0.213711 | 0.114869 | 0.384341 | 2.407796 | 0.709517 | 7,242 |
+| dummy_prior | f45285c555fd4585b30cbc8e018afe72 | models:/m-189e95283b334a11a20fcef059eb47a4 | 0.125195 | 0.137264 | 0.5 | 0.5 | 0 | 0 | 0 | 0 | 0.118568 | 0.400613 | 1.500485 | 0.628898 | 4,882 |
 
 ### All training and validation metrics at threshold 0.5
 
-| model | split | rows | observed_positive_rate | threshold | roc_auc | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| dummy_prior | train | 157,993 | 0.125195 | 0.5 | 0.5 | 0.125195 | 0.109522 | 0.37715 | 0 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
-| dummy_prior | validation | 162,570 | 0.137264 | 0.5 | 0.5 | 0.137264 | 0.118568 | 0.400613 | 0.012069 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
-| logistic_regression | train | 157,993 | 0.125195 | 0.5 | 0.650936 | 0.199628 | 0.106127 | 0.36132 | 0.002319 | 0.874792 | 0.500101 | 0.416667 | 0.000253 | 0.999949 | 0.000505 | 0.000076 | 138,206 | 7 | 19,775 | 5 |
-| logistic_regression | validation | 162,570 | 0.137264 | 0.5 | 0.646231 | 0.21028 | 0.114869 | 0.384341 | 0.006675 | 0.862705 | 0.500152 | 0.391304 | 0.000403 | 0.9999 | 0.000806 | 0.000141 | 140,241 | 14 | 22,306 | 9 |
-| random_forest | train | 157,993 | 0.125195 | 0.5 | 0.711889 | 0.266368 | 0.103944 | 0.352131 | 0.019663 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
-| random_forest | validation | 162,570 | 0.137264 | 0.5 | 0.649133 | 0.213944 | 0.114923 | 0.384513 | 0.013567 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
-| hist_gradient_boosting | train | 157,993 | 0.125195 | 0.5 | 0.684525 | 0.239525 | 0.104177 | 0.353495 | 0.008189 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
-| hist_gradient_boosting | validation | 162,570 | 0.137264 | 0.5 | 0.653889 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
+| model | split | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dummy_prior | train | 157,993 | 0.125195 | 0.125195 | 0.5 | 0.5 | 0 | 0 | 0.125195 | 0.109522 | 0.37715 | 0 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
+| dummy_prior | validation | 162,570 | 0.137264 | 0.125195 | 0.5 | 0.5 | 0 | 0 | 0.137264 | 0.118568 | 0.400613 | 0.012069 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
+| logistic_regression | train | 157,993 | 0.125195 | 0.125206 | 0.5 | 0.650936 | 0.301871 | 0.218646 | 0.199628 | 0.106127 | 0.36132 | 0.002319 | 0.874792 | 0.500101 | 0.416667 | 0.000253 | 0.999949 | 0.000505 | 0.000076 | 138,206 | 7 | 19,775 | 5 |
+| logistic_regression | validation | 162,570 | 0.137264 | 0.132214 | 0.5 | 0.646231 | 0.292462 | 0.213711 | 0.21028 | 0.114869 | 0.384341 | 0.006675 | 0.862705 | 0.500152 | 0.391304 | 0.000403 | 0.9999 | 0.000806 | 0.000141 | 140,241 | 14 | 22,306 | 9 |
+| random_forest | train | 157,993 | 0.125195 | 0.125167 | 0.5 | 0.711889 | 0.423779 | 0.307458 | 0.266368 | 0.103944 | 0.352131 | 0.019663 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
+| random_forest | validation | 162,570 | 0.137264 | 0.129408 | 0.5 | 0.649133 | 0.298265 | 0.216818 | 0.213944 | 0.114923 | 0.384513 | 0.013567 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
+| hist_gradient_boosting | train | 157,993 | 0.125195 | 0.125187 | 0.5 | 0.684525 | 0.369051 | 0.265112 | 0.239525 | 0.104177 | 0.353495 | 0.008189 | 0.874805 | 0.5 | 0 | 0 | 1 | 0 | 0 | 138,213 | 0 | 19,780 | 0 |
+| hist_gradient_boosting | validation | 162,570 | 0.137264 | 0.131767 | 0.5 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.862736 | 0.5 | 0 | 0 | 1 | 0 | 0 | 140,255 | 0 | 22,315 | 0 |
 
 ### Frozen-threshold and default-threshold evaluations
 
-| model | split | policy | rows | observed_positive_rate | threshold | roc_auc | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| hist_gradient_boosting | validation | validation_f1 | 162,570 | 0.137264 | 0.147853 | 0.653889 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93,740 | 46,515 | 10,110 | 12,205 |
-| hist_gradient_boosting | exploratory_test | default_0.5 | 283,026 | 0.148863 | 0.5 | 0.65435 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240,894 | 0 | 42,132 | 0 |
-| hist_gradient_boosting | exploratory_test | validation_f1 | 283,026 | 0.148863 | 0.147853 | 0.65435 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161,141 | 79,753 | 19,174 | 22,958 |
+| model | split | policy | rows | observed_positive_rate | mean_predicted_probability | threshold | roc_auc | gini | ks | average_precision | brier_score | log_loss | ece_10_uniform_bins | accuracy | balanced_accuracy | precision | recall | specificity | f1 | predicted_positive_rate | tn | fp | fn | tp |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hist_gradient_boosting | validation | validation_f1 | 162,570 | 0.137264 | 0.131767 | 0.147853 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.382348 | 0.005851 | 0.651689 | 0.607648 | 0.207851 | 0.546942 | 0.668354 | 0.301228 | 0.361198 | 93,740 | 46,515 | 10,110 | 12,205 |
+| hist_gradient_boosting | exploratory_test | default_0.5 | 283,026 | 0.148863 | 0.132223 | 0.5 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.851137 | 0.5 | 0 | 0 | 1 | 0 | 0 | 240,894 | 0 | 42,132 | 0 |
+| hist_gradient_boosting | exploratory_test | validation_f1 | 283,026 | 0.148863 | 0.132223 | 0.147853 | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.402502 | 0.01664 | 0.650467 | 0.606918 | 0.22352 | 0.544906 | 0.668929 | 0.317005 | 0.362903 | 161,141 | 79,753 | 19,174 | 22,958 |
 
 ### Complete calibration bins
 
@@ -3154,11 +3232,11 @@ Batch `72061e0a7a1e4d68addcc79a2aae631d`; selected `hist_gradient_boosting`. Sel
     "cloudpickle": "3.1.2",
     "threadpoolctl": "3.8.0"
   },
-  "selected_model_uri": "models:/m-c0cd1df22fa24744b5d207306fd84ac1",
-  "selected_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "selected_model_uri": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc",
+  "selected_run_id": "f64a19bc843546e380a742697cf0bf26",
   "selected_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "data_manifest_sha256": "30c0f906e863958036341518c8ed53fccf3f558e1a371887c18880430bbdb2f9",
-  "training_script_sha256": "b5b42c0665874508f73fff0040e6e80d56fa2658a7e0bc1ed987de4041952c4a"
+  "training_script_sha256": "4c01c7a4924f68fe26f204eeec1b4df0e2f610aadb7b51e382189532bb7c0683"
 }
 ```
 
@@ -3175,15 +3253,15 @@ Earlier failed run records are retained for transparency; the completed-batch co
 
 ### Saved result fingerprints
 
-- [model_comparison.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/model_comparison.csv): `f244f43833288f427cb13abcb642781007870738197c484a3203d3e671159466`
+- [model_comparison.csv](results/experiments/6ccea4b79b8343cd971273181d93f680/model_comparison.csv): `948f9a8d68d1b99d88c6f6cbab5cb9ed2f7fe50649da26c06512820fe30e797b`
 
-- [train_validation_metrics.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/train_validation_metrics.csv): `f07a3991f29c1b4afb336740a615867a38e2da8a4360b587ff1329cba4622525`
+- [train_validation_metrics.csv](results/experiments/6ccea4b79b8343cd971273181d93f680/train_validation_metrics.csv): `94346390a901fa97ca0fc18096fbcde11c6159e3516621c31694ef7bf72b5f6d`
 
-- [selected_model_metrics.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/selected_model_metrics.csv): `8112374b3b17a95cc5f9fc7ab0078820a4184c7cda6e62b89c4d6d4b17bba351`
+- [selected_model_metrics.csv](results/experiments/6ccea4b79b8343cd971273181d93f680/selected_model_metrics.csv): `abf0ca3f32f877e5b7fad32a873aafdaf737413259101fcc424b8ec231ce449d`
 
-- [calibration_bins.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/calibration_bins.csv): `314ef5ebdbce94be0df605279462a834f0a99ce4e4e0126d1e727ba9830a0904`
+- [calibration_bins.csv](results/experiments/6ccea4b79b8343cd971273181d93f680/calibration_bins.csv): `ee49ee14a83c46b1f49f5422b1bb0712da090ad0d6bfedeba303c10c98d4588f`
 
-- [curve_points.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/curve_points.csv): `e5336e06d2c95b302d3dbe92b19ba4ee8941cd9baadbcc81f1a8624683493392`
+- [curve_points.csv](results/experiments/6ccea4b79b8343cd971273181d93f680/curve_points.csv): `5607d4e637023739d6bbaf066ff1f0b2928b0052018067708e46c19d4bbc4196`
 
 Curve-point files retain at most 256 points per model/curve. They are plotting data; scalar metrics and threshold choice use all predictions. Full bin counts, confusion matrices, batch timings, model sizes, versions, identifiers, and aggregate metrics are recorded above or in the manifest. Uncertainty, bias, interpretability, and stress-test metrics remain Not measured.
 
@@ -3195,7 +3273,7 @@ Prepared dataset hashes matched; all four local pipelines reloaded with equivale
 
 ## 19. MLflow datasets and evaluations
 
-Completed: 2026-11-08T16:15:06+00:00. Parent run: `72061e0a7a1e4d68addcc79a2aae631d`. Models, selection, and frozen threshold are unchanged.
+Completed: 2026-11-11T13:11:38+00:00. Parent run: `6ccea4b79b8343cd971273181d93f680`. Models, selection, and frozen threshold are unchanged.
 
 ### Dataset inputs on the comparison run
 
@@ -3211,13 +3289,13 @@ The full three Parquet datasets and their manifest are stored under the parent r
 
 | model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| dummy_prior | validation | 76124a42a3c84a639a451e8c0bf94edd | e017e1e02bb743669f6f3f8e804a1c36 | m-c6c8b6403be04d378ecd4ee0149b6fdd | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.400613 | 0.5 | 0.137264 |
-| logistic_regression | validation | 737b3f235d1949e5a15552a9ce68d142 | b6cd84c99ba24a8f854b2b7941ee3b88 | m-9b48e925f4a54600a0eeeacf7eb183c1 | validation | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
-| random_forest | validation | 8dcf18dc8f7744c7950bb7c0e29fba88 | 9b8a327a8a694086819d1818c141ba76 | m-d5af0b19e25b4b169c0f5b3414373ad9 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.384513 | 0.649133 | 0.213944 |
-| hist_gradient_boosting | validation | 19d602239b3a43a595bcd17d8a39fc4a | 2bb4ea9b1159440bb0b51b66925247f3 | m-c0cd1df22fa24744b5d207306fd84ac1 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.382348 | 0.653889 | 0.216483 |
-| hist_gradient_boosting | exploratory_test | 0ba9fd0f56b8480f842795151fbfabb2 | 2bb4ea9b1159440bb0b51b66925247f3 | m-c0cd1df22fa24744b5d207306fd84ac1 | exploratory_test | 38c881ae | 0.5 | 0.851137 | 240894 | 0 | 42132 | 0 | 283026 | 0.851137 | 0 | 0 | 0 | 0.402502 | 0.65435 | 0.235027 |
+| dummy_prior | validation | a0d755b7d949420c850bc0cdb17d64a8 | f45285c555fd4585b30cbc8e018afe72 | m-189e95283b334a11a20fcef059eb47a4 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.400613 | 0.5 | 0.137264 |
+| logistic_regression | validation | fcc1cc31f70b4ba087a4398b3b44c5b0 | bc902aadabe74ecd828414077ff1f9e3 | m-4bc0dd14ef2a45b4aa2abc5e76df4d85 | validation | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
+| random_forest | validation | d413640a8782473c96a3a803db1dd139 | 736532a9047c44a6969455fdbdd89914 | m-99c75b41427a4b89bb6693bf5b2e48d7 | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.384513 | 0.649133 | 0.213944 |
+| hist_gradient_boosting | validation | 436a568b45af4ca1aa84c7586164ea87 | f64a19bc843546e380a742697cf0bf26 | m-dc3900fe2e2e4bf093dea10d7c5250bc | validation | 722bf1f9 | 0.5 | 0.862736 | 140255 | 0 | 22315 | 0 | 162570 | 0.862736 | 0 | 0 | 0 | 0.382348 | 0.653889 | 0.216483 |
+| hist_gradient_boosting | exploratory_test | 0db9dc0169ae4a608652a608d4898989 | f64a19bc843546e380a742697cf0bf26 | m-dc3900fe2e2e4bf093dea10d7c5250bc | exploratory_test | 38c881ae | 0.5 | 0.851137 | 240894 | 0 | 42132 | 0 | 283026 | 0.851137 | 0 | 0 | 0 | 0.402502 | 0.65435 | 0.235027 |
 
-Source: [mlflow_native_evaluations.csv](results/experiments/72061e0a7a1e4d68addcc79a2aae631d/mlflow_native_evaluations.csv). SHA-256: `92d09f5f1082f8c1fe19e71856556c3cef476edc4b14f3958fb56b1259c02eb8`.
+Source: [mlflow_native_evaluations.csv](results/experiments/6ccea4b79b8343cd971273181d93f680/mlflow_native_evaluations.csv). SHA-256: `9519e37c11d6df41370f1f90468d2886932b50a27e41256d55c4792c871a042f`.
 
 Native metrics evaluate the full 162,570 validation rows for each model and 283,026 exploratory rows for the selected model. The classifier's default rule is 0.5; custom frozen-threshold metrics remain separate on the selected training run. Native binary precision_recall_auc matches this MLflow version's average precision; no selection was changed.
 
@@ -3231,9 +3309,9 @@ All five evaluation runs finished successfully. Each has its full dataset input 
 
 ## 20. AUC improvement experiments
 
-Completed: 2026-11-09T02:25:10+00:00.
+Completed: 2026-11-11T19:42:16+00:00.
 
-MLflow experiment `lendingclub_auc_ablation`, batch `2d9a9d65b9004aa1ade7337465576f17`. Validation only: 157,993 train / 162,570 validation rows. No 2015 scoring, no incumbent replacement, no target/cohort changes.
+MLflow experiment `lendingclub_auc_ablation`, batch `921ccc76e18340b89e608c1fcced9526`. Validation only: 157,993 train / 162,570 validation rows. No 2015 scoring, no incumbent replacement, no target/cohort changes.
 
 Best independent-scope ROC-AUC: 0.683258; separately scoped post-underwriting: 0.690065; original validation baseline: 0.653889. The 0.80 target was reached in independent scope: False; in post-underwriting scope: False.
 
@@ -3243,13 +3321,13 @@ Protocol v2 fits 2011–2012, stops on 2013, then refits 2011–2013 using a fro
 
 | trial | feature_set | scoring_point | run_id | model_uri | feature_count | max_depth | min_child_weight | reg_lambda | train_roc_auc | validation_roc_auc | train_average_precision | validation_average_precision | validation_brier_score | validation_log_loss | validation_gini | validation_ks | best_iteration | selected_estimators | stopping_2013_auc | fit_seconds |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| post_underwriting_shallow | post_underwriting | post_underwriting | 51f2c63878104a30a75964ee3f047c13 | models:/m-3bc4f16ab0f3460684c1b6812112a9d6 | 61 | 3 | 30 | 10 | 0.708713 | 0.690065 | 0.263211 | 0.24955 | 0.112306 | 0.374075 | 0.380131 | 0.279367 | 466 | 467 | 0.679069 | 145.740727 |
-| post_underwriting_deep | post_underwriting | post_underwriting | 569f1fa286c54bfaafc892945b31c414 | models:/m-f16b8fe5cde24831997ad9eccc8b115a | 61 | 7 | 100 | 30 | 0.727874 | 0.68996 | 0.28838 | 0.249193 | 0.11233 | 0.374088 | 0.379921 | 0.277057 | 175 | 176 | 0.679411 | 53.641419 |
-| post_underwriting_regularized | post_underwriting | post_underwriting | afc569464c7542bba6c290751ea7f06d | models:/m-2dc5b35647084769befdb002ee0425d1 | 61 | 5 | 100 | 20 | 0.71104 | 0.689326 | 0.266179 | 0.248583 | 0.112394 | 0.374325 | 0.378653 | 0.277141 | 191 | 192 | 0.679043 | 70.971681 |
-| expanded_bureau_regularized | expanded_bureau | independent_risk_candidate | 09f50de76751430aa734180f514efbcb | models:/m-c62c25f1c59044f89da4509b49bbca23 | 58 | 5 | 100 | 20 | 0.72374 | 0.683258 | 0.283063 | 0.244568 | 0.112495 | 0.374871 | 0.366515 | 0.266477 | 334 | 335 | 0.67164 | 50.699564 |
-| expanded_bureau_deep | expanded_bureau | independent_risk_candidate | 2b3a72e455e2482c8728e7fd9cfcd525 | models:/m-82d964be765a42f0be2d3fe4db452fea | 58 | 7 | 100 | 30 | 0.72878 | 0.68262 | 0.289768 | 0.243275 | 0.112548 | 0.375037 | 0.36524 | 0.267201 | 187 | 188 | 0.672002 | 33.954283 |
-| expanded_bureau_shallow | expanded_bureau | independent_risk_candidate | a52ec036c0ec41b38acaf98081d83505 | models:/m-bca2a5b9c6194f2fa70b07ff6b8b6c3d | 58 | 3 | 30 | 10 | 0.705816 | 0.682039 | 0.259148 | 0.243372 | 0.112575 | 0.375211 | 0.364077 | 0.264744 | 421 | 422 | 0.672849 | 58.740758 |
-| base13_shallow | base13 | independent_risk_candidate | 56ce404489974a1cbcbfbc0bd6e8e43f | models:/m-58dc71ca98c1494692b28bfd1b4990ba | 13 | 3 | 30 | 10 | 0.672629 | 0.654746 | 0.223609 | 0.217557 | 0.114318 | 0.382094 | 0.309492 | 0.22481 | 371 | 372 | 0.64582 | 21.435134 |
+| post_underwriting_shallow | post_underwriting | post_underwriting | c7ce2c8d54bf404cbaf7092903cf5213 | models:/m-981eb62193874f83b10f296b33bc61ff | 61 | 3 | 30 | 10 | 0.708713 | 0.690065 | 0.263211 | 0.24955 | 0.112306 | 0.374075 | 0.380131 | 0.279367 | 466 | 467 | 0.679069 | 353.80125 |
+| post_underwriting_deep | post_underwriting | post_underwriting | e9da4160f2944624846ffdba13fda5f5 | models:/m-eac316ba468142d2b3303fa8ab17db07 | 61 | 7 | 100 | 30 | 0.727874 | 0.68996 | 0.28838 | 0.249193 | 0.11233 | 0.374088 | 0.379921 | 0.277057 | 175 | 176 | 0.679411 | 179.434837 |
+| post_underwriting_regularized | post_underwriting | post_underwriting | 56687269ff904d30bc6fc0b8193f7088 | models:/m-79be88e20fec45f588b663f1f62867c3 | 61 | 5 | 100 | 20 | 0.71104 | 0.689326 | 0.266179 | 0.248583 | 0.112394 | 0.374325 | 0.378653 | 0.277141 | 191 | 192 | 0.679043 | 194.250964 |
+| expanded_bureau_regularized | expanded_bureau | independent_risk_candidate | da21df80de5f4b8ea3900244c04df082 | models:/m-0eaa1674fc7843e68dda13feedc6ba84 | 58 | 5 | 100 | 20 | 0.72374 | 0.683258 | 0.283063 | 0.244568 | 0.112495 | 0.374871 | 0.366515 | 0.266477 | 334 | 335 | 0.67164 | 162.860481 |
+| expanded_bureau_deep | expanded_bureau | independent_risk_candidate | 7533cb8b79d64264adfd75fa6aedcf47 | models:/m-3d3a4bd2d58441a1ba0106a5a75f4982 | 58 | 7 | 100 | 30 | 0.72878 | 0.68262 | 0.289768 | 0.243275 | 0.112548 | 0.375037 | 0.36524 | 0.267201 | 187 | 188 | 0.672002 | 107.949447 |
+| expanded_bureau_shallow | expanded_bureau | independent_risk_candidate | edb739190f9d48c2a025f52d3301384a | models:/m-da4785639e9e4400a826f88826367e80 | 58 | 3 | 30 | 10 | 0.705816 | 0.682039 | 0.259148 | 0.243372 | 0.112575 | 0.375211 | 0.364077 | 0.264744 | 421 | 422 | 0.672849 | 203.812939 |
+| base13_shallow | base13 | independent_risk_candidate | 3b25a59100484ff7a671c330064797d2 | models:/m-a159dd9733814919895e53024b8a6c4c | 13 | 3 | 30 | 10 | 0.672629 | 0.654746 | 0.223609 | 0.217557 | 0.114318 | 0.382094 | 0.309492 | 0.22481 | 371 | 372 | 0.64582 | 67.454953 |
 
 ### Complete feature profiles (both splits)
 
@@ -3521,30 +3599,30 @@ Protocol v2 fits 2011–2012, stops on 2013, then refits 2011–2013 using a fro
 
 | model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| base13_shallow | validation | 092bd4eb13a64265a865dfdd8f84c089 | 56ce404489974a1cbcbfbc0bd6e8e43f | m-58dc71ca98c1494692b28bfd1b4990ba | validation_base13 | 7b0440d0 | 0.5 | 0.86273 | 140254 | 1 | 22315 | 0 | 162570 | 0.86273 | 0 | 0 | 0 | 0.382094 | 0.654746 | 0.217557 |
-| expanded_bureau_shallow | validation | b367583f5cac4458a1df80e6d2e52a6b | a52ec036c0ec41b38acaf98081d83505 | m-bca2a5b9c6194f2fa70b07ff6b8b6c3d | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862767 | 140224 | 31 | 22279 | 36 | 162570 | 0.862767 | 0.001613 | 0.537313 | 0.003217 | 0.375211 | 0.682039 | 0.243372 |
-| expanded_bureau_regularized | validation | 131a565720d24cfd9e368c09d94bb769 | 09f50de76751430aa734180f514efbcb | m-c62c25f1c59044f89da4509b49bbca23 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862736 | 140212 | 43 | 22272 | 43 | 162570 | 0.862736 | 0.001927 | 0.5 | 0.003839 | 0.374871 | 0.683258 | 0.244568 |
-| expanded_bureau_deep | validation | de469c76ee5f4d00bc15246debe9e0ca | 2b3a72e455e2482c8728e7fd9cfcd525 | m-82d964be765a42f0be2d3fe4db452fea | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862742 | 140248 | 7 | 22307 | 8 | 162570 | 0.862742 | 0.000359 | 0.533333 | 0.000717 | 0.375037 | 0.68262 | 0.243275 |
-| post_underwriting_shallow | validation | bad3358d025349b299a0debe3145423a | 51f2c63878104a30a75964ee3f047c13 | m-3bc4f16ab0f3460684c1b6812112a9d6 | validation_post_underwriting | 7f86e93f | 0.5 | 0.862736 | 140241 | 14 | 22301 | 14 | 162570 | 0.862736 | 0.000627 | 0.5 | 0.001253 | 0.374075 | 0.690065 | 0.24955 |
-| post_underwriting_regularized | validation | ea6a7b1d99394534aa2f0fa74900a533 | afc569464c7542bba6c290751ea7f06d | m-2dc5b35647084769befdb002ee0425d1 | validation_post_underwriting | 7f86e93f | 0.5 | 0.86273 | 140251 | 4 | 22312 | 3 | 162570 | 0.86273 | 0.000134 | 0.428571 | 0.000269 | 0.374325 | 0.689326 | 0.248583 |
-| post_underwriting_deep | validation | 78ee3432fb8e42499ebdd2bd961d986a | 569f1fa286c54bfaafc892945b31c414 | m-f16b8fe5cde24831997ad9eccc8b115a | validation_post_underwriting | 7f86e93f | 0.5 | 0.862742 | 140252 | 3 | 22311 | 4 | 162570 | 0.862742 | 0.000179 | 0.571429 | 0.000358 | 0.374088 | 0.68996 | 0.249193 |
+| base13_shallow | validation | d95083bb15744738ab8e146c7900272f | 3b25a59100484ff7a671c330064797d2 | m-a159dd9733814919895e53024b8a6c4c | validation_base13 | 7b0440d0 | 0.5 | 0.86273 | 140254 | 1 | 22315 | 0 | 162570 | 0.86273 | 0 | 0 | 0 | 0.382094 | 0.654746 | 0.217557 |
+| expanded_bureau_shallow | validation | fda7529c82c94d5b9a3985bb45195142 | edb739190f9d48c2a025f52d3301384a | m-da4785639e9e4400a826f88826367e80 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862767 | 140224 | 31 | 22279 | 36 | 162570 | 0.862767 | 0.001613 | 0.537313 | 0.003217 | 0.375211 | 0.682039 | 0.243372 |
+| expanded_bureau_regularized | validation | 9faaea3711c044979ae410daca0a4f07 | da21df80de5f4b8ea3900244c04df082 | m-0eaa1674fc7843e68dda13feedc6ba84 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862736 | 140212 | 43 | 22272 | 43 | 162570 | 0.862736 | 0.001927 | 0.5 | 0.003839 | 0.374871 | 0.683258 | 0.244568 |
+| expanded_bureau_deep | validation | 5145c79bccf04116a9df859e1b722ad0 | 7533cb8b79d64264adfd75fa6aedcf47 | m-3d3a4bd2d58441a1ba0106a5a75f4982 | validation_expanded_bureau | e7edb5f9 | 0.5 | 0.862742 | 140248 | 7 | 22307 | 8 | 162570 | 0.862742 | 0.000359 | 0.533333 | 0.000717 | 0.375037 | 0.68262 | 0.243275 |
+| post_underwriting_shallow | validation | 393818248ecf485f8e9e3dd83501aec4 | c7ce2c8d54bf404cbaf7092903cf5213 | m-981eb62193874f83b10f296b33bc61ff | validation_post_underwriting | 7f86e93f | 0.5 | 0.862736 | 140241 | 14 | 22301 | 14 | 162570 | 0.862736 | 0.000627 | 0.5 | 0.001253 | 0.374075 | 0.690065 | 0.24955 |
+| post_underwriting_regularized | validation | a3a677a923b843378442c3b5efee175c | 56687269ff904d30bc6fc0b8193f7088 | m-79be88e20fec45f588b663f1f62867c3 | validation_post_underwriting | 7f86e93f | 0.5 | 0.86273 | 140251 | 4 | 22312 | 3 | 162570 | 0.86273 | 0.000134 | 0.428571 | 0.000269 | 0.374325 | 0.689326 | 0.248583 |
+| post_underwriting_deep | validation | a95cc70660324ba1a007a3c040cd0837 | e9da4160f2944624846ffdba13fda5f5 | m-eac316ba468142d2b3303fa8ab17db07 | validation_post_underwriting | 7f86e93f | 0.5 | 0.862742 | 140252 | 3 | 22311 | 4 | 162570 | 0.862742 | 0.000179 | 0.571429 | 0.000358 | 0.374088 | 0.68996 | 0.249193 |
 
 ### Dataset fingerprints
 
 | dataset | path | sha256 | mlflow_digest | rows |
 | --- | --- | --- | --- | --- |
-| base13_inner_fit | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_inner_fit.parquet | 1b7f88d9dfd8f76ca34d042e67a8a86c9502640b5ac66fa7617e06db93cd9a0c | f2d0b047 | 57571 |
-| base13_stopping | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_stopping.parquet | b45e39709318805a21419215b3a1d706e67db41e3c7b780e8c06542adde432ee | 342aece7 | 100422 |
-| base13_train | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_train.parquet | bc6257e5f8a2ac6ec11fe4be6fd577732f0d1c8b3f4430ed5495a01c548bd106 | 3fc22603 | 157993 |
-| base13_validation | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/base13_validation.parquet | e033e8ea6598c7e07cd1f6a50c54fefa369c191701e54c1e80d83c653c81498c | 7b0440d0 | 162570 |
-| expanded_bureau_inner_fit | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_inner_fit.parquet | 428770e346cf2a3e4298056a9dec14c04048d12fa185df61fde6a7a417a26100 | 5b877a45 | 57571 |
-| expanded_bureau_stopping | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_stopping.parquet | 2af1c8b738d0382c5012977efe21263269fd8e86498ca024e21c665e0636635e | bde2673c | 100422 |
-| expanded_bureau_train | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_train.parquet | 0a1a2c038dc0a29cd1df9e62122ba6e2180f50c7bfd72b6c3a53125a59100d0b | 7b8864dc | 157993 |
-| expanded_bureau_validation | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/expanded_bureau_validation.parquet | a87dc81d9411cf894c4bd50b63a9d320f3b52b28b5a93e0dc7862870fe6b2730 | e7edb5f9 | 162570 |
-| post_underwriting_inner_fit | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_inner_fit.parquet | 288a254ac488caf09f0474b38272d03839cf0c031955d7c8025301184d7dae3a | 4665a8f9 | 57571 |
-| post_underwriting_stopping | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_stopping.parquet | c557466807bf7fc63d03a4a41b952d2918b7c37b416a8b62d7b9d1354477169b | a21821b7 | 100422 |
-| post_underwriting_train | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_train.parquet | ef7c5c981b5bc4760769f15d1a803d9d334d2ba06eb29e072ee299595dd8bba6 | 89ebc42f | 157993 |
-| post_underwriting_validation | data/clean/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/post_underwriting_validation.parquet | 84d7deb6be0eedb779b3584c57be4e2a4904dc5a6140b873226d1df3c9570d7c | 7f86e93f | 162570 |
+| base13_inner_fit | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_inner_fit.parquet | 1b7f88d9dfd8f76ca34d042e67a8a86c9502640b5ac66fa7617e06db93cd9a0c | f2d0b047 | 57571 |
+| base13_stopping | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_stopping.parquet | b45e39709318805a21419215b3a1d706e67db41e3c7b780e8c06542adde432ee | 342aece7 | 100422 |
+| base13_train | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_train.parquet | bc6257e5f8a2ac6ec11fe4be6fd577732f0d1c8b3f4430ed5495a01c548bd106 | 3fc22603 | 157993 |
+| base13_validation | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/base13_validation.parquet | e033e8ea6598c7e07cd1f6a50c54fefa369c191701e54c1e80d83c653c81498c | 7b0440d0 | 162570 |
+| expanded_bureau_inner_fit | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_inner_fit.parquet | 428770e346cf2a3e4298056a9dec14c04048d12fa185df61fde6a7a417a26100 | 5b877a45 | 57571 |
+| expanded_bureau_stopping | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_stopping.parquet | 2af1c8b738d0382c5012977efe21263269fd8e86498ca024e21c665e0636635e | bde2673c | 100422 |
+| expanded_bureau_train | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_train.parquet | 0a1a2c038dc0a29cd1df9e62122ba6e2180f50c7bfd72b6c3a53125a59100d0b | 7b8864dc | 157993 |
+| expanded_bureau_validation | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/expanded_bureau_validation.parquet | a87dc81d9411cf894c4bd50b63a9d320f3b52b28b5a93e0dc7862870fe6b2730 | e7edb5f9 | 162570 |
+| post_underwriting_inner_fit | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_inner_fit.parquet | 288a254ac488caf09f0474b38272d03839cf0c031955d7c8025301184d7dae3a | 4665a8f9 | 57571 |
+| post_underwriting_stopping | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_stopping.parquet | c557466807bf7fc63d03a4a41b952d2918b7c37b416a8b62d7b9d1354477169b | a21821b7 | 100422 |
+| post_underwriting_train | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_train.parquet | ef7c5c981b5bc4760769f15d1a803d9d334d2ba06eb29e072ee299595dd8bba6 | 89ebc42f | 157993 |
+| post_underwriting_validation | data/clean/auc_experiments/921ccc76e18340b89e608c1fcced9526/post_underwriting_validation.parquet | 84d7deb6be0eedb779b3584c57be4e2a4904dc5a6140b873226d1df3c9570d7c | 7f86e93f | 162570 |
 
 ### Configuration
 
@@ -3596,25 +3674,25 @@ Protocol v2 fits 2011–2012, stops on 2013, then refits 2011–2013 using a fro
   ],
   "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
   "clean_source_sha256": "51e966cd9162ff4fd77c6dafd4afe7143dca4e97ee4053cabe07eaa2ac6d3e20",
-  "script_sha256": "344b1f86507ede3407dffd69b5a99c69d52b222357263f21f39031a3787b9cc4"
+  "script_sha256": "33e2a319d0297e0ea0f0030bbd49ff95f691ba681432c0c39c57f23527a2bd9d"
 }
 ```
 
 ### Source fingerprints
 
-- [auc_comparison.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/auc_comparison.csv): `e5530816dc7703825b8d5c373d778495ba1166ffddb3cf40ac510314d7ebdc71`
+- [auc_comparison.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/auc_comparison.csv): `0e57de9b6cbc6c6e9c2a810f153d05f78e53f325e12bbb6035c5c1ffe3bc4c15`
 
-- [temporal_roles.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/temporal_roles.csv): `c738678d0189ce75852733f0a833d06281355657c6e2832f02545d52b72ccb0f`
+- [temporal_roles.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/temporal_roles.csv): `c738678d0189ce75852733f0a833d06281355657c6e2832f02545d52b72ccb0f`
 
-- [feature_profile.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/feature_profile.csv): `6df4d211b9b7bf72197076302a2559b7362087bacc78c4d48abc07326ce64cd9`
+- [feature_profile.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/feature_profile.csv): `6df4d211b9b7bf72197076302a2559b7362087bacc78c4d48abc07326ce64cd9`
 
-- [stopping_learning_curves.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/stopping_learning_curves.csv): `1f0abfde2a06e726a9e69eb8f683aa98d1b5d4adb06e7c4af7daacd1ada3bba3`
+- [stopping_learning_curves.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/stopping_learning_curves.csv): `1f0abfde2a06e726a9e69eb8f683aa98d1b5d4adb06e7c4af7daacd1ada3bba3`
 
-- [native_evaluations.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/native_evaluations.csv): `74b0218460ef93d6e66cdeac42089159b749344fc80579a57d6f2808331a9ee0`
+- [native_evaluations.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/native_evaluations.csv): `cf79574b544d692ab98b8f15ba6e109c4809d5b3d1a29079db88659ff5f80029`
 
-- [feature_availability.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/feature_availability.csv): `7f5eae9faf162c302c8573438c907360a56d0c1d424ef416f36297e5c94657e8`
+- [feature_availability.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/feature_availability.csv): `7f5eae9faf162c302c8573438c907360a56d0c1d424ef416f36297e5c94657e8`
 
-- [protocol_comparison.csv](results/auc_experiments/2d9a9d65b9004aa1ade7337465576f17/protocol_comparison.csv): `406129ac5949ec7920c3456cbe7eb9d482ab49e7e14355ce120360d66f4c33ae`
+- [protocol_comparison.csv](results/auc_experiments/921ccc76e18340b89e608c1fcced9526/protocol_comparison.csv): `993feaf494c51b53cb0a5c306158fb8b29922497fda1f2d89c521f09d5ae19d9`
 
 ### temporal_roles
 
@@ -3637,13 +3715,13 @@ Protocol v2 fits 2011–2012, stops on 2013, then refits 2011–2013 using a fro
 
 | trial | validation_roc_auc_current | selected_estimators | validation_roc_auc_previous | auc_change |
 | --- | --- | --- | --- | --- |
-| post_underwriting_shallow | 0.690065 | 467 | 0.690859 | -0.000794 |
-| post_underwriting_deep | 0.68996 | 176 | 0.690816 | -0.000856 |
-| post_underwriting_regularized | 0.689326 | 192 | 0.691254 | -0.001927 |
-| expanded_bureau_regularized | 0.683258 | 335 | 0.683864 | -0.000606 |
-| expanded_bureau_deep | 0.68262 | 188 | 0.684553 | -0.001933 |
-| expanded_bureau_shallow | 0.682039 | 422 | 0.683984 | -0.001945 |
-| base13_shallow | 0.654746 | 372 | 0.655817 | -0.001071 |
+| post_underwriting_shallow | 0.690065 | 467 | 0.690065 | 0 |
+| post_underwriting_deep | 0.68996 | 176 | 0.68996 | 0 |
+| post_underwriting_regularized | 0.689326 | 192 | 0.689326 | 0 |
+| expanded_bureau_regularized | 0.683258 | 335 | 0.683258 | 0 |
+| expanded_bureau_deep | 0.68262 | 188 | 0.68262 | 0 |
+| expanded_bureau_shallow | 0.682039 | 422 | 0.682039 | 0 |
+| base13_shallow | 0.654746 | 372 | 0.654746 | 0 |
 
 ### stopping_learning_curves
 
@@ -6379,9 +6457,9 @@ logistic_regression: sigmoid minus raw Brier change -0.000057; log-loss change +
 
 Negative Brier, log-loss, and ECE changes indicate improvement. Assess these together before choosing a calibration policy.
 
-![Calibration](../assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2/calibration.png)
+![Calibration](../assets/figures/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb/calibration.png)
 
-![Paired differences](../assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2/paired_auc_difference.png)
+![Paired differences](../assets/figures/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb/paired_auc_difference.png)
 
 Calibration curves show all occupied uniform-width bins, including sparse bins; counts are saved in calibration_bins.csv. Interpret the tails using those counts.
 
@@ -6391,7 +6469,7 @@ Shared feature policy rejects post-origination fields before preparation/trainin
 
 The coefficient CSV describes the historical logistic pipeline's transformed coordinates (including scaling, log transforms, missing flags, and one-hot categories). These are not scorecard points or causal effects.
 
-All CSVs and the hashed manifest: [assets/results/validation_hardening/62955be6d71845418f95174c621c98d2](../assets/results/validation_hardening/62955be6d71845418f95174c621c98d2/manifest.json). MLflow stores the three full role datasets, four model versions, dataset-linked metrics, and four native classifier evaluations. The incumbent model remains unchanged.
+All CSVs and the hashed manifest: [assets/results/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb](../assets/results/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb/manifest.json). MLflow stores the three full role datasets, four model versions, dataset-linked metrics, and four native classifier evaluations. The incumbent model remains unchanged.
 
 Reproduce with `make validate` after the core workflow. Use `make all RAW_DATA=/path/to/accepted.csv` for a headless core run, or a `.csv.gz` file for local decompression.
 
@@ -6979,10 +7057,10 @@ Calibration follows the [scikit-learn guidance on disjoint fitting and calibrati
 
 | model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| logistic_regression_raw | validation | 14067d7ac16640babda65588d6347faa | f25d8631515045f7bdd9371dbb3a6851 | m-c8c7604c407a44b8b5ed4ae9f2c7340d | evaluation_loans | 722bf1f9 | 0.5 | 0.862687 | 140235 | 20 | 22303 | 12 | 162570 | 0.862687 | 0.000538 | 0.375 | 0.001074 | 0.385851 | 0.639135 | 0.204675 |
-| logistic_regression_sigmoid | validation | bb3191471847484c8dae87e8fcb5d580 | 47e51bdb766d4729ade1401de2e9167d | m-f3b4efaaaf9849ba9749263a288cd5b7 | evaluation_loans | 722bf1f9 | 0.5 | 0.862711 | 140248 | 7 | 22312 | 3 | 162570 | 0.862711 | 0.000134 | 0.3 | 0.000269 | 0.385862 | 0.639135 | 0.204675 |
-| hist_gradient_boosting_raw | validation | 2e04e70f640c4dd997e01f6287042286 | 6aebbe9e60dc48b68df10378149e2fcd | m-479bb3a4dd0f4273a9b83d0317808635 | evaluation_loans | 722bf1f9 | 0.5 | 0.862693 | 140243 | 12 | 22310 | 5 | 162570 | 0.862693 | 0.000224 | 0.294118 | 0.000448 | 0.385312 | 0.64165 | 0.20503 |
-| hist_gradient_boosting_sigmoid | validation | 27ed3164377249b28457cf3df0ae8e2c | 90a7a586e20c4708bbd4a1df0385d32f | m-280e2a286248431bbdea77490a5f3968 | evaluation_loans | 722bf1f9 | 0.5 | 0.862742 | 140254 | 1 | 22313 | 2 | 162570 | 0.862742 | 0.00009 | 0.666667 | 0.000179 | 0.38525 | 0.64165 | 0.20503 |
+| logistic_regression_raw | validation | 0a5ba9587cf64b868aa65f3171c4d5f9 | 3bbedb28ce104c8293c66bbf5fc0840e | m-07fc69b51d154727a011c759d05a8587 | evaluation_loans | 722bf1f9 | 0.5 | 0.862687 | 140235 | 20 | 22303 | 12 | 162570 | 0.862687 | 0.000538 | 0.375 | 0.001074 | 0.385851 | 0.639135 | 0.204675 |
+| logistic_regression_sigmoid | validation | 280c575872db42829bec6e6f99988833 | 6c535d47af6f49e19b79110966428aba | m-349e1e9718c842deb824cb4b2a9a2c49 | evaluation_loans | 722bf1f9 | 0.5 | 0.862711 | 140248 | 7 | 22312 | 3 | 162570 | 0.862711 | 0.000134 | 0.3 | 0.000269 | 0.385862 | 0.639135 | 0.204675 |
+| hist_gradient_boosting_raw | validation | 1e2e07b54d5b4fb2b5f002060a539989 | 9e5d3d8bd7124b7dbb73058c105ba480 | m-8996719959994e30853637bf13ca0b36 | evaluation_loans | 722bf1f9 | 0.5 | 0.862693 | 140243 | 12 | 22310 | 5 | 162570 | 0.862693 | 0.000224 | 0.294118 | 0.000448 | 0.385312 | 0.64165 | 0.20503 |
+| hist_gradient_boosting_sigmoid | validation | e3deefaabcdf4e5e87006708efdd0065 | dda8b215da314838b0783c20b2414124 | m-ca258d42cd6f4b539871bbe52fdae1a7 | evaluation_loans | 722bf1f9 | 0.5 | 0.862742 | 140254 | 1 | 22313 | 2 | 162570 | 0.862742 | 0.00009 | 0.666667 | 0.000179 | 0.38525 | 0.64165 | 0.20503 |
 
 ### logistic_coefficients
 
@@ -7035,7 +7113,7 @@ Calibration follows the [scikit-learn guidance on disjoint fitting and calibrati
 ```json
 {
   "status": "complete",
-  "batch_run_id": "62955be6d71845418f95174c621c98d2",
+  "batch_run_id": "e7ebdf9092274ee3b039af91de5b5acb",
   "experiment_id": "3",
   "experiment_name": "lendingclub_validation_hardening",
   "features": [
@@ -7055,16 +7133,16 @@ Calibration follows the [scikit-learn guidance on disjoint fitting and calibrati
   ],
   "selected_model": "",
   "model_uris": {
-    "logistic_regression_raw": "models:/m-c8c7604c407a44b8b5ed4ae9f2c7340d",
-    "logistic_regression_sigmoid": "models:/m-f3b4efaaaf9849ba9749263a288cd5b7",
-    "hist_gradient_boosting_raw": "models:/m-479bb3a4dd0f4273a9b83d0317808635",
-    "hist_gradient_boosting_sigmoid": "models:/m-280e2a286248431bbdea77490a5f3968"
+    "logistic_regression_raw": "models:/m-07fc69b51d154727a011c759d05a8587",
+    "logistic_regression_sigmoid": "models:/m-349e1e9718c842deb824cb4b2a9a2c49",
+    "hist_gradient_boosting_raw": "models:/m-8996719959994e30853637bf13ca0b36",
+    "hist_gradient_boosting_sigmoid": "models:/m-ca258d42cd6f4b539871bbe52fdae1a7"
   },
   "run_ids": {
-    "logistic_regression_raw": "f25d8631515045f7bdd9371dbb3a6851",
-    "logistic_regression_sigmoid": "47e51bdb766d4729ade1401de2e9167d",
-    "hist_gradient_boosting_raw": "6aebbe9e60dc48b68df10378149e2fcd",
-    "hist_gradient_boosting_sigmoid": "90a7a586e20c4708bbd4a1df0385d32f"
+    "logistic_regression_raw": "3bbedb28ce104c8293c66bbf5fc0840e",
+    "logistic_regression_sigmoid": "6c535d47af6f49e19b79110966428aba",
+    "hist_gradient_boosting_raw": "9e5d3d8bd7124b7dbb73058c105ba480",
+    "hist_gradient_boosting_sigmoid": "dda8b215da314838b0783c20b2414124"
   },
   "seed": 42,
   "bootstrap_resamples": 500,
@@ -7106,38 +7184,50 @@ Calibration follows the [scikit-learn guidance on disjoint fitting and calibrati
     "cloudpickle": "3.1.2",
     "threadpoolctl": "3.8.0"
   },
-  "historical_batch_id": "72061e0a7a1e4d68addcc79a2aae631d",
+  "historical_batch_id": "6ccea4b79b8343cd971273181d93f680",
   "exploratory_2015_read": false,
   "deployment_backtest": false,
   "data_previously_explored": true,
-  "result_directory": "assets/results/validation_hardening/62955be6d71845418f95174c621c98d2",
-  "figure_directory": "assets/figures/validation_hardening/62955be6d71845418f95174c621c98d2",
-  "model_directory": "models/validation_hardening/62955be6d71845418f95174c621c98d2",
-  "completed_at_utc": "2026-11-09T00:11:30.061472+00:00",
+  "result_directory": "assets/results/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb",
+  "figure_directory": "assets/figures/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb",
+  "model_directory": "models/validation_hardening/e7ebdf9092274ee3b039af91de5b5acb",
+  "completed_at_utc": "2026-11-11T19:48:44.250363+00:00",
   "incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "incumbent_unchanged": true,
   "historical_model_sha256": {
-    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/dummy_prior.joblib": "8c6938429a36c91a8d7a048fd65b19a9da2593b96f41502d70f1eea1a5b131f7",
-    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/logistic_regression.joblib": "c53ff5f083379466a9540692611fedb67c83e1a8b1b9dd81a604f8361b74872d",
-    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/random_forest.joblib": "975ef4500cfd0ef1df8e5ed943294334d22d29ac24e64cb5da20ece6be2c4082",
-    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/hist_gradient_boosting.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078"
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/dummy_prior.joblib": "8c6938429a36c91a8d7a048fd65b19a9da2593b96f41502d70f1eea1a5b131f7",
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/logistic_regression.joblib": "7c70538e2601b9c56c448c5f12de9b51639c9f9fecae01c24c5a7a3ad42fe211",
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/random_forest.joblib": "975ef4500cfd0ef1df8e5ed943294334d22d29ac24e64cb5da20ece6be2c4082",
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/hist_gradient_boosting.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078"
   },
   "source_sha256": {
-    "scripts/08_validate_models.py": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25",
-    "requirements.txt": "8809ba57e29aedae23094e6760d4299feb97e26dcdd13aa792c2aa007664ef7a",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825",
+    "scripts/08_validate_models.py": "ad4b2b297f51c11ceb72bd69f87e8872911eec03d367ff73eb8368c5f79260f4",
+    "requirements.txt": "ca693c4b26f6942ec5f594e470065af6ca33ed839028212714bd98c7970420fc",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510",
+    "util/ann.py": "a2350788ed70f83a2fad4a12916f78a9b598b999731b5486b605ddadef9df56e",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
     "util/calibration.py": "3747c86cebea481223ee6207d81305a5898fb5f65a42db6e0896334bb63abf5c",
+    "util/coefficient_review.py": "39b14eb12b9a5ba8bc88221559f86077f1f11f752db272a644653a0c58bf8889",
+    "util/explanation_input.py": "55de10ed36773bd1d99e75dd6e860489841f12fc79296e70fbf57fd858132346",
     "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/interpretation.py": "c54249dd5897f45cd48cc80d59f9085e8fcfe42f8443c339c76f00431b11cdff",
+    "util/load_test.py": "645b9dd8ddeef4770165870bef11fe48744543b930e3823ef083985509342f74",
+    "util/logging.py": "44153f54a69ecb62d6c9ba710a7c11807300afa7da30ad4a6d8cf5a782c84eec",
     "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
-    "util/mlflow_evaluation.py": "45225a16ba776a20f68452eefa6ff0c0aa59f855f393eb2222daf3a99ec1d11b",
+    "util/mlflow_evaluation.py": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
     "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
+    "util/risk_scope.py": "c46036e7a41fb27951656c4a5d8f5fffe3981af9cde083daa64be153d8745a36",
+    "util/score_store.py": "9a1092113b7058156b54e529986b007d141a7726e0198213f51bc69a7e70a7f5",
+    "util/segment_audit.py": "7d25b59c4392d3f1f61f9c38c9ebe12bf3416cac6868459e8c85974013440aff",
+    "util/streaming.py": "940aec522ed8f5aa729f8e97f37cc82bd5eabf2176eebc13a003ea10ddffa495",
+    "util/temporal_xgboost.py": "6ff37543804fead4ddabc68f219d6f1d9d4cbd9c5c1ebb19fe8a91105aece9a3",
     "util/validation.py": "dfad932f43a678b2eff1bf2a68bb90f86635d662b59505db6875adfb910dd036"
   },
   "results_sha256": {
     "paired_auc_bootstrap.csv": "db4847c126322cb03bd9469e44be67724ee0719c5b62219d270579c8fb90809f",
-    "mlflow_native_evaluations.csv": "9868e5bee5cf959dcf8b1f945918c2a6da760f0a64fa375466bde93e32f6cae9",
-    "logistic_coefficients.csv": "e9cb8907cc9cc927441c27ba49240a58c8892df73ae50e155c427cbdbf5498c6",
-    "historical_exact_metrics.csv": "8ec1fa554f5bd13ea99b0678f87adceaf17e721387bb6a29cdd6f8ccc2a168f1",
+    "mlflow_native_evaluations.csv": "7f3335051c0c67990b504b9efa1ddaff058cbbb87b2d959c35d07c309c62bba7",
+    "logistic_coefficients.csv": "0dfe1d885015f8d8f8de31ff9e98562f35a33cb08b3d25b30924509fc6687987",
+    "historical_exact_metrics.csv": "94346390a901fa97ca0fc18096fbcde11c6159e3516621c31694ef7bf72b5f6d",
     "auc_confidence_intervals.csv": "a973717e07e7ee2fd3a0111b05b7a0a388c66f2e3cee0ef209ecde5e0a9be45f",
     "calibration_metrics.csv": "f72959c7b5e762b7d2e70b7cab30a8d93100c9fb6af5bf4d9257a49d76250cc3",
     "calibration_bins.csv": "f225e2dc51867a885ad919f0ad65e1044862a29be54b12018186f66cb1185745",
@@ -7149,7 +7239,7 @@ Calibration follows the [scikit-learn guidance on disjoint fitting and calibrati
     "logistic_regression_sigmoid.joblib": "e2a684b3d5fc37f3db71045469dfac121cda1dfdd355b3f055cd3dc022a0048a",
     "hist_gradient_boosting_raw.joblib": "a2145001594bcc79fde974bb6caf4add8bd2d32694461204ab5a7e8b5fc74127"
   },
-  "execution_script_sha256": "34e3be3c4c298f15e3a6266aba3aa515373e88b7aa61265c952d1f5f11837a25"
+  "execution_script_sha256": "ad4b2b297f51c11ceb72bd69f87e8872911eec03d367ff73eb8368c5f79260f4"
 }
 ```
 
@@ -7281,7 +7371,29 @@ The committed validation script was rerun unchanged; its file hash, HEAD hash, e
 ## 22. Basel-style loss experiment
 
 
-This experiment adds separate EAD and LGD models, resolved-outcome expected-loss proxies, and illustrative CRE31.16 other-retail capital calculations. It is not a regulatory model. The incumbent PD model is unchanged. Fit: 2011–2013; selection/evaluation: already-explored 2014. No 2015 rows are used.
+## Risk terminology and interpretation
+
+The classifier estimates lifetime charge-off probability in the resolved
+36-month cohort: Charged Off = 1 and Fully Paid = 0. Other statuses are excluded.
+This is conditional on the selected accepted-loan population and observed final
+status. It is neither a 12-month forecast nor a Basel default probability.
+
+EAD and LGD refer to retrospective snapshot proxies, not default-event EAD or
+discounted economic LGD. The lifetime snapshot-loss proxy multiplies the
+classifier score by predicted snapshot LGD and snapshot EAD. It is not a
+regulatory one-year expected loss estimate.
+
+Capital and RWA are illustrative sensitivities using explicitly assumed
+one-year PDs, separate from the classifier score. The current capital scenarios
+do not use or annualise the classifier prediction. The approximation
+1 - (1 - p_lifetime) ** (1 / 3) would require constant annual hazard; it would
+not establish a regulatory default definition or validate a 12-month PD.
+
+Legacy names containing `pd`, `basel`, `expected_loss` or `default` are retained
+for artifact/API compatibility. They do not change these definitions.
+
+
+This experiment adds separate EAD and LGD models, lifetime snapshot-loss proxies, and illustrative CRE31.16 other-retail capital calculations. It is not a regulatory model. The incumbent lifetime charge-off classifier is unchanged. Fit: 2011–2013; selection/evaluation: already-explored 2014. No 2015 rows are used.
 
 ## Targets and exclusions
 
@@ -7291,13 +7403,13 @@ Snapshot principal and recoveries are not event-time EAD or discounted economic 
 
 ## Component models
 
-Mean baselines and fixed gradient-boosting regressors use the same 13 origination predictors. All preprocessing is fitted on eligible training defaults only. Outcome fields form targets and dollar diagnostics; they never enter PD or loss predictor matrices. Predictions are explicitly bounded to [0,1] for composition; raw regression errors and clipping counts are also saved. Native MLflow regression evaluations use raw predictions. Selection uses validation bounded MAE.
+Mean baselines and fixed gradient-boosting regressors use the same 13 origination predictors. All preprocessing is fitted on eligible training defaults only. Outcome fields form targets and dollar diagnostics; they never enter classifier or loss-proxy predictor matrices. Predictions are explicitly bounded to [0,1] for composition; raw regression errors and clipping counts are also saved. Native MLflow regression evaluations use raw predictions. Selection uses validation bounded MAE.
 
 ## Expected loss and capital interpretation
 
-Resolved-outcome EL proxy = unchanged PD score × predicted LGD × predicted EAD. EAD prediction = funded amount × predicted EAD ratio. Multiplying conditional EAD and LGD means ignores residual dependence; validation dollar errors expose this approximation. The observed loss comparator uses the same eligible portfolio and snapshot convention.
+Lifetime snapshot-loss proxy = unchanged lifetime charge-off score × predicted snapshot LGD × predicted snapshot EAD. EAD prediction = funded amount × predicted EAD ratio. Multiplying conditional EAD and LGD means ignores residual dependence; validation dollar errors expose this approximation. The observed loss comparator uses the same eligible portfolio and snapshot convention.
 
-Capital uses explicitly assumed one-year PD scenarios, never the resolved-loan PD score. CRE31.16 correlation R = 0.03w + 0.16(1−w), w = (1−exp(−35PD))/(1−exp(−35)); K = LGD × [Phi((Phi^-1(PD)+sqrt(R)Phi^-1(0.999))/sqrt(1−R))−PD]; capital = K × EAD and RWA = 12.5 × capital. Scenario one-year EL uses the assumed PD. The scenario treats the loans as a hypothetical performing portfolio at origination; it does not apply the performing-exposure formula to their realised default state. Other-retail eligibility is assumed for illustration. No regulatory parameter floors, output floor, buffers, provisions adjustment, downturn-LGD validation or approval requirements are implemented. These are sensitivities, not a measured regulatory capital requirement.
+Capital uses explicitly assumed one-year PD scenarios, never the lifetime charge-off score. CRE31.16 correlation R = 0.03w + 0.16(1−w), w = (1−exp(−35PD))/(1−exp(−35)); K = LGD × [Phi((Phi^-1(PD)+sqrt(R)Phi^-1(0.999))/sqrt(1−R))−PD]; capital = K × EAD and RWA = 12.5 × capital. Scenario one-year EL uses the assumed PD. The scenario treats the loans as a hypothetical performing portfolio at origination; it does not apply the performing-exposure formula to their realised default state. Other-retail eligibility is assumed for illustration. No regulatory parameter floors, output floor, buffers, provisions adjustment, downturn-LGD validation or approval requirements are implemented. These are sensitivities, not a measured regulatory capital requirement.
 
 ## loss audit
 
@@ -7385,18 +7497,18 @@ Capital uses explicitly assumed one-year PD scenarios, never the resolved-loan P
 
 | model | evaluation_run_id | native_validation_score | native_validation_example_count | native_validation_mean_absolute_error | native_validation_mean_squared_error | native_validation_root_mean_squared_error | native_validation_sum_on_target | native_validation_mean_on_target | native_validation_r2_score | native_validation_max_error | native_validation_mean_absolute_percentage_error |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ead_mean | 4d8025e2c38d45b7baf9b64d82a4121f | -0.002078 | 22308 | 0.203347 | 0.058446 | 0.241757 | 12,729.808506 | 0.570639 | -0.002078 | 0.581632 | 2.525249 |
-| ead_boosting | 9a47dfabac3440dcab3352a61e95a918 | 0.00471 | 22308 | 0.20203 | 0.058051 | 0.240937 | 12,729.808506 | 0.570639 | 0.00471 | 0.669205 | 2.427968 |
-| lgd_mean | 393ad762a4f545f4a5fa6e0b542a0935 | -0.00192 | 22308 | 0.075857 | 0.014672 | 0.121128 | 19,817.742847 | 0.888369 | -0.00192 | 0.893671 | 180,416,805,933.865601 |
-| lgd_boosting | 98b3bb4f576843f29ae690848e64d548 | -0.001047 | 22308 | 0.076627 | 0.014659 | 0.121075 | 19,817.742847 | 0.888369 | -0.001047 | 0.936367 | 189,036,413,367.717377 |
+| ead_mean | fb7489bb77684bdabae3ab9445eae066 | -0.002078 | 22308 | 0.203347 | 0.058446 | 0.241757 | 12,729.808506 | 0.570639 | -0.002078 | 0.581632 | 2.525249 |
+| ead_boosting | a55b2504fcfa4d7aa2a02f31b29cd59b | 0.00471 | 22308 | 0.20203 | 0.058051 | 0.240937 | 12,729.808506 | 0.570639 | 0.00471 | 0.669205 | 2.427968 |
+| lgd_mean | 74164b169f8848579c19fc2838c68c1f | -0.00192 | 22308 | 0.075857 | 0.014672 | 0.121128 | 19,817.742847 | 0.888369 | -0.00192 | 0.893671 | 180,416,805,933.865601 |
+| lgd_boosting | 9e0abb2f41b24eb186af4900c10886d7 | -0.001047 | 22308 | 0.076627 | 0.014659 | 0.121075 | 19,817.742847 | 0.888369 | -0.001047 | 0.936367 | 189,036,413,367.717377 |
 
-![Loss targets](../assets/figures/basel_loss/c072de3541e2496ab90ed6b7c2699137/loss_targets.png)
+![Loss targets](../assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_targets.png)
 
-![Loss and capital](../assets/figures/basel_loss/c072de3541e2496ab90ed6b7c2699137/loss_and_capital.png)
+![Loss and capital](../assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_and_capital.png)
 
 Sources: [BIS CRE31.16 risk-weight functions](https://www.bis.org/committees/bcbs/basel-framework/standard/cre/31/inforce/2023-01-01/published/2020-03-27), [BIS CRE36 economic-loss requirements](https://www.bis.org/committees/bcbs/basel-framework/standard/cre/36/inforce/2023-01-01/published/2022-12-08).
 
-MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90ed6b7c2699137`. [Full manifest](../assets/results/basel_loss/c072de3541e2496ab90ed6b7c2699137/manifest.json). The local model directory contains four component pipelines and the selected loss-model bundle.
+MLflow experiment: `lendingclub_basel_loss_proxies`, batch `bc7fbb6777cd4365b1a93a4d97fd872f`. [Full manifest](../assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/manifest.json). The local model directory contains four component pipelines and the selected loss-model bundle.
 
 
 ### Full loss experiment manifest
@@ -7404,7 +7516,7 @@ MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90e
 ```json
 {
   "status": "complete",
-  "batch_run_id": "c072de3541e2496ab90ed6b7c2699137",
+  "batch_run_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
   "experiment_id": "4",
   "experiment_name": "lendingclub_basel_loss_proxies",
   "features": [
@@ -7463,9 +7575,9 @@ MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90e
   "selection_rule": "lowest 2014 bounded MAE per component; exploratory selection cohort",
   "ead_formula": "funded_amnt - total_rec_prncp; snapshot proxy, not observed default-event EAD",
   "lgd_formula": "1 - (recoveries - collection_recovery_fee) / snapshot_ead_proxy",
-  "el_formula": "unchanged resolved-loan PD score * predicted LGD * predicted EAD",
+  "el_formula": "lifetime charge-off score * predicted snapshot LGD * predicted snapshot EAD",
   "el_assumption": "product of conditional means ignores residual EAD/LGD dependence",
-  "pd_source_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "pd_source_run_id": "f64a19bc843546e380a742697cf0bf26",
   "pd_joblib_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "input_sha256": {
     "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
@@ -7483,36 +7595,36 @@ MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90e
     "mlflow": "3.18.0",
     "cloudpickle": "3.1.2"
   },
-  "result_directory": "assets/results/basel_loss/c072de3541e2496ab90ed6b7c2699137",
-  "model_directory": "models/basel_loss/c072de3541e2496ab90ed6b7c2699137",
-  "figure_directory": "assets/figures/basel_loss/c072de3541e2496ab90ed6b7c2699137",
+  "result_directory": "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "model_directory": "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
+  "figure_directory": "assets/figures/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f",
   "model_uris": {
-    "ead_mean": "models:/m-36a9adca37ed4dc3a583640983bbccf2",
-    "ead_boosting": "models:/m-1d6a49de6150498192790b1631752cdc",
-    "lgd_mean": "models:/m-10bbf7f599d34de988bbff2983fde8c2",
-    "lgd_boosting": "models:/m-30da2e615c894759a01ea6f5fc1aca63"
+    "ead_mean": "models:/m-05bbe941cbbb4ef59aa64836699289f1",
+    "ead_boosting": "models:/m-80058cb3e8744faeb1c232aed99af1a9",
+    "lgd_mean": "models:/m-eeb50e6c21664338b5f7863e5860dab1",
+    "lgd_boosting": "models:/m-ab1088810235482a87a8b9832b9aa063"
   },
   "run_ids": {
-    "ead_mean": "325924537ccf4d0ea1d3d627056e4e67",
-    "ead_boosting": "3a41675000194a4494e6529d4625310f",
-    "lgd_mean": "34f21f8d75b84405a5de10f6f8948fa4",
-    "lgd_boosting": "f536d860830e42ad9f54e243b2925b71"
+    "ead_mean": "1b8fe236a459480ba74f2ff30f646bb2",
+    "ead_boosting": "f022c883346241dbb13f81fa970b832b",
+    "lgd_mean": "7df09403f1074b9c9eae252facea30e3",
+    "lgd_boosting": "a403b195fd65431a8d5b3d37a9a62aa8"
   },
-  "completed_at_utc": "2026-11-09T00:45:03.916171+00:00",
+  "completed_at_utc": "2026-11-11T19:50:12.728870+00:00",
   "selected_components": {
     "ead": "ead_boosting",
     "lgd": "lgd_mean"
   },
-  "execution_script_sha256": "5cb543c72c219cf436fe725c0872d2d9d1305b9cbb4f3ef3a600dace21f6cff5",
+  "execution_script_sha256": "fc7ff8624d00e7f196cd28659e896daec6209693cac6d02e7bbb733f7c77c491",
   "pd_predictions_identical": true,
   "source_sha256": {
-    "scripts/09_basel_loss_experiment.py": "5cb543c72c219cf436fe725c0872d2d9d1305b9cbb4f3ef3a600dace21f6cff5",
-    "util/basel.py": "e088c687fa14a1e2438cc92ea48d1dc5c1c9d500b5bb61f6c8d1df0a55dcedcd",
+    "scripts/09_basel_loss_experiment.py": "fc7ff8624d00e7f196cd28659e896daec6209693cac6d02e7bbb733f7c77c491",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
     "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
     "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
     "sql/34_loss_population.sql": "95a41ae840b4fbb9a60ac922e7c728b751c1c9ff518c9c5499e42db742a04c94",
     "sql/35_loss_audit.sql": "426ffef9f7035e71bf6a8a1e9010fd9b78e897360cc1036dca4a5f57337655bc",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825"
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
   "results_sha256": {
     "loss_deciles.csv": "db584a2002e5e2fb9d28b56333393fbc91ae087b3735670effe9a7152fd9440c",
@@ -7520,7 +7632,7 @@ MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90e
     "pd_unchanged_check.csv": "bca65f300de6a340bc7e8bef95d71409efe6c05ed9ebacc8d19d27c71275aaf3",
     "portfolio_capital_scenarios.csv": "70c46ceafae27eb46ffa655b97700e77416cdd05ce8cd5cca9452116266489dd",
     "component_metrics.csv": "22bcca2c37ee7b232d0773e063f62de56039776949e82fdf8609a724d0d62109",
-    "native_regression_evaluations.csv": "e7472cbec5efa1dd1c21f3f17f5c66d4f279abed1d5151d1e1ea0c48600eb940",
+    "native_regression_evaluations.csv": "ad21d62085c744fee52aef71b9078c6e51655742d66e7da17a54d5e0daf0d3a9",
     "capital_sensitivity.csv": "21f4c2f4303e15c19f1820a7888f084c98a7d6691c0b686c24dd4249ac9f437b",
     "loss_audit.csv": "2ead4e83837a30ce4a3f757f4db27f951c4411a539914cb032af79d0425f1ad0"
   },
@@ -7541,23 +7653,44 @@ MLflow experiment: `lendingclub_basel_loss_proxies`, batch `c072de3541e2496ab90e
 }
 ```
 
-
 <!-- ann-experiment-statistics -->
 
 ## 23. ANN challengers
 
 
-Two multilayer-perceptron classifiers (32 and 64→32 hidden units) and two 32→16 regressors test whether neural networks improve PD discrimination or snapshot loss proxies. They use the same 13 origination predictors as the original benchmark. No PyTorch/TensorFlow dependency is added.
+## Risk terminology and interpretation
+
+The classifier estimates lifetime charge-off probability in the resolved
+36-month cohort: Charged Off = 1 and Fully Paid = 0. Other statuses are excluded.
+This is conditional on the selected accepted-loan population and observed final
+status. It is neither a 12-month forecast nor a Basel default probability.
+
+EAD and LGD refer to retrospective snapshot proxies, not default-event EAD or
+discounted economic LGD. The lifetime snapshot-loss proxy multiplies the
+classifier score by predicted snapshot LGD and snapshot EAD. It is not a
+regulatory one-year expected loss estimate.
+
+Capital and RWA are illustrative sensitivities using explicitly assumed
+one-year PDs, separate from the classifier score. The current capital scenarios
+do not use or annualise the classifier prediction. The approximation
+1 - (1 - p_lifetime) ** (1 / 3) would require constant annual hazard; it would
+not establish a regulatory default definition or validate a 12-month PD.
+
+Legacy names containing `pd`, `basel`, `expected_loss` or `default` are retained
+for artifact/API compatibility. They do not change these definitions.
+
+
+Two multilayer-perceptron classifiers (32 and 64→32 hidden units) and two 32→16 regressors test whether neural networks improve charge-off discrimination or snapshot loss proxies. They use the same 13 origination predictors as the original benchmark. No PyTorch/TensorFlow dependency is added.
 
 ## Protocol
 
-Preprocessing is median imputation, training-only scaling, log1p for income/revolving balance, numeric missing flags, and one-hot categories. Each stopping fit learns preprocessing on 2011–2012 only. Stopping uses 2013 ROC-AUC for PD and bounded MAE for losses, with at most 60 epochs and patience 8. The chosen epoch budget is frozen, then preprocessing and network are refitted from scratch on 2011–2013. 2014 selects the ANN PD candidate by average precision and compares loss components by bounded MAE. 2014 does not select the stopping epoch. Losses train only on the identical eligible defaulted population used in the Basel-style proxy experiment. Only origination features reach neural-network inputs.
+Preprocessing is median imputation, training-only scaling, log1p for income/revolving balance, numeric missing flags, and one-hot categories. Each stopping fit learns preprocessing on 2011–2012 only. Stopping uses 2013 ROC-AUC for charge-off classification and bounded MAE for losses, with at most 60 epochs and patience 8. The chosen epoch budget is frozen, then preprocessing and network are refitted from scratch on 2011–2013. 2014 selects the ANN charge-off classifier candidate by average precision and compares loss components by bounded MAE. 2014 does not select the stopping epoch. Losses train only on the identical eligible defaulted population used in the snapshot-loss proxy experiment. Only origination features reach neural-network inputs.
 
-All networks use ReLU, Adam, alpha 0.01, learning rate 0.001, batch size 1024 and seed 42. Only one seed is studied; these are selection-influenced research results on already-explored cohorts. There is no new holdout claim. No 2015 rows are read, and incumbent PD/loss artifacts remain unchanged. The stopping cohort is subsequently included in the fixed-budget refit; it is not an independent final evaluation.
+All networks use ReLU, Adam, alpha 0.01, learning rate 0.001, batch size 1024 and seed 42. Only one seed is studied; these are selection-influenced research results on already-explored cohorts. There is no new holdout claim. No 2015 rows are read, and incumbent classifier/loss-proxy artifacts remain unchanged. The stopping cohort is subsequently included in the fixed-budget refit; it is not an independent final evaluation.
 
 ## Loss composition
 
-Compare the reference bundle, ANN PD alone, ANN loss components alone, and all-ANN composition on the same eligible portfolio. Regressor predictions are explicitly bounded to [0,1] for loss composition. Raw errors/clipping counts are saved, while native regression evaluations use raw outputs. Expected-loss outputs retain the snapshot and residual-dependence limitations from the loss report. No capital assumptions or one-year-PD claims change.
+Compare the reference bundle, ANN charge-off classifier alone, ANN loss components alone, and all-ANN composition on the same eligible portfolio. Regressor predictions are explicitly bounded to [0,1] for loss composition. Raw errors/clipping counts are saved, while native regression evaluations use raw outputs. Expected-loss outputs retain the snapshot and residual-dependence limitations from the loss report. No capital assumptions or one-year-PD claims change.
 
 ## pd comparison
 
@@ -7605,11 +7738,11 @@ Compare the reference bundle, ANN PD alone, ANN loss components alone, and all-A
 | lgd | train | 19757 | 0.893671 | 9521301c |
 | lgd | validation | 22308 | 0.888369 | c160f33c |
 
-![Learning curves](../assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/temporal_learning_curves.png)
+![Learning curves](../assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b/temporal_learning_curves.png)
 
-![ANN comparison](../assets/figures/ann_experiments/c85319471ca849758abb207d833f973b/ann_comparison.png)
+![ANN comparison](../assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b/ann_comparison.png)
 
-MLflow experiment `lendingclub_ann_challengers`, batch `c85319471ca849758abb207d833f973b`. [Manifest and complete CSVs](../assets/results/ann_experiments/c85319471ca849758abb207d833f973b/manifest.json).
+MLflow experiment `lendingclub_ann_challengers`, batch `fd10b18ae1ca40f18ddcdec526bfcc6b`. [Manifest and complete CSVs](../assets/results/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b/manifest.json).
 
 References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html), [MLPRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html).
 
@@ -8079,10 +8212,10 @@ References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sk
 
 | component | model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc | native_validation_score | native_validation_example_count | native_validation_mean_absolute_error | native_validation_mean_squared_error | native_validation_root_mean_squared_error | native_validation_sum_on_target | native_validation_mean_on_target | native_validation_r2_score | native_validation_max_error | native_validation_mean_absolute_percentage_error |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| pd | ann_pd_32 | validation | 1091a4a37b754800ad18104257d4b725 | e759260f420a481684120cf6d701c43c | m-5f2e6ed6164f434dbdc7bb7ef6100b05 | ann_pd_validation | 722bf1f9 | 0.5 | 0.862675 | 140,236 | 19 | 22,306 | 9 | 162,570 | 0.862675 | 0.000403 | 0.321429 | 0.000806 | 0.383848 | 0.649693 | 0.213183 | — | — | — | — | — | — | — | — | — | — |
-| pd | ann_pd_64x32 | validation | ee318a27e75a489fabcbbc75bb4a0b0e | 2fa05064abc640efa7b08405fc0c0a4a | m-f5ea9eb8c0cc4d40b425c85077f15e43 | ann_pd_validation | 722bf1f9 | 0.5 | 0.862736 | 140,250 | 5 | 22,310 | 5 | 162,570 | 0.862736 | 0.000224 | 0.5 | 0.000448 | 0.383005 | 0.651546 | 0.214436 | — | — | — | — | — | — | — | — | — | — |
-| ead | ann_ead_32x16 | — | 2d2f23e7ee094b0a8994ca4f24bd80a7 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | -0.022078 | 22,308 | 0.203652 | 0.059613 | 0.244158 | 12,729.808506 | 0.570639 | -0.022078 | 0.761891 | 2.577918 |
-| lgd | ann_lgd_32x16 | — | 32eaf343019649388d06d69767bd485c | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | -0.082298 | 22,308 | 0.082214 | 0.015849 | 0.125893 | 19,817.742847 | 0.888369 | -0.082298 | 0.926943 | 187,133,817,827.799316 |
+| pd | ann_pd_32 | validation | 91bc7259812b46e88b9e4eb1e2caeac5 | 50b94b7f150b4293afdb3426fbb08cdd | m-37e9f607d5a2447eab15bb653594dedd | ann_pd_validation | 722bf1f9 | 0.5 | 0.862675 | 140,236 | 19 | 22,306 | 9 | 162,570 | 0.862675 | 0.000403 | 0.321429 | 0.000806 | 0.383848 | 0.649693 | 0.213183 | — | — | — | — | — | — | — | — | — | — |
+| pd | ann_pd_64x32 | validation | 9e7d30ce85544671816d6ad212467d1d | 7e960fa6411e4f31ae9d4d2c0103b384 | m-b3feca10428740fabe23a618de5d9c1c | ann_pd_validation | 722bf1f9 | 0.5 | 0.862736 | 140,250 | 5 | 22,310 | 5 | 162,570 | 0.862736 | 0.000224 | 0.5 | 0.000448 | 0.383005 | 0.651546 | 0.214436 | — | — | — | — | — | — | — | — | — | — |
+| ead | ann_ead_32x16 | — | 3c4e39f1bd9d4c92b53a527747440824 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | -0.022078 | 22,308 | 0.203652 | 0.059613 | 0.244158 | 12,729.808506 | 0.570639 | -0.022078 | 0.761891 | 2.577918 |
+| lgd | ann_lgd_32x16 | — | 81e0256dc7ea49f18c05ddab7b3f7775 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | -0.082298 | 22,308 | 0.082214 | 0.015849 | 0.125893 | 19,817.742847 | 0.888369 | -0.082298 | 0.926943 | 187,133,817,827.799316 |
 
 ### Full ANN manifest
 
@@ -8091,7 +8224,7 @@ References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sk
   "status": "complete",
   "experiment_name": "lendingclub_ann_challengers",
   "experiment_id": "5",
-  "batch_run_id": "c85319471ca849758abb207d833f973b",
+  "batch_run_id": "fd10b18ae1ca40f18ddcdec526bfcc6b",
   "features": [
     "loan_amnt",
     "annual_inc",
@@ -8132,16 +8265,16 @@ References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sk
   "seed": 42,
   "selected_model": "",
   "model_uris": {
-    "ann_pd_32": "models:/m-5f2e6ed6164f434dbdc7bb7ef6100b05",
-    "ann_pd_64x32": "models:/m-f5ea9eb8c0cc4d40b425c85077f15e43",
-    "ann_ead_32x16": "models:/m-f7e64da1626c489faf8250f5b4ffe01b",
-    "ann_lgd_32x16": "models:/m-5618ceae85104e4e84bc0ddb622bdb48"
+    "ann_pd_32": "models:/m-37e9f607d5a2447eab15bb653594dedd",
+    "ann_pd_64x32": "models:/m-b3feca10428740fabe23a618de5d9c1c",
+    "ann_ead_32x16": "models:/m-4d7f18049b7d4e099af7c8a290109fab",
+    "ann_lgd_32x16": "models:/m-92b5b7891e7f4b7d9208da5fdfcf7873"
   },
   "run_ids": {
-    "ann_pd_32": "e759260f420a481684120cf6d701c43c",
-    "ann_pd_64x32": "2fa05064abc640efa7b08405fc0c0a4a",
-    "ann_ead_32x16": "a73f9f15d4ea41ff9e659a71feeb9bd9",
-    "ann_lgd_32x16": "c963c1714676496f8375442ddfad4f54"
+    "ann_pd_32": "50b94b7f150b4293afdb3426fbb08cdd",
+    "ann_pd_64x32": "7e960fa6411e4f31ae9d4d2c0103b384",
+    "ann_ead_32x16": "de95763f88ea477eb9a9dbfb36f4be2f",
+    "ann_lgd_32x16": "c3d464dae8f243a99c47d0238de79fa7"
   },
   "versions": {
     "scikit-learn": "1.9.1",
@@ -8159,21 +8292,21 @@ References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sk
     "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
   },
   "raw_source_sha256": "3eae03c28fd9d2e8a076ebeb73507e8d4d0f44d90500decdb0936e0933d1f36a",
-  "pd_reference_batch_id": "72061e0a7a1e4d68addcc79a2aae631d",
-  "loss_reference_batch_id": "30cfdd9eb8ef4720b9e4606c094c5c47",
+  "pd_reference_batch_id": "6ccea4b79b8343cd971273181d93f680",
+  "loss_reference_batch_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
   "pd_incumbent_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "loss_reference_bundle_sha256": "1082067bb0b813d60660234a4ca836ee57f8060529bf8cde217b767ef76f38b6",
   "epoch_selection": "fit 2011-2012; stop on 2013 AUC or bounded MAE; refit 2011-2013 for fixed selected epochs",
-  "model_selection": "2014 average precision for PD, bounded MAE for each loss component",
+  "model_selection": "2014 average precision for charge-off classification, bounded MAE for each loss component",
   "test_2015_read": false,
   "data_previously_explored": true,
   "single_seed_research": true,
   "incumbent_replaced": false,
   "capital_scope_changed": false,
-  "result_directory": "assets/results/ann_experiments/c85319471ca849758abb207d833f973b",
-  "model_directory": "models/ann_experiments/c85319471ca849758abb207d833f973b",
-  "figure_directory": "assets/figures/ann_experiments/c85319471ca849758abb207d833f973b",
-  "completed_at_utc": "2026-11-09T00:44:00.751096+00:00",
+  "result_directory": "assets/results/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "model_directory": "models/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "figure_directory": "assets/figures/ann_experiments/fd10b18ae1ca40f18ddcdec526bfcc6b",
+  "completed_at_utc": "2026-11-11T20:57:23.663813+00:00",
   "selected_ann_pd": "ann_pd_64x32",
   "temporal_settings": {
     "ann_pd_32": {
@@ -8295,24 +8428,24 @@ References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sk
       }
     }
   },
-  "execution_script_sha256": "fe0fe4d87b468d9e3902a464d4a038a2bd04d43549d63ea4a9393e3b7810f0c7",
+  "execution_script_sha256": "885fd06d6f63b784c0e6f513e6e3463a58e80e113c6bf078638f107156d74067",
   "source_sha256": {
-    "scripts/11_ann_experiments.py": "fe0fe4d87b468d9e3902a464d4a038a2bd04d43549d63ea4a9393e3b7810f0c7",
+    "scripts/11_ann_experiments.py": "885fd06d6f63b784c0e6f513e6e3463a58e80e113c6bf078638f107156d74067",
     "util/ann.py": "a2350788ed70f83a2fad4a12916f78a9b598b999731b5486b605ddadef9df56e",
     "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
-    "util/basel.py": "e088c687fa14a1e2438cc92ea48d1dc5c1c9d500b5bb61f6c8d1df0a55dcedcd",
+    "util/basel.py": "0c64a313abbd995135b721be5cd16ce627b88ccce70b806a6ffe1d4fac701354",
     "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
     "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825"
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
   "results_sha256": {
     "loss_metrics.csv": "35f0082848b69ece564371d80ad0bce4313dfda7f386d72f8099503606f631cb",
-    "pd_comparison.csv": "2a8e7251d57874f893ed33223ad6a4e9a7f659ae9663295533c3a1e2c252aa14",
+    "pd_comparison.csv": "14dfdfc5ff841ddedf7618d0a73639e53eaea77b6efba13ad8ea267ae64b30f2",
     "pd_metrics.csv": "e9e104ed509477d8915f53746f2628b73b94ca4e4e22c007f4cf58d12a8133fa",
     "loss_comparison.csv": "74ed8eba4b45f149209fb6e1a3d1ee6e717be0ccabfca4761ed071e6534cce00",
     "portfolio_loss_comparison.csv": "108d7fc89c99424bd0b4a240f79ccb57e107eecdc9eb5013a51715e7d21a8bf9",
     "dataset_roles.csv": "87b72a4650d23ccdcf25b4fbc6df3faff06228cc3dd2d4a28edd58bf70cdf6a0",
-    "native_evaluations.csv": "10f204035c7b2e55dfb5fc731541ab56d670ce2e3f906d0b54c91f4e426229fe",
+    "native_evaluations.csv": "2030257afb3b8025f80f6029cfbacbad08d7bd7a164f75b4d1df48c5e47b742a",
     "learning_curves.csv": "0b0e29905b2b15b7f2be8fae15bd15d7b31fcbcd0c0caa84a169193dddcfd3b7"
   },
   "model_sha256": {
@@ -8339,44 +8472,6 @@ References: [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sk
 }
 ```
 
-### ANN experiment verification
-
-85 tests passed. Four ANN pipelines loaded and reproduced full validation predictions; all four native evaluations finished and matched aggregate metrics. Fixed epoch counts matched the saved neural-network learning curves. The ANN bundle reproduced the full 162,563-loan portfolio total. Incumbent artifacts are unchanged. The model-review HTML contains the ANN model tables and batch identifier.
-
-[Verification record](results/ann_experiments_verification.json).
-
-```json
-{
-  "completed_at_utc": "2026-11-09T01:02:42.890366+00:00",
-  "status": "passed",
-  "batch_run_id": "c85319471ca849758abb207d833f973b",
-  "execution_script_sha256": "fe0fe4d87b468d9e3902a464d4a038a2bd04d43549d63ea4a9393e3b7810f0c7",
-  "current_script_and_dependency_hashes_match_execution": true,
-  "tests_passed": 85,
-  "test_failures": 0,
-  "saved_ann_models": 4,
-  "native_evaluations_finished": 4,
-  "parent_dataset_inputs": 12,
-  "native_classifier_rows_each": 162570,
-  "native_regression_rows_each": 22308,
-  "full_logged_model_prediction_checks_passed": true,
-  "native_aggregate_metrics_match": true,
-  "fixed_epoch_counts_match_saved_learning_curves": true,
-  "ann_bundle_validation_loans_verified": 162563,
-  "ann_bundle_expected_loss_total_matches": true,
-  "incumbent_pd_unchanged": true,
-  "reference_loss_bundle_unchanged": true,
-  "test_2015_read": false,
-  "refreshed_loss_batch_id": "c072de3541e2496ab90ed6b7c2699137",
-  "refreshed_loss_current_script_matches_execution": true,
-  "refreshed_loss_numerical_results_match_reference": true,
-  "model_review_export_exit_code": 0,
-  "model_review_source_sha256": "bea383a1e1a10d395cbb3c9bb7590b86ad89ade3ce7829521de79fcd55da2fca",
-  "model_review_html_sha256": "d6a078b10db364a1a8244b729ae2921d9974cd866056581fd5a1812d53e226b1",
-  "model_review_html_bytes": 727675,
-  "ann_panel_model_table_and_batch_visible_in_html": true
-}
-```
 
 <!-- teaching-extract-audit-statistics -->
 
@@ -8732,9 +8827,9 @@ Univariate fits, observed outcome buckets and FICO-stratified slices give contex
 
 Keep the incumbent histogram-boosting model unchanged. The plain logistic baseline is not a WoE scorecard and this review does not certify monotonic economic interpretation. If a model requires monotonic delinquency/bankruptcy effects, that requirement must be enforced and validated in a separate constrained model; do not relabel conditional negative effects as beneficial borrower behaviour. Feature-removal comparisons and their paired interval show the discrimination trade-off, without turning 2014 into a fresh holdout.
 
-![Coefficient stability](../assets/figures/validation_review/da3c8ad1bee14f60ac5156def8b04b14/coefficient_stability.png)
+![Coefficient stability](../assets/figures/validation_review/ada1537bb4c646d9baadfa73f78e09c0/coefficient_stability.png)
 
-[Scikit-learn coefficient-interpretation guidance](https://scikit-learn.org/stable/auto_examples/inspection/plot_linear_model_coefficient_interpretation.html). MLflow experiment `lendingclub_coefficient_validation`, batch `da3c8ad1bee14f60ac5156def8b04b14`. [Full CSVs and manifest](../assets/results/validation_review/da3c8ad1bee14f60ac5156def8b04b14/manifest.json).
+[Scikit-learn coefficient-interpretation guidance](https://scikit-learn.org/stable/auto_examples/inspection/plot_linear_model_coefficient_interpretation.html). MLflow experiment `lendingclub_coefficient_validation`, batch `ada1537bb4c646d9baadfa73f78e09c0`. [Full CSVs and manifest](../assets/results/validation_review/ada1537bb4c646d9baadfa73f78e09c0/manifest.json).
 
 
 ### point_coefficients
@@ -11354,10 +11449,10 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
 
 | model | split | evaluation_run_id | source_training_run_id | model_id | dataset_name | dataset_digest | decision_threshold | score | true_negatives | false_positives | false_negatives | true_positives | example_count | accuracy_score | recall_score | precision_score | f1_score | log_loss | roc_auc | precision_recall_auc |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| full_reference_refit | validation | 7f24e08a9f494b0bbf7f9a20c83a8265 | 3c071a7d0e814feb94b9a016116a83cc | m-53287ff3af8a4fae8d6abd8cc8fe75fc | validation_full_reference_refit | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
-| drop_delinq | validation | e4537dccbebc413380e95fbeb9ce5876 | 0ef343b2e39b4b58b6fd4e06f6d25914 | m-69813e3bb3c444e98b01257ffdeed381 | validation_drop_delinq | d91416cf | 0.5 | 0.862699 | 140240 | 15 | 22306 | 9 | 162570 | 0.862699 | 0.000403 | 0.375 | 0.000806 | 0.384276 | 0.646438 | 0.21039 |
-| drop_bankruptcies | validation | 58db97db730d4b44aa3e28df9e6b4315 | 9a5e7cf73e1947a0bf3f61feb329522d | m-ef697bb4171747fab838daf6ad64e8aa | validation_drop_bankruptcies | 3a01e305 | 0.5 | 0.862687 | 140238 | 17 | 22306 | 9 | 162570 | 0.862687 | 0.000403 | 0.346154 | 0.000806 | 0.384219 | 0.646646 | 0.210386 |
-| drop_both | validation | d18017a808524e4080897f7d8c7d03e7 | ebd7d71b718646f39087b815cc9b62c8 | m-6e4911f4971b410a915c1665bb6eeccd | validation_drop_both | 813a6426 | 0.5 | 0.862687 | 140238 | 17 | 22306 | 9 | 162570 | 0.862687 | 0.000403 | 0.346154 | 0.000806 | 0.384179 | 0.646776 | 0.210494 |
+| full_reference_refit | validation | 52226b75d37a48ab887eb266c52a09f0 | 509ffe14e16d408aa1e9c996e13d439a | m-94ca40c13d0941b5b34bc5059c87c211 | validation_full_reference_refit | 722bf1f9 | 0.5 | 0.862705 | 140241 | 14 | 22306 | 9 | 162570 | 0.862705 | 0.000403 | 0.391304 | 0.000806 | 0.384341 | 0.646231 | 0.21028 |
+| drop_delinq | validation | df893c47f9b9482ba477b4a546ba130b | 71dd1a12654b48e2bfff0ab3ee29cc35 | m-3bc9aea630bf4000b03e4a48c0bf25d7 | validation_drop_delinq | d91416cf | 0.5 | 0.862699 | 140240 | 15 | 22306 | 9 | 162570 | 0.862699 | 0.000403 | 0.375 | 0.000806 | 0.384276 | 0.646438 | 0.21039 |
+| drop_bankruptcies | validation | 92fa8b51fae64e7bbe57444ddfeeaf53 | 80a60bca56bb4949b016ca1443322cbe | m-439ebdeab0d543a58ad35978ee5a3c6f | validation_drop_bankruptcies | 3a01e305 | 0.5 | 0.862687 | 140238 | 17 | 22306 | 9 | 162570 | 0.862687 | 0.000403 | 0.346154 | 0.000806 | 0.384219 | 0.646646 | 0.210386 |
+| drop_both | validation | d535dd8339314dd6b36dece3f9157398 | 47846acdc6cd44efaf5d3ee456be0947 | m-bec79d5bcb74443db5b370197afc307b | validation_drop_both | 813a6426 | 0.5 | 0.862687 | 140238 | 17 | 22306 | 9 | 162570 | 0.862687 | 0.000403 | 0.346154 | 0.000806 | 0.384179 | 0.646776 | 0.210494 |
 
 ### limitations
 
@@ -11376,7 +11471,7 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
 ```json
 {
   "status": "complete",
-  "batch_run_id": "da3c8ad1bee14f60ac5156def8b04b14",
+  "batch_run_id": "ada1537bb4c646d9baadfa73f78e09c0",
   "experiment_id": "7",
   "experiment_name": "lendingclub_coefficient_validation",
   "features": [
@@ -11418,16 +11513,16 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
   },
   "selected_model": "",
   "model_uris": {
-    "full_reference_refit": "models:/m-53287ff3af8a4fae8d6abd8cc8fe75fc",
-    "drop_delinq": "models:/m-69813e3bb3c444e98b01257ffdeed381",
-    "drop_bankruptcies": "models:/m-ef697bb4171747fab838daf6ad64e8aa",
-    "drop_both": "models:/m-6e4911f4971b410a915c1665bb6eeccd"
+    "full_reference_refit": "models:/m-94ca40c13d0941b5b34bc5059c87c211",
+    "drop_delinq": "models:/m-3bc9aea630bf4000b03e4a48c0bf25d7",
+    "drop_bankruptcies": "models:/m-439ebdeab0d543a58ad35978ee5a3c6f",
+    "drop_both": "models:/m-bec79d5bcb74443db5b370197afc307b"
   },
   "run_ids": {
-    "full_reference_refit": "3c071a7d0e814feb94b9a016116a83cc",
-    "drop_delinq": "0ef343b2e39b4b58b6fd4e06f6d25914",
-    "drop_bankruptcies": "9a5e7cf73e1947a0bf3f61feb329522d",
-    "drop_both": "ebd7d71b718646f39087b815cc9b62c8"
+    "full_reference_refit": "509ffe14e16d408aa1e9c996e13d439a",
+    "drop_delinq": "71dd1a12654b48e2bfff0ab3ee29cc35",
+    "drop_bankruptcies": "80a60bca56bb4949b016ca1443322cbe",
+    "drop_both": "47846acdc6cd44efaf5d3ee456be0947"
   },
   "seed": 42,
   "bootstrap_resamples": 200,
@@ -11439,15 +11534,15 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
     "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
     "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2"
   },
-  "reference_batch_id": "72061e0a7a1e4d68addcc79a2aae631d",
+  "reference_batch_id": "6ccea4b79b8343cd971273181d93f680",
   "protected_artifact_sha256": {
     "models/selected_model.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
-    "models/experiments/72061e0a7a1e4d68addcc79a2aae631d/logistic_regression.joblib": "c53ff5f083379466a9540692611fedb67c83e1a8b1b9dd81a604f8361b74872d"
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/logistic_regression.joblib": "7c70538e2601b9c56c448c5f12de9b51639c9f9fecae01c24c5a7a3ad42fe211"
   },
   "test_2015_read": false,
   "incumbent_replaced": false,
   "scorecard_claim": false,
-  "loss_scope_batch_id": "c072de3541e2496ab90ed6b7c2699137",
+  "loss_scope_batch_id": "bc7fbb6777cd4365b1a93a4d97fd872f",
   "regulatory_compliance_claim": false,
   "one_year_pd_estimated": false,
   "versions": {
@@ -11459,32 +11554,32 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
     "cloudpickle": "3.1.2",
     "mlflow": "3.18.0"
   },
-  "result_directory": "assets/results/validation_review/da3c8ad1bee14f60ac5156def8b04b14",
-  "model_directory": "models/validation_review/da3c8ad1bee14f60ac5156def8b04b14",
-  "figure_directory": "assets/figures/validation_review/da3c8ad1bee14f60ac5156def8b04b14",
-  "completed_at_utc": "2026-11-09T02:24:43.333970+00:00",
-  "execution_script_sha256": "ec53b3bba0240fbc3a9ce7f76477d8a23d98ce292a6db188602166ea69f48f65",
+  "result_directory": "assets/results/validation_review/ada1537bb4c646d9baadfa73f78e09c0",
+  "model_directory": "models/validation_review/ada1537bb4c646d9baadfa73f78e09c0",
+  "figure_directory": "assets/figures/validation_review/ada1537bb4c646d9baadfa73f78e09c0",
+  "completed_at_utc": "2026-11-11T21:08:32.542227+00:00",
+  "execution_script_sha256": "9dcc77aa279fa4a37ce6f5bff177f939e93a55b49aca202f512aff27aaee029a",
   "source_sha256": {
-    "scripts/13_review_validation.py": "ec53b3bba0240fbc3a9ce7f76477d8a23d98ce292a6db188602166ea69f48f65",
+    "scripts/13_review_validation.py": "9dcc77aa279fa4a37ce6f5bff177f939e93a55b49aca202f512aff27aaee029a",
     "util/coefficient_review.py": "39b14eb12b9a5ba8bc88221559f86077f1f11f752db272a644653a0c58bf8889",
     "util/modeling.py": "6e12d00dfe607844d008f5ad011e643dff776d33d69adc6e1eda01d96594b835",
     "sql/37_coefficient_outcomes.sql": "92730d9b8f5018d903d4bd8d729e6c8abddd3da859c2f022be9e2216fccd5b40",
     "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
-    "requirements.lock": "1bcb9cd2e3a18ae6f87b35f9403d2130c2c9da661a7322cc0f55e2b116e94825"
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
   },
   "results_sha256": {
     "year_coefficients.csv": "b5fdfa5052f4aad1301365a424a546e876c0a280f93aec8894a6d7333fc88f68",
     "ablation_auc_interval.csv": "39841779c5daa85d5306ab8bc691c96f5fd196165602c3bded7867161b4f42a0",
-    "coefficient_summary.csv": "ecd57cd9901b02df758bbe863ebbb33b0137b843749b6f83dfc5f9a7d7790cfe",
-    "univariate_vs_adjusted.csv": "2dc31b3507e787b44ded72e1b592ee004cb4cbff7c46cc9331af6e33772c8350",
+    "coefficient_summary.csv": "e92f0d6ae69ff5d8fad5dc6f7fe2a0e62ba2eed98038e970a4a0f33d4a14ea6f",
+    "univariate_vs_adjusted.csv": "df8bb46e3a855df07b07db0a6f4f7c089516ee7072e2cb77eea24081848a8c30",
     "training_outcome_buckets.csv": "b800a4de09db3a8ac7c5e19aca2cf0b209a3515856bf4ddb0d80d0a7423b34fd",
     "paired_ablation_auc_bootstrap.csv": "7e1d6ab70b0cfd91341bac678760355ff665384f54703ffd84b306a96f160986",
     "coefficient_bootstrap.csv": "c302220022a8c67f6a4a6f69d4db6ceebd45ecab5b97f812864b21e071a95411",
     "spearman_correlations.csv": "885a5d24894feadfea8f43175490e8d65c157c7e5200f1aeadcc6149ed95604e",
-    "native_evaluations.csv": "d80d84a65aba411b5f298a1cbab745ab6973e176b95be0a0617f8e75f02be525",
+    "native_evaluations.csv": "b93ac72737ebdac5416f9bca108ec8d06859288d7fa1af282a222dec9143dd60",
     "ablation_metrics.csv": "0b9c01c6c0024b3ee1d4ff7857b277a47b4e887cdf53e5bca0c5c7222516a710",
     "limitations.csv": "eb38fee5e1596b89f54b1970b0c9f15bdd77b7a6bf94b968069197b47a4208bc",
-    "point_coefficients.csv": "749bad59d77fc7199b788cf28b06ae107ffea3ee67ffdcf51ed9bcbccef9a022"
+    "point_coefficients.csv": "f145302c460db823e41f5ea0bad9f6a5bdf56ed5445db60b6eb2f527a83577c4"
   },
   "model_sha256": {
     "drop_both.joblib": "77e6780fe63ed76b265a8ef8aa1e892a4144d954b936aee7bdd8b6b4e1f4aee2",
@@ -11495,54 +11590,6 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
     "logistic_2011.joblib": "96272a7c025c2cad2888fb3851e6067384c62a7273c81c8b6e8ce3ecaafa989c",
     "drop_delinq.joblib": "453569d34f063b13e0c109613b738e3bfcf6105532a1a2cc21958a23769c0460"
   }
-}
-```
-
-### Validation gap verification
-
-93 tests passed with zero failures. All seven XGBoost pipelines use the frozen 2013-selected tree count and no final refit eval_set. Eleven local/logged model pairs reproduced their full 162,570-row 2014 predictions; all eleven native evaluations finished and matched aggregate metrics. All 200 pipeline bootstrap refits (2,200 numeric coefficient rows) and their summaries were checked. The model-review HTML contains both new batch IDs. Current source hashes match the executed training code, and protected incumbent hashes are unchanged. No 2015 rows were read.
-
-[Review summary](../docs/validation_gaps.md); [machine-readable verification](results/validation_gaps_verification.json).
-
-```json
-{
-  "completed_at_utc": "2026-11-09T02:33:18.171062+00:00",
-  "status": "passed",
-  "xgboost_batch_id": "2d9a9d65b9004aa1ade7337465576f17",
-  "coefficient_review_batch_id": "da3c8ad1bee14f60ac5156def8b04b14",
-  "xgboost_script_sha256": "344b1f86507ede3407dffd69b5a99c69d52b222357263f21f39031a3787b9cc4",
-  "coefficient_script_sha256": "ec53b3bba0240fbc3a9ce7f76477d8a23d98ce292a6db188602166ea69f48f65",
-  "current_source_and_artifact_hashes_match_execution": true,
-  "tests_passed": 93,
-  "test_failures": 0,
-  "stopping_fit_years": [
-    2011,
-    2012
-  ],
-  "stopping_year": 2013,
-  "refit_years": [
-    2011,
-    2012,
-    2013
-  ],
-  "selection_year": 2014,
-  "refit_used_eval_set": false,
-  "frozen_tree_counts_verified": 7,
-  "xgboost_native_evaluations_finished": 7,
-  "coefficient_native_evaluations_finished": 4,
-  "full_2014_predictions_reproduced_for_logged_models": 11,
-  "validation_rows_each": 162570,
-  "bootstrap_pipeline_refits": 200,
-  "bootstrap_numeric_coefficients": 2200,
-  "bootstrap_summary_recomputed": true,
-  "incumbents_unchanged": true,
-  "test_2015_read": false,
-  "one_year_pd_estimated": false,
-  "regulatory_compliance_claim": false,
-  "model_review_export_exit_code": 0,
-  "model_review_source_sha256": "14afd05534301142a4c1db3bb49951827d186fcb15f0ff8f35915b018fa63f2c",
-  "model_review_html_sha256": "1e5d29c2d9c0e471d99d5cdaf46f97653ab0d6bc5106f503522b7d4c8e8d9592",
-  "both_new_batches_visible_in_html": true
 }
 ```
 
@@ -11700,17 +11747,17 @@ The 0.5 comparison threshold can produce no flags at all. Zero flag/TPR/FPR spre
 | validation | frozen_validation_f1 | missingness | Any_missing | 9717 | 1957 | 7760 | 6599 | 1549 | 5050 | 408 | 2710 | 0.2014 | 0.18461 | -0.016789 | 0.157466 | 0.60904 | 0.266703 | 0.679119 | 0.791518 | 0.650773 | 0.208482 | 0.234733 | True | supported | 0.147853 | 0.193544 | 0.209491 | 0.669768 | 0.688328 | 0.772957 | 0.808936 | 0.640094 | 0.661303 | 0.017751 |
 | validation | frozen_validation_f1 | missingness | Complete | 152853 | 20358 | 132495 | 52121 | 10656 | 41465 | 9702 | 91030 | 0.133187 | 0.128407 | -0.00478 | 0.111636 | 0.653124 | 0.21003 | 0.340988 | 0.523431 | 0.312955 | 0.476569 | 0.204447 | True | supported | 0.147853 | 0.131493 | 0.134899 | 0.338615 | 0.343368 | 0.516566 | 0.530286 | 0.310464 | 0.315457 | 0.005497 |
 
-![feature importance](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/feature_importance.png)
+![feature importance](../assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/feature_importance.png)
 
-![partial dependence](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/partial_dependence.png)
+![partial dependence](../assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/partial_dependence.png)
 
-![local examples](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/local_examples.png)
+![local examples](../assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/local_examples.png)
 
-![segment disparities](../assets/figures/interpret_bias/86fe262241464da48d8c126660801e05/segment_disparities.png)
+![segment disparities](../assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/segment_disparities.png)
 
 Native InterpretML interactive plots are saved beside the PNG/SVG figures. Their category values are display codes; readable values and the codebook are in the CSV/manifest. Interactive HTML uses a Plotly CDN; static images and tables work offline.
 
-MLflow experiment `lendingclub_interpretability_bias`, batch `86fe262241464da48d8c126660801e05`. [Manifest and complete CSVs](../assets/results/interpret_bias/86fe262241464da48d8c126660801e05/manifest.json). The main model-review notebook displays these results without refitting.
+MLflow experiment `lendingclub_interpretability_bias`, batch `25ccff7634a34d3c893b37ea8ce0499d`. [Manifest and complete CSVs](../assets/results/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d/manifest.json). The main model-review notebook displays these results without refitting.
 
 References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKernel.html), [InterpretML PartialDependence](https://interpret.ml/docs/python/api/PartialDependence.html), [Fairlearn fairness-assessment guidance](https://fairlearn.org/v0.15/user_guide/assessment/perform_fairness_assessment.html).
 
@@ -17104,12 +17151,12 @@ References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKe
 ```json
 {
   "status": "complete",
-  "batch_run_id": "86fe262241464da48d8c126660801e05",
+  "batch_run_id": "25ccff7634a34d3c893b37ea8ce0499d",
   "experiment_name": "lendingclub_interpretability_bias",
   "experiment_id": "8",
   "source_model_name": "hist_gradient_boosting",
-  "source_model_uri": "models:/m-c0cd1df22fa24744b5d207306fd84ac1",
-  "source_model_run_id": "2bb4ea9b1159440bb0b51b66925247f3",
+  "source_model_uri": "models:/m-dc3900fe2e2e4bf093dea10d7c5250bc",
+  "source_model_run_id": "f64a19bc843546e380a742697cf0bf26",
   "source_model_sha256": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
   "features": [
     "loan_amnt",
@@ -17206,10 +17253,10 @@ References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKe
     "mlflow": "3.18.0",
     "duckdb": "2.0.0"
   },
-  "result_directory": "assets/results/interpret_bias/86fe262241464da48d8c126660801e05",
-  "figure_directory": "assets/figures/interpret_bias/86fe262241464da48d8c126660801e05",
-  "model_directory": "models/interpret_bias/86fe262241464da48d8c126660801e05",
-  "completed_at_utc": "2026-11-10T00:10:54.498974+00:00",
+  "result_directory": "assets/results/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d",
+  "figure_directory": "assets/figures/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d",
+  "model_directory": "models/interpret_bias/25ccff7634a34d3c893b37ea8ce0499d",
+  "completed_at_utc": "2026-11-11T21:11:52.688443+00:00",
   "explanation_settings": {
     "method": "InterpretML ShapKernel and PartialDependence; permutation importance as a cross-check",
     "explained_quantity": "incumbent positive-class probability, scalar output; identity link",
@@ -17234,7 +17281,7 @@ References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKe
     "permutation_rows": 10000,
     "permutation_repeats": 5,
     "permutation_sample_baseline_auc": 0.6611355243970154,
-    "elapsed_seconds": 22.31325212199954,
+    "elapsed_seconds": 84.43330622899884,
     "category_codebook": {
       "home_ownership": [
         "MORTGAGE",
@@ -17264,9 +17311,9 @@ References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKe
   "overall_metrics_match_reference": true,
   "explanation_additivity_verified": true,
   "group_population_reconciliation_verified": true,
-  "execution_script_sha256": "ce9c180ffb31ad4ed1b4e1fd4df4e81f6fb42a8351aae4aaff4c6da67b10c1f3",
+  "execution_script_sha256": "8d865a59e8d6c1bc1f87cf7e5c1e126d01b5630498a0dff77e639e6ac096f301",
   "source_sha256": {
-    "scripts/14_interpret_bias.py": "ce9c180ffb31ad4ed1b4e1fd4df4e81f6fb42a8351aae4aaff4c6da67b10c1f3",
+    "scripts/14_interpret_bias.py": "8d865a59e8d6c1bc1f87cf7e5c1e126d01b5630498a0dff77e639e6ac096f301",
     "util/interpretation.py": "c54249dd5897f45cd48cc80d59f9085e8fcfe42f8443c339c76f00431b11cdff",
     "util/explanation_input.py": "55de10ed36773bd1d99e75dd6e860489841f12fc79296e70fbf57fd858132346",
     "util/segment_audit.py": "7d25b59c4392d3f1f61f9c38c9ebe12bf3416cac6868459e8c85974013440aff",
@@ -17300,10 +17347,3 @@ References: [InterpretML ShapKernel](https://interpret.ml/docs/python/api/ShapKe
   }
 }
 ```
-
-
-### Final interpretation verification
-
-101 tests passed. Source, input, result and explanation sample hashes match the completed run. The incumbent is unchanged. Group populations, support rules, Wilson intervals, supported-group spreads, local predictions, SHAP reconstruction and four numeric PDP curves were independently checked. The notebook export contains the latest batch. MLflow has one finished parent, two finished children and three dataset inputs.
-
-[Verification record](results/interpret_bias_verification.json).
