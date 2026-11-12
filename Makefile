@@ -102,6 +102,12 @@ auc: setup
 
 loss: setup
 	$(PYTHON) scripts/09_basel_loss_experiment.py
+	$(PYTHON) scripts/26_report_loss_limitations.py
+	$(PYTHON) -m marimo export html notebooks/10_model_review.py -o docs/model_review.html --no-include-code
+
+.PHONY: loss-report
+loss-report:
+	$(PYTHON) scripts/26_report_loss_limitations.py
 	$(PYTHON) -m marimo export html notebooks/10_model_review.py -o docs/model_review.html --no-include-code
 
 ann: setup
@@ -110,3 +116,23 @@ ann: setup
 
 full: setup
 	$(PYTHON) scripts/run_project.py --include-auc --include-ann $(if $(RAW_DATA),--raw-data "$(RAW_DATA)")
+
+.PHONY: bureau-review bureau-report
+bureau-review: setup
+	$(PYTHON) scripts/27_review_bureau_temporal.py
+	$(PYTHON) scripts/28_report_bureau_temporal.py
+	$(PYTHON) -m marimo export html notebooks/10_model_review.py -o docs/model_review.html --no-include-code
+
+bureau-report:
+	$(PYTHON) scripts/28_report_bureau_temporal.py
+	$(PYTHON) -m marimo export html notebooks/10_model_review.py -o docs/model_review.html --no-include-code
+
+.PHONY: scorecard scorecard-report
+scorecard: setup
+	$(PYTHON) scripts/29_train_scorecards.py
+	$(PYTHON) scripts/30_report_scorecards.py
+	$(PYTHON) -m marimo export html notebooks/10_model_review.py -o docs/model_review.html --no-include-code
+
+scorecard-report:
+	$(PYTHON) scripts/30_report_scorecards.py
+	$(PYTHON) -m marimo export html notebooks/10_model_review.py -o docs/model_review.html --no-include-code

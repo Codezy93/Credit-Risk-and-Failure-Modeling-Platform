@@ -32,6 +32,21 @@ On charged-off loans only, snapshot EAD = funded amount − principal received; 
 
 Snapshot principal and recoveries are not event-time EAD or discounted economic loss. Recovery dates, indirect costs and unresolved recovery tails are unavailable. The fitted sample therefore has retrospective selection and recovery-maturity limitations.
 
+## Selected components and limitations
+
+The selected LGD is a **constant training-cohort loan-average snapshot LGD of
+0.893671383 (89.37%)**, not a borrower-specific severity model. The validation
+observed mean is 0.888369323 (88.84%); it is not the fitted constant.
+The selected EAD boosting model has validation MAE 0.202030 and R² 0.004710,
+only a 0.65% MAE improvement over the training-mean baseline. LGD boosting has
+worse MAE than the constant and negative validation R².
+
+The [loss-model limitations report](loss_model_limitations.md) compares all four
+components against their mean baselines and explains the consequences for loss
+composition. Selected components have −3.23% portfolio-total error, versus −2.44%
+for the mean/mean baseline. This is an illustrative lifetime snapshot-loss
+composition, not demonstrated accurate loan-level severity or regulatory EL.
+
 ## Component models
 
 Mean baselines and fixed gradient-boosting regressors use the same 13 origination predictors. All preprocessing is fitted on eligible training defaults only. Outcome fields form targets and dollar diagnostics; they never enter classifier or loss-proxy predictor matrices. Predictions are explicitly bounded to [0,1] for composition; raw regression errors and clipping counts are also saved. Native MLflow regression evaluations use raw predictions. Selection uses validation bounded MAE.

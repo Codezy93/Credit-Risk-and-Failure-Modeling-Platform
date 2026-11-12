@@ -1,0 +1,4 @@
+evaluation_year,auc_difference_expanded_minus_base13,lower_95,upper_95,scope
+2013,0.02567082713288682,0.021676581884515742,0.02953332532880868,paired fixed-model cohort bootstrap; excludes fitting/selection uncertainty
+2014,0.027133538729946505,0.024617231571255477,0.029597732181947316,paired fixed-model cohort bootstrap; excludes fitting/selection uncertainty
+2015,0.031818528183535366,0.030031406144026242,0.033494980102120986,paired fixed-model cohort bootstrap; excludes fitting/selection uncertainty

@@ -1,0 +1,20 @@
+{
+  "scope": "General workflow evidence only; no field-level timestamp certification for the Kaggle CSV",
+  "sources": [
+    {
+      "id": "sec_loan_request_credit_report",
+      "url": "https://www.sec.gov/Archives/edgar/data/1409970/000095012309014424/c86710exv10w11.htm",
+      "location": "Borrower credit-report authorization in the filed program agreement exhibits",
+      "supports": "A credit report is obtained for a loan request.",
+      "does_not_establish": "The measurement time or update policy of individual accepted-loan CSV fields."
+    },
+    {
+      "id": "sec_2019_periodic_reports",
+      "url": "https://www.sec.gov/Archives/edgar/data/1409970/000140997019000563/lc33119ex101.htm",
+      "location": "April 2019 Borrower Agreement, section 6",
+      "supports": "The agreement authorizes reports during application and periodically during the loan relationship.",
+      "does_not_establish": "That any particular 2011-2015 CSV value was refreshed; 2019 terms do not certify earlier snapshot lineage."
+    }
+  ],
+  "promotion_requirement": "Issuer/source-certified mapping for every input to its measurement timestamp, availability before the intended scoring time, and immutable/update behavior for this exact extract; additional temporal stability and calibration evidence."
+}

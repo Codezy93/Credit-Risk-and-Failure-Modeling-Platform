@@ -1,0 +1,27 @@
+model,feature,train_iv,selected,direction,direction_basis
+woe_unconstrained,loan_amnt,0.0,False,ascending,predeclared domain constraint
+woe_unconstrained,annual_inc,0.09483069717984728,True,descending,predeclared domain constraint
+woe_unconstrained,dti,0.039294588640098854,True,ascending,predeclared domain constraint
+woe_unconstrained,revol_util,0.03143107282036088,True,ascending,predeclared domain constraint
+woe_unconstrained,revol_bal,0.012054842033769185,False,descending,training-IV choice between ascending/descending
+woe_unconstrained,open_acc,0.00018095153531740718,False,descending,training-IV choice between ascending/descending
+woe_unconstrained,delinq_2yrs,9.923196772481562e-05,False,ascending,predeclared domain constraint
+woe_unconstrained,pub_rec_bankruptcies,0.00019174468594695634,False,ascending,predeclared domain constraint
+woe_unconstrained,emp_length_years,0.012671862453773303,False,descending,predeclared domain constraint
+woe_unconstrained,fico_mid,0.12590987555410493,True,descending,predeclared domain constraint
+woe_unconstrained,credit_history_years,0.018025916601180962,False,descending,predeclared domain constraint
+woe_unconstrained,home_ownership,0.03335090877554845,True,ascending,training risk order
+woe_unconstrained,purpose,0.016133023738854925,False,ascending,training risk order
+woe_constrained,loan_amnt,0.0,False,ascending,predeclared domain constraint
+woe_constrained,annual_inc,0.09483069717984728,True,descending,predeclared domain constraint
+woe_constrained,dti,0.039294588640098854,True,ascending,predeclared domain constraint
+woe_constrained,revol_util,0.03143107282036088,True,ascending,predeclared domain constraint
+woe_constrained,revol_bal,0.012054842033769185,False,descending,training-IV choice between ascending/descending
+woe_constrained,open_acc,0.00018095153531740718,False,descending,training-IV choice between ascending/descending
+woe_constrained,delinq_2yrs,9.923196772481562e-05,False,ascending,predeclared domain constraint
+woe_constrained,pub_rec_bankruptcies,0.00019174468594695634,False,ascending,predeclared domain constraint
+woe_constrained,emp_length_years,0.012671862453773303,False,descending,predeclared domain constraint
+woe_constrained,fico_mid,0.12590987555410493,True,descending,predeclared domain constraint
+woe_constrained,credit_history_years,0.018025916601180962,False,descending,predeclared domain constraint
+woe_constrained,home_ownership,0.03335090877554845,True,ascending,training risk order
+woe_constrained,purpose,0.016133023738854925,False,ascending,training risk order

@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-11-11T23:50:21.916655+00:00",
+  "batch_run_id": "7e8db47185e94b90aeec59a0e9bdca57",
+  "verified_hash_counts": {
+    "input_sha256": 6,
+    "protected_sha256": 3,
+    "source_sha256": 8,
+    "results_sha256": 12,
+    "model_sha256": 2,
+    "dataset_sha256": 9
+  },
+  "mlflow_finished_runs": [
+    "7e8db47185e94b90aeec59a0e9bdca57",
+    "e6af28c681144dcab734e0ed24824f81",
+    "b782d67977e147a8954f8f3787274d24",
+    "cd123cbfd43748f0bbd6ff1811285cf5",
+    "73965b10db3a438c917416a6cdc70a9a",
+    "aa77bd93943b44298ec3b226254a7b82",
+    "b261484a22354702a5e0a15371380bca"
+  ],
+  "tests": {
+    "tests": 120,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "test_results_sha256": "86cffe069f928e229895fea4cf7997eb63366cebeee3dfc9331765c1a47de840",
+  "report_script_sha256": "fe0b2ac273cb773bcd9af10b03815e919a699407d38ec54bb5408c8b57728d7a",
+  "report_sha256": "b58efcc0d62aa2801632a4ab8b56311b02a45ad658900d8072de74e532718273",
+  "point_lookup_validation_exploratory_rows": 891192,
+  "incumbent_replaced": false,
+  "new_holdout": false,
+  "notebook_export": "passed"
+}

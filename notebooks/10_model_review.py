@@ -107,6 +107,19 @@ def _(component_metrics, duckdb, mo, root):
 
 
 @app.cell
+def _(loss_manifest, mo, root):
+    import json as _loss_report_json
+
+    _report = _loss_report_json.loads((root / "assets/results/loss_model_limitations.json").read_text())
+    assert _report["source_loss_batch"] == loss_manifest["batch_run_id"], "Run make loss-report for this loss batch."
+    _text = (root / "docs/loss_model_limitations.md").read_text()
+    _text = _text.replace("(risk_terminology.md)", "(risk_terminology/)")
+    _text = _text.replace("(basel_loss_experiment.md)", "(basel_loss_experiment/)")
+    mo.md(_text)
+    return
+
+
+@app.cell
 def _(loss_dir, loss_manifest, mo, pd, root):
     mo.vstack([mo.md("""## Lifetime snapshot-loss composition
 
@@ -329,6 +342,33 @@ def _(json, mo, pd, root):
     else:
         _recovery_output = mo.md("## Recovery and monitoring\n\nRun `make recovery-test` for measured evidence.")
     _recovery_output
+    return
+
+
+
+@app.cell
+def _(json, mo, root):
+    _review = json.loads((root / "assets/results/bureau_temporal_latest.json").read_text())
+    _text = (root / "docs/bureau_temporal_review.md").read_text()
+    assert _review["batch_run_id"] in _text, "Run make bureau-report for the current research batch."
+    _text = "\n".join(line for line in _text.splitlines() if not line.startswith("![Temporal stability"))
+    _text = _text.replace("(risk_terminology.md)", "(risk_terminology/)")
+    _text = _text.replace("(loss_model_limitations.md)", "(loss_model_limitations/)")
+    mo.vstack([mo.md(_text), mo.image(root / "assets/figures/bureau_temporal" /
+        _review["batch_run_id"] / "temporal_stability.png")])
+    return
+
+
+
+@app.cell
+def _(json, mo, root):
+    _scorecard = json.loads((root / "assets/results/scorecard_latest.json").read_text())
+    _text = (root / "docs/scorecard.md").read_text()
+    assert _scorecard["batch_run_id"] in _text, "Run make scorecard-report for the current batch."
+    _text = "\n".join(line for line in _text.splitlines() if not line.startswith("![Scorecard IV"))
+    _text = _text.replace("(risk_terminology.md)", "(risk_terminology/)")
+    mo.vstack([mo.md(_text), mo.image(root / "assets/figures/scorecard" /
+        _scorecard["batch_run_id"] / "scorecard_review.png")])
     return
 
 

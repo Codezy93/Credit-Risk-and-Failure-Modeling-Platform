@@ -148,6 +148,7 @@ def main():
             head, body = text.split("\n", 1)
             text = head + "\n\nTerminology: [lifetime charge-off probability, snapshot losses and capital scenarios](risk_terminology.md).\n" + body
         path.write_text(text)
+    execute("loss_limitations_report", [sys.executable, "scripts/26_report_loss_limitations.py"])
     execute("model_review_export", [sys.executable, "-m", "marimo", "export", "html",
         "notebooks/10_model_review.py", "-o", "docs/model_review.html", "--no-include-code"])
 

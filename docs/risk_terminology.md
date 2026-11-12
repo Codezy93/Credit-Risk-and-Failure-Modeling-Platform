@@ -34,7 +34,9 @@ a forward-looking regulatory expected-loss model.
 The selected LGD component is a training-mean baseline. The EAD regressor has
 little explanatory power. Their labels describe the quantities being
 approximated, not evidence of strong predictive performance. See the
-[component results](basel_loss_experiment.md).
+[component results](basel_loss_experiment.md) and
+[loss-model limitations](loss_model_limitations.md), which distinguish the fitted
+training mean from the validation observed mean.
 
 ## Illustrative capital scenarios
 

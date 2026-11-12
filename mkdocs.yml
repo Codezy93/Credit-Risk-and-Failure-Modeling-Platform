@@ -15,9 +15,12 @@ nav:
       - Model datasets: model_data.md
   - Models:
       - MLflow experiments: model_experiments.md
+      - WoE scorecard challengers: scorecard.md
       - XGBoost research: auc_improvement.md
+      - Bureau timing and temporal review: bureau_temporal_review.md
       - ANN experiments: ann_experiments.md
       - EAD, LGD and loss: basel_loss_experiment.md
+      - Loss-model limitations: loss_model_limitations.md
       - InterpretML and bias analysis: interpret_bias.md
   - Validation:
       - Diagnostics and calibration: validation_hardening.md

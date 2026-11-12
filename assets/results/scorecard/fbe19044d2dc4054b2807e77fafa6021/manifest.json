@@ -1,0 +1,133 @@
+{
+  "status": "complete",
+  "batch_run_id": "fbe19044d2dc4054b2807e77fafa6021",
+  "experiment_id": "13",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "numeric_directions": {
+    "loan_amnt": "ascending",
+    "annual_inc": "descending",
+    "dti": "ascending",
+    "revol_util": "ascending",
+    "fico_mid": "descending",
+    "credit_history_years": "descending",
+    "emp_length_years": "descending",
+    "delinq_2yrs": "ascending",
+    "pub_rec_bankruptcies": "ascending"
+  },
+  "iv_min": 0.02,
+  "smoothing": 0.5,
+  "regular_bins": "at most six quantile/discrete bins, then adjacent support/monotonic pooling",
+  "minimum_support": "5% nonmissing training rows and 20 examples per class where mergeable; missing separate",
+  "categorical_bins": "rare training levels grouped, then ordered by training event rate; unseen WoE=0",
+  "woe_definition": "log(smoothed good share / smoothed bad share); expected logistic coefficient <= 0",
+  "scaling": {
+    "base_points": 600,
+    "good_to_bad_odds": 50,
+    "pdo": 20,
+    "rounding": false
+  },
+  "training_years": [
+    2011,
+    2012,
+    2013
+  ],
+  "validation_years": [
+    2014
+  ],
+  "exploratory_years": [
+    2015
+  ],
+  "binning_iv_coefficients_fit_on_train_only": true,
+  "new_holdout": false,
+  "incumbent_replaced": false,
+  "regulatory_approval": false,
+  "model_uris": {
+    "woe_unconstrained": "models:/m-015843af9f4b4802be99d8ca9c3828cf",
+    "woe_constrained": "models:/m-21e037a66fed4fffaccc8d4c1e2b797d"
+  },
+  "run_ids": {
+    "woe_unconstrained": "add491365cfd4d6ab70b36286c3e33e5",
+    "woe_constrained": "d372c7172cd4437e94bad2359e23518a"
+  },
+  "selected_model": "",
+  "result_directory": "assets/results/scorecard/fbe19044d2dc4054b2807e77fafa6021",
+  "model_directory": "models/scorecard/fbe19044d2dc4054b2807e77fafa6021",
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2",
+    "data/clean/modeling/exploratory_test.parquet": "7d98e6c095b38287a1599aa241a061d8ca786a5894370e2ab6a4aeb16a553564",
+    "data/clean/modeling/exploratory_test_metadata.parquet": "b94fdee9a5ae2d64badf43666f53d8f4f3c0c2c5f5100934a3f6aaeb15952c60"
+  },
+  "protected_sha256": {
+    "models/selected_model.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/logistic_regression.joblib": "7c70538e2601b9c56c448c5f12de9b51639c9f9fecae01c24c5a7a3ad42fe211",
+    "assets/results/model_experiments_latest.json": "9d9cb3ae56e63d333d695fc74b8f931f19c481c09e962dc647f57e74f68b968f"
+  },
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "mlflow": "3.18.0",
+    "cloudpickle": "3.1.2"
+  },
+  "completed_at_utc": "2026-11-11T23:26:26.784190+00:00",
+  "source_sha256": {
+    "scripts/29_train_scorecards.py": "668bcde43b3d3798ef2f71aca6fd0999486d65f2599c80c39ceeb0ee5ac98489",
+    "util/scorecard.py": "ca51a2bc1d77125e1c02b9ee492b71e4562b40d42357273d7a7bfcc743f06974",
+    "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/mlflow_evaluation.py": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
+    "util/risk_scope.py": "c46036e7a41fb27951656c4a5d8f5fffe3981af9cde083daa64be153d8745a36",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "execution_script_sha256": "668bcde43b3d3798ef2f71aca6fd0999486d65f2599c80c39ceeb0ee5ac98489",
+  "results_sha256": {
+    "woe_unconstrained_exploratory_test_bootstrap.csv": "69e8e30f3b8fcc78b5d5db2875bbb4557a67c24e1ee63d43bd093386603d88e9",
+    "woe_constrained_exploratory_test_bootstrap.csv": "ac98a2b48f28366b39da642613e10b4479a6416dbab41b6e31131f86bcf960a2",
+    "iv_screen.csv": "56ce432a7d1f99aba6c8b838fc7b4e045d739b3424bd93162b9e345fa780ff1e",
+    "woe_unconstrained_validation_bootstrap.csv": "a73fbb15ba470469ae089b5708a51634f63a8a06955983116936f05210b221bc",
+    "paired_auc_intervals.csv": "294ea9cebd0ea54eab1e68f8e6cc39f003815ee21c82512cbdb2c69fb2ba3261",
+    "bin_outcomes_by_split.csv": "50f047b9945918cb0821a373cc5bffd97281ae8c9540fb103a5f27528d3a024d",
+    "binning_tables.csv": "1ae84b824b946b27bcd26be013d1e62a62495696b2fd0be58a346b8787dce0ce",
+    "coefficients.csv": "736e729fede6dad4083009265864bd730099316e575d97e6ae0bdfc494eee600",
+    "metrics.csv": "2f7e34e3c15af9c845ac2f8359f83e8f07c1aed7e2ce1133edf02ff897088810",
+    "points_table.csv": "7fdc51d7a311ec1bdbf854492a19374e2a8ad42cd373ece489cbdb1852af2951",
+    "native_evaluations.csv": "2be0f3776c4f3daf5a48eb401071b93caa76c1ef862414d2403daf061c056c02",
+    "woe_constrained_validation_bootstrap.csv": "f59d26f576be9d4b3bda886baedf61fea96111a11016df8e94d2634acb505223"
+  },
+  "model_sha256": {
+    "woe_unconstrained.joblib": "4dc6401a05f8f9e38dfdc22646b7574535c2f9fe33ca2b9bb4fb5c7414770102",
+    "woe_constrained.joblib": "4736d3e300f4ad25e92e985e005427eaf3ccf8b697e79ecd471fcbb26f66ea42"
+  },
+  "dataset_sha256": {
+    "validation.parquet": "712e7f7796ba1ab9195336ae8cf8c5d5d950be9bb3db0fbfb082c0b14306a133",
+    "exploratory_test.parquet": "ecb44a2f5b6555f13ffa62f6e477db4e9fd544396c92cf7f890a0ac587fb74ed",
+    "woe_constrained_train_scores.parquet": "fa35e9c105107a235712737288bebb2b8f435c691e5fb94affdea094c5125fac",
+    "train.parquet": "a8991d6ed3f598a627be6ecd646ad58e4765896e6017b7f0a805269633cc8201",
+    "woe_unconstrained_train_scores.parquet": "6b58fc113b5f9e466c0d264876cca433e5cbe251ca2b010737cb31b069cd92ea",
+    "woe_constrained_validation_scores.parquet": "a4f51d8a6472cd338cd32d8782107356ef66c64e2133b13291615d175a41426a",
+    "woe_unconstrained_exploratory_test_scores.parquet": "d8d25e23fabc41f0a54afa4120ef524ad3b45ab031bb1088d8f534ffa521dfaf",
+    "woe_unconstrained_validation_scores.parquet": "561b83d59fd5f379bcdb4e5d2bb6156cdada61e7665c3458feb85b41759f854a",
+    "woe_constrained_exploratory_test_scores.parquet": "db9c41cf1fead91206592259d80c8d9ae871441880dd29fb61927c9fb62621bb"
+  },
+  "scoring_checks": "full-cohort saved-model predictions and additive point sums verified; bins unchanged during inference"
+}

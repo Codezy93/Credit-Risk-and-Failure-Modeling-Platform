@@ -279,3 +279,45 @@ full-threshold KS, with source hashes tying them to the metric implementation.
 Each refresh writes a verification record, source/input fingerprints and JUnit
 results under `assets/results/refresh/<timestamp>/`. Local execution logs and the
 previous selected model are retained under ignored `models/refresh/<timestamp>/`.
+
+## Loss-component reporting update
+
+`make loss-report` reads the existing loss-batch metrics and saved mean models;
+it does not fit models or rewrite experiment CSVs. It verifies the constants
+against training means, generates the [component comparison and limitations](loss_model_limitations.md),
+updates statistics and re-exports the model-review notebook. The loss/full/refresh
+workflows also generate this report. The reporting record in
+`assets/results/loss_model_limitations.json` pins its input batch and hashes.
+Earlier experiment verification records retain the source hashes executed then;
+this reporting update is not a new training run.
+
+## Expanded bureau timing and temporal review
+
+The [research review](bureau_temporal_review.md) uses predeclared 2013/2014/2015
+windows and frozen historical parameters, with nine saved models and nine native
+MLflow evaluations. These are explored cohorts with hindsight-informed settings,
+not independent holdouts or label-availability backtests. All added fields remain
+uncertified for exact as-of timing, so the incumbent is unchanged.
+
+The full local suite passed **113 tests**, including Spark and the new split guards.
+Run `make bureau-review` with existing raw/clean data. The manifest pins inputs,
+source, results, exported datasets and model hashes. `make bureau-report` uses
+saved outputs only. Earlier refresh records retain their original execution hashes.
+
+## WoE scorecard comparison
+
+The [scorecard report](scorecard.md) records two training-only WoE challengers,
+with matched logistic objectives/optimizers and an explicit coefficient sign
+constraint in one variant. Bins, IV screening and coefficients use 2011–2013 only;
+2014/2015 remain explored evaluation cohorts. Historical failed and diagnostic
+runs retain their execution-time source records. The current manifest identifies
+the completed matched-optimizer batch.
+
+`make scorecard` runs the new experiment, report and model-review export.
+`make scorecard-report` loads saved outputs. The full suite passed **120 tests**,
+including Spark and seven tests covering monotonicity, neutral unseen categories,
+no transform-time relearning, IV exclusion, active/inactive sign bounds, exact
+PDO/additivity and serialization. Full-cohort saved-model probabilities were
+verified; the reporting stage independently reconstructed validation/exploratory
+scores using the exported CSV points table. The incumbent and prepared inputs
+remain unchanged. No new dependencies were introduced.

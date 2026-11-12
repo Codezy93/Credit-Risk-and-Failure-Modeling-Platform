@@ -109,3 +109,7 @@ Keep the incumbent histogram-boosting model unchanged. The plain logistic baseli
 ![Coefficient stability](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/validation_review/ada1537bb4c646d9baadfa73f78e09c0/coefficient_stability.png)
 
 [Scikit-learn coefficient-interpretation guidance](https://scikit-learn.org/stable/auto_examples/inspection/plot_linear_model_coefficient_interpretation.html). MLflow experiment `lendingclub_coefficient_validation`, batch `ada1537bb4c646d9baadfa73f78e09c0`. [Full CSVs and manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/validation_review/ada1537bb4c646d9baadfa73f78e09c0/manifest.json).
+
+A later [WoE scorecard comparison](scorecard.md) provides separate binned
+challengers, training IV decisions and full points tables. Its design constraints
+do not retroactively make the original raw coefficients causal or incorrect.

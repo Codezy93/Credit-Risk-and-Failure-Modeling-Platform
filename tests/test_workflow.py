@@ -54,8 +54,9 @@ def test_runner_exports_notebooks_and_runs_validation():
         notebook = next(value for value in command if value.endswith(".py"))
         assert notebook.startswith("notebooks/")
         assert (ROOT / notebook).is_file()
-    assert commands[-5][-1] == "scripts/08_validate_models.py"
-    assert commands[-4][-1] == "scripts/09_basel_loss_experiment.py"
+    assert commands[-6][-1] == "scripts/08_validate_models.py"
+    assert commands[-5][-1] == "scripts/09_basel_loss_experiment.py"
+    assert commands[-4][-1] == "scripts/26_report_loss_limitations.py"
     assert commands[-3][-1] == "scripts/13_review_validation.py"
     assert commands[-2][-1] == "scripts/14_interpret_bias.py"
     assert "notebooks/10_model_review.py" in commands[-1]

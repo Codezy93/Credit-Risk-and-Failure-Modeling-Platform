@@ -56,3 +56,7 @@ models or connect to MLflow, Kafka or Elasticsearch.
 
 The [latest experiment refresh](experiment_refresh.md) records the current-code reruns,
 full pytest results and source/result fingerprints.
+
+The [WoE scorecard challengers](scorecard.md) add training-only bins, IV screening,
+sign audits and points tables. They are less discriminating than the incumbent
+and remain research models.

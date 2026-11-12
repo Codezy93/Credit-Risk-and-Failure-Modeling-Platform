@@ -1,0 +1,128 @@
+{
+  "status": "passed",
+  "reported_at_utc": "2026-11-11T22:21:35.348348+00:00",
+  "source_loss_batch": "bc7fbb6777cd4365b1a93a4d97fd872f",
+  "scope": "Reporting only; no model or metric changes",
+  "training_mean_lgd": 0.8936713828444145,
+  "training_mean_ead_ratio": 0.5816476484693175,
+  "selected_components": {
+    "ead": "ead_boosting",
+    "lgd": "lgd_mean"
+  },
+  "validation_comparison": [
+    {
+      "model": "ead_mean",
+      "component": "ead",
+      "split": "validation",
+      "rows": 22308,
+      "raw_mae": 0.20334696571483046,
+      "bounded_mae": 0.20334696571483046,
+      "bounded_rmse": 0.241756993269291,
+      "bounded_r2": -0.0020779434477127268,
+      "observed_mean": 0.5706387173079234,
+      "predicted_mean": 0.5816476484693175,
+      "predictions_clipped": 0,
+      "mae_improvement_over_mean_pct": 0.0,
+      "selected": false
+    },
+    {
+      "model": "ead_boosting",
+      "component": "ead",
+      "split": "validation",
+      "rows": 22308,
+      "raw_mae": 0.2020297475547253,
+      "bounded_mae": 0.2020297475547253,
+      "bounded_rmse": 0.24093677609833833,
+      "bounded_r2": 0.0047100898098363375,
+      "observed_mean": 0.5706387173079234,
+      "predicted_mean": 0.5821865734893596,
+      "predictions_clipped": 0,
+      "mae_improvement_over_mean_pct": 0.647768780554316,
+      "selected": true
+    },
+    {
+      "model": "lgd_mean",
+      "component": "lgd",
+      "split": "validation",
+      "rows": 22308,
+      "raw_mae": 0.0758571011498201,
+      "bounded_mae": 0.0758571011498201,
+      "bounded_rmse": 0.12112806111756025,
+      "bounded_r2": -0.0019196971015118525,
+      "observed_mean": 0.8883693225418711,
+      "predicted_mean": 0.8936713828444145,
+      "predictions_clipped": 0,
+      "mae_improvement_over_mean_pct": 0.0,
+      "selected": true
+    },
+    {
+      "model": "lgd_boosting",
+      "component": "lgd",
+      "split": "validation",
+      "rows": 22308,
+      "raw_mae": 0.07662661115271724,
+      "bounded_mae": 0.07662661115271724,
+      "bounded_rmse": 0.1210752881922252,
+      "bounded_r2": -0.0010468569885191403,
+      "observed_mean": 0.8883693225418711,
+      "predicted_mean": 0.8904915162097251,
+      "predictions_clipped": 0,
+      "mae_improvement_over_mean_pct": -1.0144205238970785,
+      "selected": false
+    }
+  ],
+  "portfolio_comparison": [
+    {
+      "method": "mean_baseline",
+      "ead_model": "ead_mean",
+      "lgd_model": "lgd_mean",
+      "rows": 162563,
+      "observed_loss_proxy_total": 136945537.9233997,
+      "expected_loss_proxy_total": 133599891.55103397,
+      "portfolio_relative_error": -0.024430488375876136,
+      "loan_dollar_mae": 1397.9467283291156,
+      "loan_dollar_rmse": 2722.012049524567
+    },
+    {
+      "method": "boosting",
+      "ead_model": "ead_boosting",
+      "lgd_model": "lgd_boosting",
+      "rows": 162563,
+      "observed_loss_proxy_total": 136945537.9233997,
+      "expected_loss_proxy_total": 131383513.10492873,
+      "portfolio_relative_error": -0.040614867069141525,
+      "loan_dollar_mae": 1384.1923001874272,
+      "loan_dollar_rmse": 2721.567036149604
+    },
+    {
+      "method": "selected_components",
+      "ead_model": "ead_boosting",
+      "lgd_model": "lgd_mean",
+      "rows": 162563,
+      "observed_loss_proxy_total": 136945537.9233997,
+      "expected_loss_proxy_total": 132522640.7138088,
+      "portfolio_relative_error": -0.03229676027900097,
+      "loan_dollar_mae": 1389.339736520179,
+      "loan_dollar_rmse": 2721.321380920874
+    }
+  ],
+  "input_sha256": {
+    "assets/results/basel_loss_latest.json": "9a6bf1f2f6392c092655ebd7ccf1cc79cdbdd7f63106bee3dbe3bee601d28ad6",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/capital_sensitivity.csv": "21f4c2f4303e15c19f1820a7888f084c98a7d6691c0b686c24dd4249ac9f437b",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/component_metrics.csv": "22bcca2c37ee7b232d0773e063f62de56039776949e82fdf8609a724d0d62109",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_audit.csv": "2ead4e83837a30ce4a3f757f4db27f951c4411a539914cb032af79d0425f1ad0",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_deciles.csv": "db584a2002e5e2fb9d28b56333393fbc91ae087b3735670effe9a7152fd9440c",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/native_regression_evaluations.csv": "ad21d62085c744fee52aef71b9078c6e51655742d66e7da17a54d5e0daf0d3a9",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/pd_unchanged_check.csv": "bca65f300de6a340bc7e8bef95d71409efe6c05ed9ebacc8d19d27c71275aaf3",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/portfolio_capital_scenarios.csv": "70c46ceafae27eb46ffa655b97700e77416cdd05ce8cd5cca9452116266489dd",
+    "assets/results/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/portfolio_loss_metrics.csv": "699bb5b28150ea84ccfa4d4de101d70401bd82a34265eeba9333c64a29080b0a",
+    "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/ead_boosting.joblib": "447b8f352cbdaa9326fdc35eeaabf778f19bbe813d8c639230641006fddb1d5a",
+    "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/ead_mean.joblib": "a631a552c400146f0d08737b9b40951996c61810c8a3ebc6e6e519ae4de31d70",
+    "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/lgd_boosting.joblib": "a74619a24daed33fa192da13540794e542ce0ac749e1e57f70b968204e56206f",
+    "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/lgd_mean.joblib": "502c15f1b6a28b013ed1f51a9520df696ad1b0c19af8406a3ea9cd3f15ee03a0",
+    "models/basel_loss/bc7fbb6777cd4365b1a93a4d97fd872f/loss_model_bundle.joblib": "1082067bb0b813d60660234a4ca836ee57f8060529bf8cde217b767ef76f38b6"
+  },
+  "inputs_unchanged": true,
+  "report_sha256": "b8fc259980a11e0878cad3d81704cd7e34e390709155e3b1a629b9f4470e3f4d",
+  "script_sha256": "2baedb8bc79d81d33e8bf83640b798f9178cda0d5d2304ff85d2174f7cda17ea"
+}

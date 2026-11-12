@@ -36,6 +36,7 @@ def commands(include_auc=False, include_ann=False):
         steps.append([sys.executable, "scripts/07_improve_auc.py"])
     steps.append([sys.executable, "scripts/08_validate_models.py"])
     steps.append([sys.executable, "scripts/09_basel_loss_experiment.py"])
+    steps.append([sys.executable, "scripts/26_report_loss_limitations.py"])
     if include_ann:
         steps.append([sys.executable, "scripts/11_ann_experiments.py"])
     steps.append([sys.executable, "scripts/13_review_validation.py"])

@@ -1,0 +1,11 @@
+model,feature,coefficient,expected_woe_sign,sign_check_passed,zero_effect
+woe_unconstrained,annual_inc,-0.7498949253066569,nonpositive,True,False
+woe_unconstrained,dti,-0.6332216123101567,nonpositive,True,False
+woe_unconstrained,revol_util,-0.18950919062072272,nonpositive,True,False
+woe_unconstrained,fico_mid,-0.840332677920021,nonpositive,True,False
+woe_unconstrained,home_ownership,-0.4366499362358181,nonpositive,True,False
+woe_constrained,annual_inc,-0.7512374354434892,nonpositive,True,False
+woe_constrained,dti,-0.6317479686558491,nonpositive,True,False
+woe_constrained,revol_util,-0.1741932407749483,nonpositive,True,False
+woe_constrained,fico_mid,-0.8418191075708201,nonpositive,True,False
+woe_constrained,home_ownership,-0.4418859173654851,nonpositive,True,False

@@ -1,0 +1,5 @@
+model,split,reference,auc_difference,lower_95,upper_95
+woe_unconstrained,validation,original_logistic,-0.01711457987205589,-0.019257468002269452,-0.014682663414521218
+woe_unconstrained,exploratory_test,original_logistic,-0.01914283820325524,-0.02069754413456005,-0.017794093717481547
+woe_constrained,validation,original_logistic,-0.01711457987205589,-0.019257468002269452,-0.014682663414521218
+woe_constrained,exploratory_test,original_logistic,-0.01914283820325524,-0.02069754413456005,-0.017794093717481547

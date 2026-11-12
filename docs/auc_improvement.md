@@ -102,3 +102,7 @@ protected-group fairness evaluation was computed.
 
 XGBoost API references: [CPU installation](https://xgboost.readthedocs.io/en/stable/install.html)
 and [Python API/early stopping](https://xgboost.readthedocs.io/en/stable/python/python_api.html).
+
+The subsequent [field-timing and temporal review](bureau_temporal_review.md) adds
+three retrospective windows and matched-parameter controls. It retains the
+unverified timing status and does not promote the candidate.

@@ -1,0 +1,134 @@
+{
+  "status": "complete",
+  "batch_run_id": "7e8db47185e94b90aeec59a0e9bdca57",
+  "experiment_id": "13",
+  "features": [
+    "loan_amnt",
+    "annual_inc",
+    "dti",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "delinq_2yrs",
+    "pub_rec_bankruptcies",
+    "emp_length_years",
+    "fico_mid",
+    "credit_history_years",
+    "home_ownership",
+    "purpose"
+  ],
+  "numeric_directions": {
+    "loan_amnt": "ascending",
+    "annual_inc": "descending",
+    "dti": "ascending",
+    "revol_util": "ascending",
+    "fico_mid": "descending",
+    "credit_history_years": "descending",
+    "emp_length_years": "descending",
+    "delinq_2yrs": "ascending",
+    "pub_rec_bankruptcies": "ascending"
+  },
+  "iv_min": 0.02,
+  "smoothing": 0.5,
+  "regular_bins": "at most six quantile/discrete bins, then adjacent support/monotonic pooling",
+  "minimum_support": "5% nonmissing training rows and 20 examples per class where mergeable; missing separate",
+  "categorical_bins": "rare training levels grouped, then ordered by training event rate; unseen WoE=0",
+  "woe_definition": "log(smoothed good share / smoothed bad share); expected logistic coefficient <= 0",
+  "optimizer": "same L-BFGS-B objective, initialization and tolerances; only coefficient bounds differ",
+  "scaling": {
+    "base_points": 600,
+    "good_to_bad_odds": 50,
+    "pdo": 20,
+    "rounding": false
+  },
+  "training_years": [
+    2011,
+    2012,
+    2013
+  ],
+  "validation_years": [
+    2014
+  ],
+  "exploratory_years": [
+    2015
+  ],
+  "binning_iv_coefficients_fit_on_train_only": true,
+  "new_holdout": false,
+  "incumbent_replaced": false,
+  "regulatory_approval": false,
+  "model_uris": {
+    "woe_unconstrained": "models:/m-5b795cee13c34219a9ffb07c66dc0bac",
+    "woe_constrained": "models:/m-3b99d7b2d94b46ff8d86a383dda91f23"
+  },
+  "run_ids": {
+    "woe_unconstrained": "e6af28c681144dcab734e0ed24824f81",
+    "woe_constrained": "b782d67977e147a8954f8f3787274d24"
+  },
+  "selected_model": "",
+  "result_directory": "assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57",
+  "model_directory": "models/scorecard/7e8db47185e94b90aeec59a0e9bdca57",
+  "input_sha256": {
+    "data/clean/modeling/train.parquet": "eac423f260cc81fd8eb9f11c1639e4cecd0f452b5ac8f9d57d12a788fb9d29c4",
+    "data/clean/modeling/train_metadata.parquet": "f7306739e7011bbc4493b9473090e3674446e8e73f3109b2127632f182052738",
+    "data/clean/modeling/validation.parquet": "c645fc9a7eebc4d8755155be63c8ffd44a1cd3b606f127ccb294d4b998a24fbc",
+    "data/clean/modeling/validation_metadata.parquet": "8703286db2f5e6143a9e9282224a14f42acd6b098fdbc9a981e774fd8309a0d2",
+    "data/clean/modeling/exploratory_test.parquet": "7d98e6c095b38287a1599aa241a061d8ca786a5894370e2ab6a4aeb16a553564",
+    "data/clean/modeling/exploratory_test_metadata.parquet": "b94fdee9a5ae2d64badf43666f53d8f4f3c0c2c5f5100934a3f6aaeb15952c60"
+  },
+  "protected_sha256": {
+    "models/selected_model.joblib": "beb4491348dfa7022290768ef79c8150fd7d14a722ef5b3ac78902fa9f0cc078",
+    "models/experiments/6ccea4b79b8343cd971273181d93f680/logistic_regression.joblib": "7c70538e2601b9c56c448c5f12de9b51639c9f9fecae01c24c5a7a3ad42fe211",
+    "assets/results/model_experiments_latest.json": "9d9cb3ae56e63d333d695fc74b8f931f19c481c09e962dc647f57e74f68b968f"
+  },
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "mlflow": "3.18.0",
+    "cloudpickle": "3.1.2"
+  },
+  "completed_at_utc": "2026-11-11T23:31:14.569973+00:00",
+  "source_sha256": {
+    "scripts/29_train_scorecards.py": "01411871bb1ee2a63c92b4a0dddc42986f7fb4163fa2babff0bf80a1f1355f5c",
+    "util/scorecard.py": "0cc4215a114edd171badcb6a27a1a897dde0349108f1b189599c9c08efd9a436",
+    "util/feature_policy.py": "8f26c1916f5bc001ee3b6b12e0e8d71fdface344faddb4504abbab5800ed5dde",
+    "util/feature_policy.json": "7924dba2b6559db00d47a23da048fa6edd4b3a7a41d05390ab439582e6162f6a",
+    "util/metrics.py": "d02f8d735d3e6300e887e28494be21b87dba7a4fafe4b85c3fdd7521dfd5687c",
+    "util/mlflow_evaluation.py": "c776696cec7b805f82f95f574ad122eff62df94bf14b98733d9ab7e84f6f5481",
+    "util/risk_scope.py": "c46036e7a41fb27951656c4a5d8f5fffe3981af9cde083daa64be153d8745a36",
+    "requirements.lock": "83d70a8e91f04287833f0a46385915a59d6dbe489d7eb211fc2e2f13f743f510"
+  },
+  "execution_script_sha256": "01411871bb1ee2a63c92b4a0dddc42986f7fb4163fa2babff0bf80a1f1355f5c",
+  "results_sha256": {
+    "woe_unconstrained_exploratory_test_bootstrap.csv": "ac98a2b48f28366b39da642613e10b4479a6416dbab41b6e31131f86bcf960a2",
+    "woe_constrained_exploratory_test_bootstrap.csv": "ac98a2b48f28366b39da642613e10b4479a6416dbab41b6e31131f86bcf960a2",
+    "iv_screen.csv": "56ce432a7d1f99aba6c8b838fc7b4e045d739b3424bd93162b9e345fa780ff1e",
+    "woe_unconstrained_validation_bootstrap.csv": "f59d26f576be9d4b3bda886baedf61fea96111a11016df8e94d2634acb505223",
+    "paired_auc_intervals.csv": "1df347cd8b22a7e7e56b1c48e9f8844e1f2ae6acbfb334bfe29a75bf1fec999f",
+    "bin_outcomes_by_split.csv": "50f047b9945918cb0821a373cc5bffd97281ae8c9540fb103a5f27528d3a024d",
+    "binning_tables.csv": "1ae84b824b946b27bcd26be013d1e62a62495696b2fd0be58a346b8787dce0ce",
+    "coefficients.csv": "cdbf2c04710b03925c91c784a89eda96e4b0f3d95f1ba37262accf3fb306bcc8",
+    "metrics.csv": "9606b1badd67c82c3ed52e5c9c42eb399d9eeaa3cd0f82bb68e4c8495a59fd88",
+    "points_table.csv": "55cd7b11927f74129e26225c96570fd5b96419034e2818237c42bc52baf63cba",
+    "native_evaluations.csv": "96b9f310a6674375e94b33a41b11f662b80d91b3c76802d2bf816111838abbee",
+    "woe_constrained_validation_bootstrap.csv": "f59d26f576be9d4b3bda886baedf61fea96111a11016df8e94d2634acb505223"
+  },
+  "model_sha256": {
+    "woe_unconstrained.joblib": "3d7e2e8a5ad959e0a4401ed69ef58056547611bef4a69386c2b158c9ccfc8698",
+    "woe_constrained.joblib": "4736d3e300f4ad25e92e985e005427eaf3ccf8b697e79ecd471fcbb26f66ea42"
+  },
+  "dataset_sha256": {
+    "validation.parquet": "712e7f7796ba1ab9195336ae8cf8c5d5d950be9bb3db0fbfb082c0b14306a133",
+    "exploratory_test.parquet": "ecb44a2f5b6555f13ffa62f6e477db4e9fd544396c92cf7f890a0ac587fb74ed",
+    "woe_constrained_train_scores.parquet": "fa35e9c105107a235712737288bebb2b8f435c691e5fb94affdea094c5125fac",
+    "train.parquet": "a8991d6ed3f598a627be6ecd646ad58e4765896e6017b7f0a805269633cc8201",
+    "woe_unconstrained_train_scores.parquet": "e3ce217743d6b34cfcbb3a5a7ccfb97126960ce5f7694d9c4cfc2c403e224dc0",
+    "woe_constrained_validation_scores.parquet": "a4f51d8a6472cd338cd32d8782107356ef66c64e2133b13291615d175a41426a",
+    "woe_unconstrained_exploratory_test_scores.parquet": "5c748ca8b12ab1ccf2bb3d92b58e7f9b383b021f8f99219342cafdd0f25951a8",
+    "woe_unconstrained_validation_scores.parquet": "bcd1bfada4e025788b20c6da95f80556b1d0a4a28fdc06a6fc2595de8188fa83",
+    "woe_constrained_exploratory_test_scores.parquet": "db9c41cf1fead91206592259d80c8d9ae871441880dd29fb61927c9fb62621bb"
+  },
+  "scoring_checks": "full-cohort saved-model predictions and additive point sums verified; bins unchanged during inference"
+}

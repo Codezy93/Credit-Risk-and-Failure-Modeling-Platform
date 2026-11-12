@@ -118,6 +118,14 @@ over that residual exposure. These are retrospective proxies: recovery timing,
 discounting, indirect costs and default-event exposure are unavailable. Values
 outside the bounded target scope are audited and quarantined.
 
+The selected LGD is a **constant training-cohort loan-average of 0.893671383
+(89.37%)**. The 88.84% validation observed mean is a different statistic.
+EAD boosting explains only 0.47% of validation ratio variance (R² 0.004710),
+and its MAE improvement over the mean baseline is just 0.65%. See the
+[loss-model limitations](docs/loss_model_limitations.md) for the full comparison,
+units and implications for the expected-loss proxy. Run `make loss-report` to
+refresh this explanation from saved results without training.
+
 In the measured run, EAD boosting won narrowly (validation ratio MAE **0.202030**)
 and the LGD mean baseline won (MAE **0.075857**). Their combined expected-loss proxy
 was **$132.52 million**, against **$136.95 million** observed snapshot loss on
@@ -724,3 +732,31 @@ and outage-related latency. See [the full report](docs/recovery_monitoring.md) a
 
 The [current-code experiment refresh](docs/experiment_refresh.md) records seven fresh
 modeling batches, 110 passing tests including Spark, and historical preservation checks.
+
+## Expanded-bureau temporal research
+
+The [field-timing and temporal review](docs/bureau_temporal_review.md) compares
+HGB13, matched-parameter XGB13 and the 58-field expanded candidate over explored
+2013, 2014 and 2015 cohorts. Expanded research AUCs are 0.671640, 0.683258 and
+0.696220. The last candidate trains through 2014; it is not the unchanged
+incumbent's original 2015 evaluation. All 58 inputs have timing-audit entries,
+but exact CSV measurement/update lineage remains uncertified. **No promotion**
+or point-in-time backtest is claimed. Run `make bureau-review` to repeat, or
+`make bureau-report` to refresh the saved-result report and notebook only.
+
+## WoE scorecard challengers
+
+The [scorecard report](docs/scorecard.md) adds training-only monotonic quantile
+bins with adjacent pooling, IV ≥ 0.02 screening, a complete coefficient audit and
+unrounded additive points. The scale is 600 at model-implied good:bad odds 50:1,
+with PDO 20. All five retained unconstrained WoE coefficients have the expected
+sign; matching sign-constrained estimates produce effectively identical scores.
+This is not an optimal-binning or regulatory validation claim.
+
+Validation AUC is **0.629116**, versus **0.646231** for the original logistic
+reference and **0.653889** for the unchanged incumbent. The interpretability
+constraints and IV screen do not improve discrimination here. These remain
+research challengers; no model is promoted. The full local suite passed
+**120 tests**, including Spark and seven scorecard tests.
+Run `make scorecard` to fit/log this comparison, or `make scorecard-report` to
+read saved outputs and refresh the notebook. Existing dependency locks are unchanged.

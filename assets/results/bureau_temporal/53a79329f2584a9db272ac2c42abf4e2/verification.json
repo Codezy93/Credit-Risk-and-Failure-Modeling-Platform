@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "scope": "New retrospective research; timing unverified and no promotion",
+  "batch_run_id": "53a79329f2584a9db272ac2c42abf4e2",
+  "pytest": {
+    "tests": 113,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "source_and_result_hashes_verified": true,
+  "saved_model_count": 9,
+  "dataset_count": 18,
+  "incumbent_and_original_manifest_pointers_unchanged": true,
+  "promotion_approved": false,
+  "report_sha256": "debc6df682c9fa6a8b7c371705ea15e1b004525ec955ba1bac735b6e2f92c4ea",
+  "reporting_script_sha256": "7bf6ef751dffa0754a34fbb3adc44a2e38492fa68391e295e5ee58177c0d9a19",
+  "test_report_sha256": "9e7d7d942820fbc060f8f2f9eaf4021858d4226dc60b830d450ba6d38e48045c",
+  "finished_mlflow_runs_verified": 19,
+  "notebook_html_export_contains_updated_review": true
+}

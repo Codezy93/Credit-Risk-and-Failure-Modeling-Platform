@@ -2,6 +2,410 @@
 
 > Selected-model results are in section 18; later validation-only AUC research is in section 20; exact diagnostics, uncertainty and separate-year calibration are in section 21; separate loss models and illustrative capital scenarios are in section 22. The selected model remains unchanged. Earlier sections retain their stage-specific snapshots. InterpretML and descriptive segment-disparity results are in section 26; protected-group fairness is unassessed. Short local load tests, recovery under active load, persistent deduplication and ELK monitoring are measured in the latest sections below.
 
+<!-- scorecard-statistics -->
+## WoE logistic scorecard challengers
+
+Batch `7e8db47185e94b90aeec59a0e9bdca57`, completed 2026-11-11T23:31:14.569973+00:00.
+These are new **research challengers**, not a replacement for the incumbent.
+The original plain logistic regression remains a separate reference model.
+The target remains [lifetime charge-off among resolved 36-month loans](../docs/risk_terminology.md).
+
+## Binning and selection
+
+Bins, missing-value effects, categorical risk order, IV screening and coefficients
+are fitted on **2011–2013 training rows only**. 2014 is explored validation; 2015
+is explored later-year evaluation. No new holdout or point-in-time backtest is claimed.
+No validation labels choose bins, feature retention, directions or coefficients.
+
+Numeric variables start with up to six quantile/discrete bins. Adjacent bins are
+pooled for support and monotonicity of both raw and smoothed training event rates.
+A zero-inflated variable retains a zero-versus-positive split where quantiles
+collapse. Support pooling targets 5% of nonmissing rows and 20 examples of each
+class where mergeable; a single remaining bin and missing bins can be exceptions.
+Missing is a separate group outside numeric ordering. This is a transparent
+heuristic, **not optimal binning** or OptBinning.
+
+Directions for nine numeric fields are predeclared domain constraints. Revolving
+balance and open-account directions choose the larger training IV of ascending
+and descending pooling. Categories are grouped for rare training levels and then
+ordered by training event rate; this is not a natural ordering of category names.
+New categories get neutral WoE zero; never-observed missing values also get zero.
+These are explicit fallback assumptions, not evidence about new groups.
+
+WoE = log(smoothed good share / smoothed bad share), with 0.5 added to each class
+count in occupied bins. IV is the sum of (good share − bad share) × WoE.
+Only variables with **training IV ≥ 0.02** enter the logistic fit. Full training
+counts and bin contributions are saved, including excluded variables.
+
+| feature | train_iv | selected | direction | direction_basis |
+| --- | --- | --- | --- | --- |
+| loan_amnt | 0 | False | ascending | predeclared domain constraint |
+| annual_inc | 0.094831 | True | descending | predeclared domain constraint |
+| dti | 0.039295 | True | ascending | predeclared domain constraint |
+| revol_util | 0.031431 | True | ascending | predeclared domain constraint |
+| revol_bal | 0.012055 | False | descending | training-IV choice between ascending/descending |
+| open_acc | 0.000181 | False | descending | training-IV choice between ascending/descending |
+| delinq_2yrs | 0.000099 | False | ascending | predeclared domain constraint |
+| pub_rec_bankruptcies | 0.000192 | False | ascending | predeclared domain constraint |
+| emp_length_years | 0.012672 | False | descending | predeclared domain constraint |
+| fico_mid | 0.12591 | True | descending | predeclared domain constraint |
+| credit_history_years | 0.018026 | False | descending | predeclared domain constraint |
+| home_ownership | 0.033351 | True | ascending | training risk order |
+| purpose | 0.016133 | False | ascending | training risk order |
+
+Selected features: **annual_inc, dti, revol_util, fico_mid, home_ownership**. Delinquency and bankruptcy are not
+silently assigned favorable economic effects: their actual IV decisions appear
+above. Pooling and screening are modeling choices that can discard weak or
+nonconforming signals; they do not establish causality or universal risk direction.
+
+## Coefficients and sign checks
+
+Both models minimize the same L2 logistic objective (C=1), with the same L-BFGS-B
+optimizer, initialization and tolerances. The constrained fit additionally bounds
+WoE coefficients at zero from above. The intercept is unpenalized and unconstrained.
+No one-hot reference ambiguity is introduced: each retained variable has one
+WoE coefficient.
+
+Under this good/bad WoE convention a nonpositive coefficient is the expected
+relationship. Positive unconstrained WoE coefficients, if present, are reported,
+not silently flipped. Current unconstrained sign failures: **none**.
+Constrained signs are enforced by design; passing them is not regulatory validation
+or proof that the assumed raw-variable direction is economically correct. Numeric
+score monotonicity applies within regular bins, holding other inputs fixed; it does
+not order missing values or prove monotone observed risk in future cohorts.
+
+| model | feature | coefficient | expected_woe_sign | sign_check_passed | zero_effect |
+| --- | --- | --- | --- | --- | --- |
+| woe_unconstrained | annual_inc | -0.751237 | nonpositive | True | False |
+| woe_unconstrained | dti | -0.631748 | nonpositive | True | False |
+| woe_unconstrained | revol_util | -0.174193 | nonpositive | True | False |
+| woe_unconstrained | fico_mid | -0.841819 | nonpositive | True | False |
+| woe_unconstrained | home_ownership | -0.441886 | nonpositive | True | False |
+| woe_constrained | annual_inc | -0.751237 | nonpositive | True | False |
+| woe_constrained | dti | -0.631748 | nonpositive | True | False |
+| woe_constrained | revol_util | -0.174193 | nonpositive | True | False |
+| woe_constrained | fico_mid | -0.841819 | nonpositive | True | False |
+| woe_constrained | home_ownership | -0.441886 | nonpositive | True | False |
+
+| model | selected_features | intercept | factor | offset | optimizer_iterations |
+| --- | --- | --- | --- | --- | --- |
+| woe_unconstrained | 5 | -1.944959 | 28.853901 | 487.122876 | 17 |
+| woe_constrained | 5 | -1.944959 | 28.853901 | 487.122876 | 17 |
+
+## Points scaling and exported rules
+
+Base **600 points at model-implied good:bad odds 50:1**, with **PDO = 20**.
+Factor = 20 / ln(2); offset = 600 − factor × ln(50).
+Score = offset − factor × fitted bad-event log-odds.
+Doubling good:bad odds adds 20 points. Higher scores imply lower fitted charge-off
+probability. The anchor is not a guarantee of observed default rates or a FICO scale.
+
+Unrounded per-feature points distribute the offset and intercept equally across
+retained variables. Adding their exported bin points reproduces the full model
+score, including explicit missing and unseen-category fallback rows. No clipping
+or rounding is used. Both saved-model probabilities and point sums were verified
+on the complete cohorts; the exported CSV lookup was independently checked on
+all validation and exploratory rows for both challengers.
+
+Below is the constrained card's complete points table. The
+[CSV](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/points_table.csv) includes both cards at full precision.
+
+| feature | bin | count | good | bad | event_rate | woe | coefficient | points |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| annual_inc | [-inf, 36300.0) | 26332 | 21594 | 4738 | 0.179933 | -0.427277 | -0.751237 | 99.3868 |
+| annual_inc | [36300.0, 48000.0) | 25021 | 21236 | 3785 | 0.151273 | -0.219451 | -0.751237 | 103.891651 |
+| annual_inc | [48000.0, 60000.0) | 25621 | 22256 | 3365 | 0.131338 | -0.054937 | -0.751237 | 107.457681 |
+| annual_inc | [60000.0, 75000.0) | 27585 | 24380 | 3205 | 0.116186 | 0.084921 | -0.751237 | 110.489261 |
+| annual_inc | [75000.0, 98000.0) | 26602 | 24045 | 2557 | 0.096121 | 0.296923 | -0.751237 | 115.084646 |
+| annual_inc | [98000.0, inf) | 26832 | 24702 | 2130 | 0.079383 | 0.506553 | -0.751237 | 119.628616 |
+| annual_inc | Missing | 0 | 0 | 0 | — | 0 | -0.751237 | 108.648505 |
+| dti | [-inf, 8.53) | 26292 | 23744 | 2548 | 0.096912 | 0.287851 | -0.631748 | 113.895572 |
+| dti | [8.53, 12.56) | 26344 | 23556 | 2788 | 0.105831 | 0.189903 | -0.631748 | 112.110137 |
+| dti | [12.56, 16.07) | 26332 | 23288 | 3044 | 0.115601 | 0.090628 | -0.631748 | 110.300514 |
+| dti | [16.07, 19.8) | 26331 | 22928 | 3403 | 0.129239 | -0.036418 | -0.631748 | 107.984658 |
+| dti | [19.8, 24.32) | 26338 | 22574 | 3764 | 0.142911 | -0.152789 | -0.631748 | 105.863411 |
+| dti | [24.32, inf) | 26356 | 22123 | 4233 | 0.160609 | -0.290383 | -0.631748 | 103.355283 |
+| dti | Missing | 0 | 0 | 0 | — | 0 | -0.631748 | 108.648505 |
+| revol_util | [-inf, 31.9) | 26297 | 23880 | 2417 | 0.091912 | 0.346355 | -0.174193 | 110.38934 |
+| revol_util | [31.9, 47.0) | 26236 | 23247 | 2989 | 0.113927 | 0.107118 | -0.174193 | 109.186899 |
+| revol_util | [47.0, 58.7) | 26197 | 22959 | 3238 | 0.123602 | 0.014648 | -0.174193 | 108.722131 |
+| revol_util | [58.7, 69.7) | 26471 | 22997 | 3474 | 0.131238 | -0.054038 | -0.174193 | 108.376901 |
+| revol_util | [69.7, 81.7) | 26287 | 22657 | 3630 | 0.138091 | -0.112852 | -0.174193 | 108.081291 |
+| revol_util | [81.7, inf) | 26401 | 22383 | 4018 | 0.152191 | -0.226558 | -0.174193 | 107.509792 |
+| revol_util | Missing | 104 | 90 | 14 | 0.134615 | -0.112772 | -0.174193 | 108.081697 |
+| fico_mid | [-inf, 672.0) | 21375 | 17561 | 3814 | 0.178433 | -0.417095 | -0.841819 | 98.517359 |
+| fico_mid | [672.0, 682.0) | 24232 | 20358 | 3874 | 0.159871 | -0.284913 | -0.841819 | 101.72804 |
+| fico_mid | [682.0, 692.0) | 23873 | 20393 | 3480 | 0.145771 | -0.175954 | -0.841819 | 104.374613 |
+| fico_mid | [692.0, 707.0) | 31553 | 27646 | 3907 | 0.123823 | 0.012607 | -0.841819 | 108.954718 |
+| fico_mid | [707.0, 727.0) | 27651 | 24898 | 2753 | 0.099562 | 0.25794 | -0.841819 | 114.913808 |
+| fico_mid | [727.0, inf) | 29309 | 27357 | 1952 | 0.066601 | 0.695885 | -0.841819 | 125.551399 |
+| fico_mid | Missing | 0 | 0 | 0 | — | 0 | -0.841819 | 108.648505 |
+| home_ownership | MORTGAGE | 75212 | 67342 | 7870 | 0.104638 | 0.20261 | -0.441886 | 111.231813 |
+| home_ownership | OWN | 13339 | 11568 | 1771 | 0.132769 | -0.0676 | -0.441886 | 107.786591 |
+| home_ownership | RENT \| NONE \| OTHER | 69442 | 59303 | 10139 | 0.146007 | -0.17783 | -0.441886 | 106.381149 |
+| home_ownership | Missing | 0 | 0 | 0 | — | 0 | -0.441886 | 108.648505 |
+| home_ownership | Unseen category (neutral WoE) | 0 | 0 | 0 | — | 0 | -0.441886 | 108.648505 |
+
+![Scorecard IV screen and score distribution](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/scorecard/7e8db47185e94b90aeec59a0e9bdca57/scorecard_review.png)
+
+## Evaluation and trade-offs
+
+| model | split | roc_auc | gini | ks | average_precision | brier_score | observed_positive_rate | mean_predicted_probability |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| original_logistic | train | 0.650936 | 0.301871 | 0.218646 | 0.199628 | 0.106127 | 0.125195 | 0.125206 |
+| original_logistic | validation | 0.646231 | 0.292462 | 0.213711 | 0.21028 | 0.114869 | 0.137264 | 0.132214 |
+| original_logistic | exploratory_test | 0.646349 | 0.292698 | 0.212749 | 0.226319 | 0.122883 | 0.148863 | 0.132003 |
+| incumbent_hgb | train | 0.684525 | 0.369051 | 0.265112 | 0.239525 | 0.104177 | 0.125195 | 0.125187 |
+| incumbent_hgb | validation | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.137264 | 0.131767 |
+| incumbent_hgb | exploratory_test | 0.65435 | 0.308701 | 0.223789 | 0.235027 | 0.122279 | 0.148863 | 0.132223 |
+| woe_unconstrained | train | 0.630662 | 0.261324 | 0.186619 | 0.184045 | 0.107006 | 0.125195 | 0.125195 |
+| woe_unconstrained | validation | 0.629116 | 0.258233 | 0.187128 | 0.199727 | 0.115577 | 0.137264 | 0.131814 |
+| woe_unconstrained | exploratory_test | 0.627206 | 0.254412 | 0.181766 | 0.212171 | 0.123888 | 0.148863 | 0.13098 |
+| woe_constrained | train | 0.630662 | 0.261324 | 0.186619 | 0.184045 | 0.107006 | 0.125195 | 0.125195 |
+| woe_constrained | validation | 0.629116 | 0.258233 | 0.187128 | 0.199727 | 0.115577 | 0.137264 | 0.131814 |
+| woe_constrained | exploratory_test | 0.627206 | 0.254412 | 0.181766 | 0.212171 | 0.123888 | 0.148863 | 0.13098 |
+
+Both challenger variants were predeclared; no model is promoted from these results.
+A monotone scorecard is not guaranteed to beat the original logistic regression or
+boosting. The IV cutoff can remove jointly useful weak predictors; coarse bins
+can lose ranking information. When unconstrained coefficients already have the
+expected signs, the bounds may be inactive and need not improve discrimination.
+Raw probabilities are not separately calibrated here. The default 0.5 classification
+threshold is a reproducible diagnostic, not an approval or cost-optimized policy.
+
+| model | split | reference | auc_difference | lower_95 | upper_95 |
+| --- | --- | --- | --- | --- | --- |
+| woe_unconstrained | validation | original_logistic | -0.017115 | -0.019257 | -0.014683 |
+| woe_unconstrained | exploratory_test | original_logistic | -0.019143 | -0.020698 | -0.017794 |
+| woe_constrained | validation | original_logistic | -0.017115 | -0.019257 | -0.014683 |
+| woe_constrained | exploratory_test | original_logistic | -0.019143 | -0.020698 | -0.017794 |
+
+Intervals compare each scorecard with the fixed original logistic model using
+200 paired class-stratified resamples. They exclude binning/fit/selection uncertainty,
+borrower dependence and macroeconomic variation. There is no significance claim
+that these are universally better models. Per-bin counts and event rates for
+train/validation/exploratory cohorts are in
+[bin outcomes](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/bin_outcomes_by_split.csv);
+validation event-rate monotonicity is not forced.
+
+## Reproduce and inspect
+
+Local suite: **120 tests**, 0 failures, 0 errors, 0 skips. [JUnit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/test_results.xml).
+
+Run `make scorecard` to fit the challengers, log real datasets/models/native
+evaluations to MLflow and export reports. `make scorecard-report` reads saved
+results without fitting. Current weights and input/metric/source hashes are in
+[the manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/manifest.json).
+[All bins](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/binning_tables.csv),
+[IV screen](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/iv_screen.csv),
+[coefficient audit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/coefficients.csv), and
+[native evaluations](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/scorecard/7e8db47185e94b90aeec59a0e9bdca57/native_evaluations.csv) remain inspectable.
+Historical failed/diagnostic runs remain recorded with their execution-time sources.
+No dependencies, incumbent artifacts, raw data or prepared datasets were changed.
+
+For related ordered-fit concepts see [scikit-learn isotonic regression](https://scikit-learn.org/stable/modules/isotonic.html).
+The bounded optimizer is documented by [SciPy L-BFGS-B](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html).
+
+<!-- end-scorecard-statistics -->
+
+<!-- bureau-temporal-statistics -->
+## Expanded bureau timing and temporal review
+
+Batch `53a79329f2584a9db272ac2c42abf4e2`, completed 2026-11-11T22:42:29.307496+00:00.
+**Decision: research only; no promotion.** The incumbent artifact and original
+model/research manifest pointers are unchanged.
+
+## Field timing audit
+
+All **58 input features** have explicit timing-audit entries, including
+**45 additions** to the 13-feature baseline. **Zero** have issuer-certified
+per-field measurement/update lineage for this exact CSV. Policy allowlisting
+prevents known later-outcome predictors; it does not certify availability.
+Derived variables inherit their parents' timing uncertainty. Grade, subgrade and
+interest rate are excluded from this comparison.
+
+The filed [loan-request credit-report authorization](https://www.sec.gov/Archives/edgar/data/1409970/000095012309014424/c86710exv10w11.htm)
+provides general evidence that reports were obtained for loan requests. It does
+not map this extract's field values to measurement times. The
+[April 2019 borrower agreement, section 6](https://www.sec.gov/Archives/edgar/data/1409970/000140997019000563/lc33119ex101.htm)
+also authorizes periodic reports during the relationship. Those later terms do
+not establish that any specific 2011–2015 CSV value was updated. Neither document
+certifies the historical CSV snapshot. Unknown timing is not proof of leakage.
+
+[Field audit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/feature_timing_audit.csv) and
+[year-by-year feature coverage](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/feature_coverage_by_year.csv)
+record every field and missingness pattern. Coverage can reveal schema/cohort
+changes; it is not timestamp evidence. Promotion requires an issuer/source
+mapping of measurement time, first availability and update/immutability rules
+for every input and its dependencies, before the intended scoring time.
+
+## Predeclared research windows
+
+| evaluation_year | role | rows | min_issue_date | max_issue_date | charged_off | positive_rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2013 | train | 57571 | 2011-01-01 00:00:00 | 2012-12-01 00:00:00 | 7402 | 0.128572 |
+| 2013 | evaluation | 100422 | 2013-01-01 00:00:00 | 2013-12-01 00:00:00 | 12378 | 0.12326 |
+| 2014 | train | 157993 | 2011-01-01 00:00:00 | 2013-12-01 00:00:00 | 19780 | 0.125195 |
+| 2014 | evaluation | 162570 | 2014-01-01 00:00:00 | 2014-12-01 00:00:00 | 22315 | 0.137264 |
+| 2015 | train | 320563 | 2011-01-01 00:00:00 | 2014-12-01 00:00:00 | 42095 | 0.131316 |
+| 2015 | evaluation | 283026 | 2015-01-01 00:00:00 | 2015-12-01 00:00:00 | 42132 | 0.148863 |
+
+Evaluation years 2013, 2014 and 2015 were already explored. Training rows precede
+evaluation rows, preprocessing fits on training only, and loan IDs are unique and
+disjoint across each split. Borrower-level disjointness is not established.
+Lifetime outcome labels were not necessarily known at the later origination
+date, so these are **not point-in-time deployment backtests** or fresh holdouts.
+Only resolved accepted 36-month loans are included; later, less-mature cohorts
+are not added merely to obtain another test year.
+
+Both XGBoost controls use exactly the same frozen parameters and
+**335 trees**, without an eval_set or new tuning.
+The tree budget was originally chosen using **2013 stopping data**; the
+configuration and 58-feature contract were selected in earlier **2014-informed
+research**. Thus 2013 reuses stopping data and 2014 reuses selection data. The
+windows were fixed before this rerun, not before the project originally explored
+them. These are descriptive, hindsight-informed comparisons, not independent
+validation. HGB13 uses the original fixed 200-iteration
+configuration but is refitted within each window. Its 2015 value is therefore
+not the unchanged incumbent's original 2015 score.
+
+## Measured results
+
+| evaluation_year | model | train_rows | rows | roc_auc | gini | ks | average_precision | brier_score | observed_positive_rate | mean_score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2013 | hgb13 | 57571 | 100422 | 0.642801 | 0.285603 | 0.20653 | 0.189022 | 0.105429 | 0.12326 | 0.136538 |
+| 2013 | xgb13 | 57571 | 100422 | 0.645969 | 0.291938 | 0.209494 | 0.192756 | 0.105372 | 0.12326 | 0.137152 |
+| 2013 | xgb_expanded | 57571 | 100422 | 0.67164 | 0.34328 | 0.248942 | 0.215023 | 0.103727 | 0.12326 | 0.125224 |
+| 2014 | hgb13 | 157993 | 162570 | 0.653889 | 0.307779 | 0.222796 | 0.216483 | 0.114375 | 0.137264 | 0.131767 |
+| 2014 | xgb13 | 157993 | 162570 | 0.656124 | 0.312248 | 0.226062 | 0.218326 | 0.114261 | 0.137264 | 0.132051 |
+| 2014 | xgb_expanded | 157993 | 162570 | 0.683258 | 0.366515 | 0.266477 | 0.244568 | 0.112495 | 0.137264 | 0.130218 |
+| 2015 | hgb13 | 320563 | 283026 | 0.661806 | 0.323611 | 0.233764 | 0.241852 | 0.121657 | 0.148863 | 0.136401 |
+| 2015 | xgb13 | 320563 | 283026 | 0.664401 | 0.328803 | 0.239271 | 0.244622 | 0.121439 | 0.148863 | 0.136457 |
+| 2015 | xgb_expanded | 320563 | 283026 | 0.69622 | 0.39244 | 0.284954 | 0.276781 | 0.118935 | 0.148863 | 0.136065 |
+
+![Temporal stability and paired AUC intervals](https://raw.githubusercontent.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/main/assets/figures/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/temporal_stability.png)
+
+The matched XGB13 control separates added-field gains from a change of algorithm
+or tree budget. Compare all windows, average precision, Brier and mean score
+against observed prevalence; ranking lift alone does not establish calibration.
+No new winner or threshold is chosen from these results.
+
+## Conditional uncertainty
+
+| evaluation_year | auc_difference_expanded_minus_base13 | lower_95 | upper_95 | scope |
+| --- | --- | --- | --- | --- |
+| 2013 | 0.025671 | 0.021677 | 0.029533 | paired fixed-model cohort bootstrap; excludes fitting/selection uncertainty |
+| 2014 | 0.027134 | 0.024617 | 0.029598 | paired fixed-model cohort bootstrap; excludes fitting/selection uncertainty |
+| 2015 | 0.031819 | 0.030031 | 0.033495 | paired fixed-model cohort bootstrap; excludes fitting/selection uncertainty |
+
+Intervals use 200 paired, class-stratified resamples of each evaluation cohort,
+seed 42. They condition on fitted models and omit training/configuration/feature
+selection uncertainty, macroeconomic variation and possible borrower dependence.
+Windows share observations and are not independent replications; no pooled
+significance claim is made. Even consistently positive intervals would not
+resolve the timing gate.
+
+## Artifacts and next evidence
+
+Local suite: **113 tests**, 0 failures, 0 errors and 0 skips. [JUnit](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/test_results.xml).
+
+Nine saved pipelines, role-specific datasets and nine native MLflow evaluation
+runs are recorded in `lendingclub_bureau_temporal_review`. Native full-cohort AUCs
+were checked against custom metrics; saved pipelines reproduce full-cohort scores.
+The manifest pins source, input, result, dataset and model hashes.
+
+[Manifest](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/manifest.json),
+[metrics](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/temporal_metrics.csv), and
+[native evaluations](https://github.com/Codezy93/Credit-Risk-and-Failure-Modeling-Platform/blob/main/assets/results/bureau_temporal/53a79329f2584a9db272ac2c42abf4e2/native_evaluations.csv).
+Run `make bureau-review` with the existing raw and clean data to repeat.
+
+The remaining gate is an exact as-of data contract plus genuinely unused,
+sufficiently mature evaluation data and label-availability evidence. Additional
+retrospective windows support a stability discussion, not deployment approval.
+The [lifetime charge-off target](../docs/risk_terminology.md) and the independent
+[loss-proxy limitations](../docs/loss_model_limitations.md) remain unchanged.
+
+<!-- end-bureau-temporal-statistics -->
+
+<!-- loss-limitations-statistics -->
+## Loss-model limitations
+
+Source batch: `bc7fbb6777cd4365b1a93a4d97fd872f`. This is a reporting update based on
+saved metrics and model constants; no models were fitted and no metric CSVs changed.
+
+## What the selected components actually are
+
+The selected LGD component is **a constant training-cohort loan-average snapshot
+LGD of 0.893671383 (89.37%)**. It is a `DummyRegressor(strategy="mean")`,
+not a borrower-specific severity model. The average is unweighted across the
+19,757 eligible charged-off training loans, not exposure-weighted. Every loan
+receives this same predicted LGD.
+
+The validation cohort's observed mean LGD is **0.888369323 (88.84%)**. That is a
+different statistic: it is not the constant fitted on the training cohort.
+
+The mean EAD-ratio baseline similarly predicts the training mean,
+**0.581647648 (58.16%)**, rather than the observed validation mean
+**0.570638717 (57.06%)**. The selected EAD component is the boosting regressor,
+not this constant baseline. Its validation average prediction is 0.582186573.
+All of these quantities are snapshot proxies, not event-time regulatory parameters.
+
+## Validation against the mean baselines
+
+Both components are evaluated on the same **22,308 eligible charged-off 2014 loans**.
+Selection used bounded MAE on this already-explored cohort. MAE is measured in
+fractions of the target, not dollars: 0.20 is about 20 percentage points.
+Positive improvement means lower MAE than the corresponding training-mean baseline.
+
+| Component | Predictor | Selected | Validation MAE | Validation R² | MAE improvement over training-mean baseline |
+| --- | --- | --- | --- | --- | --- |
+| Snapshot EAD ratio | ead_mean | no | 0.203347 | -0.002078 | 0.000% |
+| Snapshot EAD ratio | ead_boosting | yes | 0.202030 | 0.004710 | 0.648% |
+| Snapshot LGD | lgd_mean | yes | 0.075857 | -0.001920 | 0.000% |
+| Snapshot LGD | lgd_boosting | no | 0.076627 | -0.001047 | -1.014% |
+
+EAD boosting reduces MAE by only about **0.65%** and explains approximately
+**0.47% of validation target variance** (R² = 0.004710). Its training R² is
+0.081607, so most of the apparent training fit does not carry into validation.
+This is little demonstrated loan-level exposure information.
+
+LGD boosting has **worse MAE** than the mean baseline, so the constant is selected.
+Its R² is slightly less negative than the constant's, but both are below zero.
+R² uses the validation cohort's own observed mean as its reference; a constant
+learned from training can therefore have negative validation R². These diagnostics
+do not establish useful borrower-level severity discrimination. No confidence
+interval or independent selection cohort establishes that the small EAD gain is robust.
+
+## Consequences for expected loss
+
+The lifetime snapshot-loss proxy multiplies the lifetime charge-off score,
+predicted snapshot EAD and predicted snapshot LGD. A constant LGD means it has
+**no borrower-specific severity differentiation**; variation comes from the
+classifier, weak EAD predictions and funded-amount exposure scaling.
+
+On the **162,563 eligible validation loans**, selected components estimate
+**$132,522,640.71** against observed snapshot loss of
+**$136,945,537.92**: aggregate relative error
+**-3.23%**. The mean/mean baseline has a smaller aggregate
+error (**-2.44%**), despite slightly worse loan-level
+dollar MAE ($1,397.95 versus $1,389.34).
+Component MAE selection does not guarantee portfolio-total calibration.
+Aggregate error can conceal offsetting loan-level errors; it is not evidence of
+accurate individual loss forecasts.
+
+Classifier calibration error, weak EAD prediction and constant LGD all constrain
+the composition. Multiplying conditional means also ignores residual EAD/LGD
+dependence. Selection and evaluation share 2014, and recovery maturity, discounting,
+indirect costs and default-event exposure are unavailable. There is no validated
+one-year expected-loss or regulatory-capital estimate here. Capital panels remain
+assumed-one-year-PD sensitivities using these uncertain loss-proxy inputs.
+
+The supported description is **a lifetime snapshot-loss illustration with a
+training-average LGD baseline and a weak EAD-ratio regressor**. See
+[risk terminology](../docs/risk_terminology.md) and the [full loss report](../docs/basel_loss_experiment.md).
+
+<!-- end-loss-limitations-statistics -->
+
 <!-- current-experiment-refresh-statistics -->
 ## Latest current-code experiment refresh
 
@@ -85,8 +489,8 @@ The website now uses **MkDocs 1.6.1** with the unmodified built-in **mkdocs**
 theme. The previous custom HTML/CSS/JavaScript site, builder/checker and preview
 images were removed. There are no custom stylesheets, scripts or templates.
 
-The documentation contains **21 Markdown pages** and retains **4 notebook HTML
-exports**. The generated artifact contains **54 files**, totaling **11884104 bytes**.
+The documentation contains **24 Markdown pages** and retains **4 notebook HTML
+exports**. The generated artifact contains **57 files**, totaling **12361126 bytes**.
 Figures retain their original colors and load from repository raw image URLs;
 links to full result files open the committed evidence on GitHub. Raw datasets,
 model binaries and local service databases are outside the documentation build.
