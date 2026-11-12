@@ -1,0 +1,69 @@
+{
+  "captured_at_utc": "2026-11-12T14:40:16.638812+00:00",
+  "viewport": {
+    "width": 1440,
+    "height": 1050
+  },
+  "browser": "Chromium headless",
+  "source": "Local MkDocs reports and actual local MLflow UI",
+  "experiments_rerun": false,
+  "images": [
+    {
+      "image": "assets/screenshots/model-experiment-report.png",
+      "sha256": "9ea2ad8ca400e0e4ca105e969a64b150592a37947971e0b732ae0759cb1e3646",
+      "bytes": 268544,
+      "report_source": "docs/model_experiments.md",
+      "source_sha256": "294476e01c22fc5db4d85f016a500bdac73ec5c736701603df8eb97bc1782536",
+      "built_page": "_site/model_experiments/index.html",
+      "built_page_sha256": "fccae73d72936372bdc1d9c583abb681172226292d1b4caf16a2336137927462"
+    },
+    {
+      "image": "assets/screenshots/scorecard-report.png",
+      "sha256": "7e8853b870a0c548d0cde4b6a01a4f7a252c6e2b7b9e8ead6ceb63de5b760eec",
+      "bytes": 271274,
+      "report_source": "docs/scorecard.md",
+      "source_sha256": "b58efcc0d62aa2801632a4ab8b56311b02a45ad658900d8072de74e532718273",
+      "built_page": "_site/scorecard/index.html",
+      "built_page_sha256": "ccc44dee25dc6527869e1a4da4051a0945263a0b65da9e90cb942d5cc16083e2"
+    },
+    {
+      "image": "assets/screenshots/mlflow-scorecard-experiments.png",
+      "sha256": "acff5d6e3284177623a0e060f7ff1a62b72d9079ea60169af424d42005f6a8c5",
+      "bytes": 104237,
+      "source": "Actual local MLflow UI",
+      "url": "http://127.0.0.1:5000/#/experiments/13/runs?workflowType=machine_learning",
+      "mlflow_version": "3.18.0",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "captured_at_utc": "2026-11-12T14:49:05.509834+00:00"
+    },
+    {
+      "image": "assets/screenshots/mlflow-scorecard-run.png",
+      "sha256": "64275d33c7bbf7afb370e4e1bf92092bb910f274973b4472df0220023c38c22f",
+      "bytes": 179014,
+      "source": "Actual local MLflow UI",
+      "url": "http://127.0.0.1:5000/#/experiments/13/runs/e6af28c681144dcab734e0ed24824f81?workflowType=machine_learning",
+      "mlflow_version": "3.18.0",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "captured_at_utc": "2026-11-12T14:49:05.509834+00:00"
+    },
+    {
+      "image": "assets/screenshots/mlflow-native-evaluation.png",
+      "sha256": "0419c8cfdee29888cbf2fe79598978f2c7d049780103f54a53779415a89812e1",
+      "bytes": 206015,
+      "source": "Actual local MLflow UI",
+      "url": "http://127.0.0.1:5000/#/experiments/13/runs/cd123cbfd43748f0bbd6ff1811285cf5?workflowType=machine_learning",
+      "mlflow_version": "3.18.0",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "captured_at_utc": "2026-11-12T14:49:05.509834+00:00"
+    }
+  ]
+}

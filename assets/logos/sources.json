@@ -1,0 +1,57 @@
+[
+  {
+    "file": "assets/logos/python.svg",
+    "source": "https://cdn.simpleicons.org/python/3776AB",
+    "sha256": "a762008752dc999ad54e7e477194f12a1b2ce07c735be1f21b3b3af8f26eb7af"
+  },
+  {
+    "file": "assets/logos/duckdb.svg",
+    "source": "https://cdn.simpleicons.org/duckdb/000000",
+    "sha256": "62804cb1d5849db1f830d0f6828267d8d7cfc3068e64adf3911a177e92b7981e"
+  },
+  {
+    "file": "assets/logos/marimo.svg",
+    "source": "https://raw.githubusercontent.com/marimo-team/marimo/main/docs/_static/marimo-logotype-thick.svg",
+    "sha256": "2f4bc98385e362c726c3376e567febbbcc693159d6257dda52730054d715764d"
+  },
+  {
+    "file": "assets/logos/scikitlearn.svg",
+    "source": "https://cdn.simpleicons.org/scikitlearn/F7931E",
+    "sha256": "422acd1156f9cf98d6f31dd5d743aa02f452a3f0e092309bdda36d468575fc53"
+  },
+  {
+    "file": "assets/logos/mlflow.svg",
+    "source": "https://cdn.simpleicons.org/mlflow/0194E2",
+    "sha256": "7f289982e6d764f9c2b1378aa55c3fca42a8b15840ba6a014e53d5213f4378f1"
+  },
+  {
+    "file": "assets/logos/apachekafka.svg",
+    "source": "https://cdn.simpleicons.org/apachekafka/231F20",
+    "sha256": "e64804c91c53daee5ab4c83f466b90b3daca2e219d91deab06e68ccae06d7d3d"
+  },
+  {
+    "file": "assets/logos/apachespark.svg",
+    "source": "https://cdn.simpleicons.org/apachespark/E25A1C",
+    "sha256": "db33854a4f1fb69ac01b368b0b238937d35bd4e4f1e5f439b1a62b015693d05c"
+  },
+  {
+    "file": "assets/logos/sqlite.svg",
+    "source": "https://cdn.simpleicons.org/sqlite/003B57",
+    "sha256": "5d6914ac86d88c380d485b219171c18cb7eff2c738851f40f3c83d4d933c7cb1"
+  },
+  {
+    "file": "assets/logos/elasticstack.svg",
+    "source": "https://cdn.simpleicons.org/elasticstack/005571",
+    "sha256": "3f0145daeee1dcae7d5fdca6626eaf05c7dce70719756a135fb0066c99093a39"
+  },
+  {
+    "file": "assets/logos/docker.svg",
+    "source": "https://cdn.simpleicons.org/docker/2496ED",
+    "sha256": "ba1fb157870b2ec02e054aed42154ac7418e25af91ec321fd328d17cad4023cd"
+  },
+  {
+    "file": "assets/logos/githubactions.svg",
+    "source": "https://cdn.simpleicons.org/githubactions/2088FF",
+    "sha256": "68e27a7570b9e0f18a1f85d84d211f3328d845dfac8ce7e101ec16576c67db5b"
+  }
+]
